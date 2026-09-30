@@ -1,0 +1,21 @@
+ARG CONTAINER_IMAGE=docker.io/library/node:trixie-slim
+
+FROM ${CONTAINER_IMAGE} AS build
+RUN npm install -g pnpm@latest-12
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm build
+
+FROM ${CONTAINER_IMAGE}
+WORKDIR /app
+COPY --from=build /app/build /app/build
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
+EXPOSE 3000
+CMD ["node", "build"]

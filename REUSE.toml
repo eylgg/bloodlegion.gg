@@ -1,0 +1,13 @@
+version = 1
+
+[[annotations]]
+path = [
+    "apps/web/**",
+    ".github/**",
+    ".gitattributes",
+    ".gitignore",
+    "Caddyfile",
+    "README.md",
+]
+SPDX-FileCopyrightText = "2026 Jonathan Eyolfson <jon@eyolfson.com>"
+SPDX-License-Identifier = "MIT OR Apache-2.0"

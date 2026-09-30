@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<meta name="text-scale" content="scale" />
+		<meta name="color-scheme" content="dark" />
+		<meta name="theme-color" content="#0a0a0c" />
+		<link rel="stylesheet" href="/bloodlegion-0.0.1.css" />
+		<style>
+			body {
+				min-height: 100vh;
+				min-height: 100dvh;
+				display: grid;
+				place-content: center;
+				gap: var(--space-4);
+				padding: var(--space-8);
+				text-align: center;
+			}
+			img {
+				width: min(100vw, 78vh, 40rem);
+				height: auto;
+			}
+			p {
+				margin: 0;
+				color: var(--grey-text);
+				font-family: var(--font-mono);
+			}
+		</style>
+		<title>%sveltekit.error.message%</title>
+	</head>
+	<body>
+		<img src="/logo.svg" alt="Blood Legion" width="1024" height="1024" />
+		<p>%sveltekit.status%: %sveltekit.error.message%</p>
+	</body>
+</html>

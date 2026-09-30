@@ -1,0 +1,6 @@
+bloodlegion.localhost {
+	tls .cert.pem .key.pem
+	handle {
+		reverse_proxy localhost:{$FRONTEND_PORT:5173}
+	}
+}
