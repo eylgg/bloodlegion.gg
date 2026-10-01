@@ -68,8 +68,9 @@ pnpm -C apps/web test:e2e     # Playwright, against a production build; no backe
 ```
 
 The backend's queries are checked against the database at compile time. After changing one, run
-`cargo sqlx prepare --workspace` (needs `cargo install sqlx-cli`) to refresh the offline data in
-`.sqlx`, which is what the container and CI builds compile against.
+`cargo sqlx prepare -- --all-targets` inside `crates/bloodlegion-server` (needs
+`cargo install sqlx-cli`) to refresh the offline data in its `.sqlx`, which is what the container
+and CI builds compile against.
 
 ## Accounts and login
 

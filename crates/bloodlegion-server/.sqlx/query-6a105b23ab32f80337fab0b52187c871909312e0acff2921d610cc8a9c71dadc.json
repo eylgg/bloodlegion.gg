@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO auth_oauth2_client_redirect_uris (client_id, uri)\n            VALUES ($1, 'https://app.test/cb')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6a105b23ab32f80337fab0b52187c871909312e0acff2921d610cc8a9c71dadc"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO auth_oauth2_clients (id, secret_hash, name) VALUES ($1, $2, 'No URIs')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "240bbbb5686464a6ec874e2b899bcd90d8316ba57c9e45e340e29bb5d6961c15"
+}

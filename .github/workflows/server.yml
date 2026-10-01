@@ -37,8 +37,12 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      # The sqlx macros check every query against this database at compile time, and
-      # `#[sqlx::test]` creates a throwaway database per test from the migrations.
+      # The query macros compile against the committed offline cache (`crates/bloodlegion-server/
+      # .sqlx`, refreshed with `cargo sqlx prepare -- --all-targets`), so clippy and the test build
+      # need no schema in the service database. A stale cache fails the build, which is the point.
+      SQLX_OFFLINE: 'true'
+      # `#[sqlx::test]` still needs the live server: it creates a throwaway database per test
+      # from the migrations.
       DATABASE_URL: postgres://bloodlegion@localhost:5432/bloodlegion
     steps:
       - uses: actions/checkout@v5
@@ -57,15 +61,15 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v5
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           tags: |
@@ -74,7 +78,7 @@ jobs:
             type=semver,pattern={{version}}
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: crates/bloodlegion-server/Containerfile

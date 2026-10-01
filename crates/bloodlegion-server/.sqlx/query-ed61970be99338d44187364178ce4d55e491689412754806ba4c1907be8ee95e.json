@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE auth_oauth2_client_authorization_codes\n                 SET completed_at = now() + interval '1 hour' WHERE code_hash = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ed61970be99338d44187364178ce4d55e491689412754806ba4c1907be8ee95e"
+}

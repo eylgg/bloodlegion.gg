@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO auth_oauth2_providers\n                   (provider_id, issuer, client_id, client_secret_ciphertext, claims, scope, is_oidc)\n               VALUES ($1, $2, 'client', 'secret', '[]'::jsonb, 'openid', true)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "55aecb70190bd774bb8460aa80685860a548b4c00c79116ac9df1197b851454d"
+}

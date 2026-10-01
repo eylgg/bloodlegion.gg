@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO auth_oauth2_provider_metadata\n                (provider_id, authorization_endpoint, token_endpoint, userinfo_endpoint,\n                 jwks_uri, jwks)\n            VALUES ($1, 'https://i/a', 'https://i/t', $2, $3, $4)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "97c4b7ea73e4d84b0dc1f787b45e5844ebc6d5132017545fc2b54878ffd26bdb"
+}

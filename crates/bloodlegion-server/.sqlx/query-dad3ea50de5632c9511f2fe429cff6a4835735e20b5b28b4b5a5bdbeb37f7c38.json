@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO auth_providers (kind, slug, name) VALUES ('oauth2', 'local', 'Local')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "dad3ea50de5632c9511f2fe429cff6a4835735e20b5b28b4b5a5bdbeb37f7c38"
+}
