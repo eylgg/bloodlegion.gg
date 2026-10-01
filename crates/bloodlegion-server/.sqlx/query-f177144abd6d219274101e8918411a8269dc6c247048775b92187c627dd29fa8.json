@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT identity_provider_id AS \"id: ProviderId\" FROM auth_oauth2_clients WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: ProviderId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "identity_provider_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "f177144abd6d219274101e8918411a8269dc6c247048775b92187c627dd29fa8"
+}

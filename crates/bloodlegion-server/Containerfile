@@ -1,0 +1,33 @@
+ARG CONTAINER_IMAGE=docker.io/library/rust:slim-trixie
+ARG RUNTIME_IMAGE=docker.io/library/debian:trixie-slim
+
+FROM ${CONTAINER_IMAGE} AS build
+WORKDIR /build
+COPY Cargo.toml Cargo.lock ./
+COPY crates/bloodlegion-server/Cargo.toml ./crates/bloodlegion-server/Cargo.toml
+COPY crates/bloodlegion-macros/Cargo.toml ./crates/bloodlegion-macros/Cargo.toml
+COPY crates/xtask/Cargo.toml ./crates/xtask/Cargo.toml
+RUN mkdir -p crates/bloodlegion-server/src crates/bloodlegion-macros/src crates/xtask/src \
+    && echo 'fn main() {}' > crates/bloodlegion-server/src/main.rs \
+    && echo '' > crates/bloodlegion-macros/src/lib.rs \
+    && echo 'fn main() {}' > crates/xtask/src/main.rs \
+    && cargo fetch --locked --target "$(rustc --print host-tuple)"
+COPY crates/bloodlegion-server ./crates/bloodlegion-server
+COPY crates/bloodlegion-macros ./crates/bloodlegion-macros
+# The queries were checked against a live database by `cargo sqlx prepare`; the build compiles
+# against that recorded data (`crates/bloodlegion-server/.sqlx`) rather than needing a database.
+ENV SQLX_OFFLINE="true"
+RUN --mount=type=cache,target=/build/target \
+    cargo build --release --frozen --package bloodlegion-server \
+    && install -Dm0755 target/release/bloodlegion-server /usr/local/bin/bloodlegion-server
+
+# The binary is statically linked apart from libc; it only needs the CA bundle to verify the
+# identity providers it talks to (Battle.net's OpenID Connect endpoints).
+FROM ${RUNTIME_IMAGE}
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /usr/local/bin/bloodlegion-server /usr/local/bin/bloodlegion-server
+EXPOSE 8080
+CMD ["bloodlegion-server"]

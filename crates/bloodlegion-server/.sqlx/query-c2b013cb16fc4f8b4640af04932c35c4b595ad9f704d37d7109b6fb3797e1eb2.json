@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT password_hash AS \"password: PasswordHash\" FROM auth_local_credentials WHERE user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "password: PasswordHash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_local_credentials",
+            "name": "password_hash"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c2b013cb16fc4f8b4640af04932c35c4b595ad9f704d37d7109b6fb3797e1eb2"
+}

@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE auth_jwk_private_keys SET deactivated_at = now() WHERE deactivated_at IS NULL RETURNING kid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kid",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_jwk_private_keys",
+            "name": "kid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d03184ca83688e2ee0e90d6417b4b0c6f32b7babaa50aa025963834e90beaf5e"
+}

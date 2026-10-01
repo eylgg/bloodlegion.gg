@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT scope AS \"scope: Scope\"\n        FROM auth_oauth2_client_consents\n        WHERE user_id = $1 AND client_id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "scope: Scope",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_client_consents",
+            "name": "scope"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ecb11dda97d7d0c97a9a9144d89df32b78e9bbd41cbdfcb8d45cc8aa915b4a1c"
+}

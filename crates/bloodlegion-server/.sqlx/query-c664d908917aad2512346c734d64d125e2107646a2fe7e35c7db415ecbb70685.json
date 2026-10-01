@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM auth_providers WHERE slug = $1 AND kind = 'oauth2'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c664d908917aad2512346c734d64d125e2107646a2fe7e35c7db415ecbb70685"
+}

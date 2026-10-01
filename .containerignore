@@ -1,0 +1,11 @@
+.git/
+**/.gitattributes
+**/.gitignore
+**/.containerignore
+**/Containerfile
+.env
+.env.*
+**/.DS_Store
+target/
+apps/
+**/.env

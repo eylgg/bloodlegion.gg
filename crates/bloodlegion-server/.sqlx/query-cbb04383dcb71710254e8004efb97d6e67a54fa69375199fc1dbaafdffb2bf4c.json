@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT is_email_masked FROM auth_oauth2_clients WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "is_email_masked",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "is_email_masked"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cbb04383dcb71710254e8004efb97d6e67a54fa69375199fc1dbaafdffb2bf4c"
+}

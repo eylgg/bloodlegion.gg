@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT authorization_endpoint, token_endpoint, userinfo_endpoint,\n               jwks_uri, jwks, fetched_at, expires_at\n        FROM auth_oauth2_provider_metadata\n        WHERE provider_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "authorization_endpoint",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_metadata",
+            "name": "authorization_endpoint"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "token_endpoint",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_metadata",
+            "name": "token_endpoint"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "userinfo_endpoint",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_metadata",
+            "name": "userinfo_endpoint"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "jwks_uri",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_metadata",
+            "name": "jwks_uri"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "jwks",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_metadata",
+            "name": "jwks"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "fetched_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_metadata",
+            "name": "fetched_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "expires_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_metadata",
+            "name": "expires_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "98557cf15d7bdd768a0bc85c3439b2fd5bd996904e015ff3961a438ca3d4e193"
+}

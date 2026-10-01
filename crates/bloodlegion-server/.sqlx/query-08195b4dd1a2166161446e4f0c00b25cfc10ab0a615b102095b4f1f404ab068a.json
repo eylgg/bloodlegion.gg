@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE auth_oauth2_client_refresh_tokens\n        SET revoked_at = now()\n        WHERE family_id = $1 AND revoked_at IS NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "08195b4dd1a2166161446e4f0c00b25cfc10ab0a615b102095b4f1f404ab068a"
+}

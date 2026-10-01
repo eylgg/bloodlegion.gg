@@ -1,0 +1,184 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.id AS \"id: ProviderId\", p.slug AS \"slug: Slug\", p.name, o.issuer, o.client_id,\n               o.client_secret_ciphertext AS \"client_secret: Ciphertext\",\n               p.is_registration_allowed, p.is_auto_connection_allowed, p.is_email_verified,\n               p.is_disconnection_allowed, p.is_unclaimed_username_connection_allowed,\n               o.is_oidc, o.claims, o.scope\n        FROM auth_oauth2_providers o\n        JOIN auth_providers p ON p.id = o.provider_id\n        WHERE p.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: ProviderId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "slug: Slug",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "issuer",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_providers",
+            "name": "issuer"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "client_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_providers",
+            "name": "client_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "client_secret: Ciphertext",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_providers",
+            "name": "client_secret_ciphertext"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "is_registration_allowed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_registration_allowed"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "is_auto_connection_allowed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_auto_connection_allowed"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "is_email_verified",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_email_verified"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "is_disconnection_allowed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_disconnection_allowed"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "is_unclaimed_username_connection_allowed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_unclaimed_username_connection_allowed"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "is_oidc",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_providers",
+            "name": "is_oidc"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "claims",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_providers",
+            "name": "claims"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "scope",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_providers",
+            "name": "scope"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "952ac6e3f8bbd1b0c11b0ae5147e0b643e291a77e8ab5e40896d07ab463aa3f2"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO user_emails (user_id, email, verified_at, is_primary, is_federated)\n        VALUES ($1, $2, now(), false, false)\n        ON CONFLICT DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "31cfbbc3c6a96b7b09713d6bd8bd83e962951647869751d08d58aa16a4e59318"
+}

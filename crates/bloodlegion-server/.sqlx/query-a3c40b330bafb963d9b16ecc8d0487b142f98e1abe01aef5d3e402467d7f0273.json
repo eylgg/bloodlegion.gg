@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO auth_oauth2_provider_requests\n            (state, provider_id, user_id, nonce, code_verifier, next)\n        VALUES ($1, $2, $3, $4, $5, $6)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int8",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a3c40b330bafb963d9b16ecc8d0487b142f98e1abe01aef5d3e402467d7f0273"
+}

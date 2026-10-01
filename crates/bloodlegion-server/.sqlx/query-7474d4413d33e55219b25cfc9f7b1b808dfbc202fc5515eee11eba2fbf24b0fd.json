@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE auth_jwk_public_keys\n         SET expires_at = now() + $2::double precision * interval '1 second'\n         WHERE kid = $1 AND expires_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7474d4413d33e55219b25cfc9f7b1b808dfbc202fc5515eee11eba2fbf24b0fd"
+}

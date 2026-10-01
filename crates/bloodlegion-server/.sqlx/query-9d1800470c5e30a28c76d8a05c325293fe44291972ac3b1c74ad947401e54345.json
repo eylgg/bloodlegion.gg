@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE auth_oauth2_provider_requests\n        SET completed_at = now(), subject = $2, raw_userinfo = $3\n        WHERE id = $1 AND completed_at IS NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9d1800470c5e30a28c76d8a05c325293fe44291972ac3b1c74ad947401e54345"
+}

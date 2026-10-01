@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO auth_oauth2_client_consents (user_id, client_id, scope)\n        VALUES ($1, $2, $3)\n        ON CONFLICT (user_id, client_id)\n        DO UPDATE SET scope = EXCLUDED.scope\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "86d2379a1054c528118ba025da41c07a4ca3f2f7f98dc45ac7c293f0e4b11b6f"
+}

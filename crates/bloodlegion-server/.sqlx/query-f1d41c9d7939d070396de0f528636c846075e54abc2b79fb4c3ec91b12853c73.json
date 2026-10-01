@@ -1,0 +1,133 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            users.id AS \"id: UserId\",\n            users.username,\n            users.is_superuser,\n            (users.disabled_at IS NOT NULL) AS \"disabled!\",\n            user_emails.email AS \"email?\",\n            COALESCE(user_emails.verified_at IS NOT NULL, false) AS \"is_email_verified!\",\n            COALESCE(user_emails.is_federated, false) AS \"is_email_federated!\",\n            users.first_name,\n            users.last_name,\n            users.created_at,\n            users.updated_at\n        FROM auth_sessions\n        INNER JOIN users\n        ON auth_sessions.user_id = users.id\n        LEFT JOIN user_emails\n        ON user_emails.user_id = users.id AND user_emails.is_primary\n        WHERE auth_sessions.token_hash = $1\n        AND auth_sessions.expires_at > now()\n        AND auth_sessions.revoked_at IS NULL\n        AND users.disabled_at IS NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "is_superuser",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "is_superuser"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "disabled!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "email?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "user_emails",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_email_verified!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_email_federated!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "last_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      true,
+      null,
+      null,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "f1d41c9d7939d070396de0f528636c846075e54abc2b79fb4c3ec91b12853c73"
+}

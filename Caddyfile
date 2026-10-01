@@ -1,5 +1,11 @@
 bloodlegion.localhost {
 	tls .cert.pem .key.pem
+	@backend {
+		path /api /api/* /.well-known /.well-known/* /auth /auth/*
+	}
+	handle @backend {
+		reverse_proxy localhost:8080
+	}
 	handle {
 		reverse_proxy localhost:{$FRONTEND_PORT:5173}
 	}

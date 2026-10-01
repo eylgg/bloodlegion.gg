@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, provider_id AS \"provider_id: ProviderId\", user_id AS \"user_id: UserId\", nonce, code_verifier, next as \"next: Next\"\n        FROM auth_oauth2_provider_requests\n        WHERE state = $1 AND completed_at IS NULL AND expires_at > now()\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_requests",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "provider_id: ProviderId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_requests",
+            "name": "provider_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_requests",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "nonce",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_requests",
+            "name": "nonce"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "code_verifier",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_requests",
+            "name": "code_verifier"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "next: Next",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_requests",
+            "name": "next"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "5c9f48289174e4deb8cabf0262918178cc148aeafe11fdc8eada02a7c70d1d6f"
+}

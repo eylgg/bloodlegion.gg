@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE auth_providers SET\n            is_registration_allowed = COALESCE($2, is_registration_allowed),\n            is_auto_connection_allowed = COALESCE($3, is_auto_connection_allowed),\n            is_email_verified = COALESCE($4, is_email_verified),\n            is_disconnection_allowed = COALESCE($5, is_disconnection_allowed),\n            is_unclaimed_username_connection_allowed =\n                COALESCE($6, is_unclaimed_username_connection_allowed)\n        WHERE slug = $1 AND kind = 'oauth2'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0e35cf3e870c662d33ca733a8f23bb15c87315a2cc22bfc8e413ad3ff31a8b01"
+}

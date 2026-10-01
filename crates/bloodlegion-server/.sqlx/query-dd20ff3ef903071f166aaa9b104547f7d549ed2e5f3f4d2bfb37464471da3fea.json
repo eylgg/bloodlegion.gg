@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE auth_providers\n        SET disabled_at = CASE WHEN $1 THEN NULL ELSE now() END\n        WHERE kind = 'local'\n            AND (\n                $1\n                OR EXISTS (\n                    SELECT 1 FROM auth_providers\n                    WHERE kind <> 'local' AND disabled_at IS NULL\n                )\n            )\n        RETURNING disabled_at IS NULL AS \"enabled!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "enabled!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bool"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "dd20ff3ef903071f166aaa9b104547f7d549ed2e5f3f4d2bfb37464471da3fea"
+}

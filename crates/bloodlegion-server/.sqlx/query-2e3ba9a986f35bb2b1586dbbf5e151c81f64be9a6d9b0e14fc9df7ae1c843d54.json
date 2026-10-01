@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO auth_local_credentials (user_id, password_hash)\n        VALUES ($1, $2)\n        ON CONFLICT (user_id)\n        DO UPDATE SET password_hash = EXCLUDED.password_hash\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2e3ba9a986f35bb2b1586dbbf5e151c81f64be9a6d9b0e14fc9df7ae1c843d54"
+}

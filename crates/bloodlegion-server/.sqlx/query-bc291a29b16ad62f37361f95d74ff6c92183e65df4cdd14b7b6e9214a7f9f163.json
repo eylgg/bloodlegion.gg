@@ -1,0 +1,129 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            c.id,\n            c.name,\n            c.client_type,\n            c.is_pkce_required,\n            c.is_email_masked,\n            c.auto_consent_scope AS \"auto_consent_scope: Scope\",\n            p.slug AS \"identity_provider_slug?: Slug\",\n            c.created_at,\n            c.updated_at,\n            array_agg(r.uri ORDER BY r.id) as \"redirect_uris!\"\n        FROM auth_oauth2_clients c\n        INNER JOIN auth_oauth2_client_redirect_uris r ON c.id = r.client_id\n        LEFT JOIN auth_providers p ON p.id = c.identity_provider_id\n        GROUP BY c.id, p.slug\n        ORDER BY c.created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "client_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "client_type"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "is_pkce_required",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "is_pkce_required"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "is_email_masked",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "is_email_masked"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "auto_consent_scope: Scope",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "auto_consent_scope"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "identity_provider_slug?: Slug",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "redirect_uris!",
+        "type_info": "TextArray",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "bc291a29b16ad62f37361f95d74ff6c92183e65df4cdd14b7b6e9214a7f9f163"
+}

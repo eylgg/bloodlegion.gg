@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT secret_hash AS \"secret: TokenHash\" FROM auth_oauth2_clients WHERE id = $1 AND disabled_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "secret: TokenHash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "secret_hash"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "00e3511d8d147027172e6a389ffd77eab865bda5a26cda0ee56aa1f829a82ad6"
+}

@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT kid, private_key_ciphertext AS \"private_key: Ciphertext\"\n           FROM auth_jwk_private_keys WHERE deactivated_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kid",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_jwk_private_keys",
+            "name": "kid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "private_key: Ciphertext",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_jwk_private_keys",
+            "name": "private_key_ciphertext"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "83ae67dcce1c2fa5a2bbded07bbec4b4b81a96e90abe6ff77f631b94b98ae49c"
+}

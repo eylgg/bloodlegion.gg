@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT provider_id AS \"provider_id: ProviderId\", subject AS \"subject!\",\n               raw_userinfo AS \"raw_userinfo!\", next AS \"next: Next\"\n        FROM auth_oauth2_provider_requests\n        WHERE state = $1 AND completed_at IS NOT NULL AND expires_at > now()\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "provider_id: ProviderId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_requests",
+            "name": "provider_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "subject!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_requests",
+            "name": "subject"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "raw_userinfo!",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_requests",
+            "name": "raw_userinfo"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "next: Next",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_requests",
+            "name": "next"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "9ae14ffc90c21a22548f638f654977a7342ac3e3ec6e05269c5e7ab09e982020"
+}

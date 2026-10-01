@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT locked_until > now() AS \"locked!\"\n        FROM auth_local_login_throttles\n        WHERE ip_address = $1\n            AND username IS NOT DISTINCT FROM $2\n            AND locked_until IS NOT NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "locked!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Inet",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a4b6bd79f09d37593d2e4856df294158a66c71e2c16ff9a3d7bf25996886a6e2"
+}

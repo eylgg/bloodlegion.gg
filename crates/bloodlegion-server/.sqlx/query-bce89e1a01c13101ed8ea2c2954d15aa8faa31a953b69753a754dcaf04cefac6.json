@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.profile AS \"profile!\", p.is_email_verified AS \"provider_email_verified!\"\n        FROM auth_oauth2_provider_credentials c\n        JOIN auth_providers p ON p.id = c.provider_id\n        WHERE c.user_id = $1 AND c.provider_id = $2 AND c.disconnected_at IS NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "profile!",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_credentials",
+            "name": "profile"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "provider_email_verified!",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_email_verified"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "bce89e1a01c13101ed8ea2c2954d15aa8faa31a953b69753a754dcaf04cefac6"
+}

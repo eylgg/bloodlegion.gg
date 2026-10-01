@@ -1,0 +1,78 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            c.secret_hash AS \"secret: TokenHash\",\n            ac.user_id AS \"user_id: UserId\",\n            ac.scope AS \"scope: Scope\",\n            ac.nonce,\n            ac.code_challenge\n        FROM auth_oauth2_client_authorization_codes AS ac\n        INNER JOIN auth_oauth2_clients AS c ON ac.client_id = c.id\n        WHERE ac.code_hash = $1\n            AND ac.client_id = $2\n            AND ac.redirect_uri = $3\n            AND ac.expires_at > now()\n            AND ac.completed_at IS NULL\n            AND c.disabled_at IS NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "secret: TokenHash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "secret_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_client_authorization_codes",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "scope: Scope",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_client_authorization_codes",
+            "name": "scope"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "nonce",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_client_authorization_codes",
+            "name": "nonce"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "code_challenge",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_client_authorization_codes",
+            "name": "code_challenge"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "60b23ca0b12f01e2f6351884df2549e043064b204d23a816115872e62ccb54fa"
+}

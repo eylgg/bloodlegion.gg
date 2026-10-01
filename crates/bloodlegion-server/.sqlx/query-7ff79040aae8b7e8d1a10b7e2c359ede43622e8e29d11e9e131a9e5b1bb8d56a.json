@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE auth_oauth2_client_refresh_tokens\n        SET consumed_at = now()\n        WHERE token_hash = $1\n            AND client_id = $2\n            AND consumed_at IS NULL\n            AND revoked_at IS NULL\n            AND expires_at > now()\n        RETURNING user_id AS \"user_id: UserId\", scope AS \"scope: Scope\", family_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_client_refresh_tokens",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "scope: Scope",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_client_refresh_tokens",
+            "name": "scope"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "family_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_client_refresh_tokens",
+            "name": "family_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7ff79040aae8b7e8d1a10b7e2c359ede43622e8e29d11e9e131a9e5b1bb8d56a"
+}

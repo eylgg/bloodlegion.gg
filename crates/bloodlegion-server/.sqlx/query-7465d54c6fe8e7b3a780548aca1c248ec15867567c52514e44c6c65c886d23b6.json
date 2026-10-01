@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO auth_providers\n            (kind, slug, name, is_registration_allowed, is_auto_connection_allowed,\n             is_email_verified, is_disconnection_allowed, is_unclaimed_username_connection_allowed)\n        VALUES ('oauth2', $1, $2, $3, $4, $5, $6, $7)\n        RETURNING id AS \"id: ProviderId\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: ProviderId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7465d54c6fe8e7b3a780548aca1c248ec15867567c52514e44c6c65c886d23b6"
+}

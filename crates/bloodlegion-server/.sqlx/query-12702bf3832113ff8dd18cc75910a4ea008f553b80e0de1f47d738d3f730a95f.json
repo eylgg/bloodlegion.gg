@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            c.name,\n            c.is_pkce_required,\n            c.auto_consent_scope AS \"auto_consent_scope: Scope\",\n            c.identity_provider_id AS \"identity_provider_id: ProviderId\",\n            array_agg(r.uri ORDER BY r.id) AS \"redirect_uris!\"\n        FROM auth_oauth2_clients AS c\n        INNER JOIN auth_oauth2_client_redirect_uris AS r ON c.id = r.client_id\n        WHERE c.id = $1 AND c.disabled_at IS NULL\n        GROUP BY c.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "is_pkce_required",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "is_pkce_required"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "auto_consent_scope: Scope",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "auto_consent_scope"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "identity_provider_id: ProviderId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_clients",
+            "name": "identity_provider_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "redirect_uris!",
+        "type_info": "TextArray",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "12702bf3832113ff8dd18cc75910a4ea008f553b80e0de1f47d738d3f730a95f"
+}

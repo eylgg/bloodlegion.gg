@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM auth_local_login_throttles\n        WHERE ip_address = $1 AND username IS NOT DISTINCT FROM $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Inet",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cd2db329457a942297fe2a27f1b5531dd0a99ee31f8109b8eb2364c908b4ea54"
+}

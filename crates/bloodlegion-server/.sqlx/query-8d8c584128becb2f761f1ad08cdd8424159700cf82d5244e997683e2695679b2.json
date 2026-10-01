@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT created_family_id\n        FROM auth_oauth2_client_authorization_codes\n        WHERE code_hash = $1 AND client_id = $2 AND completed_at IS NOT NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_family_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_client_authorization_codes",
+            "name": "created_family_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "8d8c584128becb2f761f1ad08cdd8424159700cf82d5244e997683e2695679b2"
+}

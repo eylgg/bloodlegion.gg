@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO auth_jwk_private_keys (kid, private_key_ciphertext, deactivated_at) VALUES ($1, $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "31992cfd9a0973e0e4cee754c26f6554f5d4c94e0a1ce081dffa42e23b41b6a8"
+}

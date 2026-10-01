@@ -1,5 +1,11 @@
+<script lang="ts">
+	import type { Snippet } from 'svelte';
+
+	let { children }: { children?: Snippet } = $props();
+</script>
+
 <!--
-	The full-viewport mark every page shows for now.
+	The full-viewport mark every page shows for now, with room beneath it for the sign-in button.
 
 	The SVG's square canvas carries its own clear space (the artwork spans 84% of it), so on a
 	phone the image runs the full width and still breathes. On larger screens it is capped by
@@ -8,6 +14,11 @@
 -->
 <div class="stage">
 	<img src="/logo.svg" alt="Blood Legion" width="1024" height="1024" fetchpriority="high" />
+	{#if children}
+		<div class="below">
+			{@render children()}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -15,7 +26,10 @@
 		min-height: 100vh;
 		min-height: 100dvh;
 		display: grid;
-		place-items: center;
+		grid-auto-rows: min-content;
+		align-content: center;
+		justify-items: center;
+		gap: var(--space-6);
 		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
 			env(safe-area-inset-left);
 		background: radial-gradient(circle closest-side at 50% 48%, var(--red-glow), transparent);
@@ -26,6 +40,13 @@
 		width: min(100vw, 78vh, 40rem);
 		height: auto;
 		animation: reveal 600ms ease-out both;
+	}
+
+	.below {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		width: min(100vw - 2rem, 20rem);
 	}
 
 	@keyframes reveal {

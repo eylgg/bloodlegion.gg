@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id AS \"id: ProviderId\" FROM auth_providers WHERE slug = $1 AND kind <> 'local'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: ProviderId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "38de94aaeaccf08c651ee5411c300b75a055c027b430e8ea10d877d9148d31f1"
+}

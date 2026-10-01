@@ -1,0 +1,170 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.slug AS \"slug: Slug\", p.name, o.issuer, o.client_id, p.is_registration_allowed,\n               p.is_auto_connection_allowed, p.is_email_verified, p.is_disconnection_allowed,\n               p.is_unclaimed_username_connection_allowed,\n               o.is_oidc, o.scope, p.disabled_at, p.created_at\n        FROM auth_oauth2_providers o\n        JOIN auth_providers p ON p.id = o.provider_id\n        ORDER BY p.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "slug: Slug",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "issuer",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_providers",
+            "name": "issuer"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "client_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_providers",
+            "name": "client_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "is_registration_allowed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_registration_allowed"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_auto_connection_allowed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_auto_connection_allowed"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "is_email_verified",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_email_verified"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "is_disconnection_allowed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_disconnection_allowed"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "is_unclaimed_username_connection_allowed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_unclaimed_username_connection_allowed"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "is_oidc",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_providers",
+            "name": "is_oidc"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "scope",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_providers",
+            "name": "scope"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "disabled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "disabled_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "6fed5e38ba6e0495429e72a50b454037e3586f836aab1de48dea9efcde7306e6"
+}

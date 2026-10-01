@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT family_id\n        FROM auth_oauth2_client_refresh_tokens\n        WHERE token_hash = $1 AND client_id = $2 AND consumed_at IS NOT NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "family_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_client_refresh_tokens",
+            "name": "family_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7771f9ea0c14f41dda97a20201b951cab93ff3269e503cad4ac343a8fe69b2cf"
+}

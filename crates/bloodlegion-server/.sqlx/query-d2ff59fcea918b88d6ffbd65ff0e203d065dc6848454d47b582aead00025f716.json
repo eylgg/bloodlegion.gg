@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS(\n            SELECT 1 FROM auth_local_credentials WHERE user_id = $1\n            UNION ALL\n            SELECT 1 FROM auth_oauth2_provider_credentials WHERE user_id = $1\n        ) AS \"exists!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d2ff59fcea918b88d6ffbd65ff0e203d065dc6848454d47b582aead00025f716"
+}
