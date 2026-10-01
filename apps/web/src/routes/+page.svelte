@@ -34,8 +34,12 @@
 	// Only known codes get their own words; anything else is the generic message, so a crafted
 	// link cannot put arbitrary text on the page.
 	const ERRORS: Record<string, string> = {
+		// Battle.net remembers what was allowed the first time and silently re-grants exactly that,
+		// ignoring requests to ask again, so "try again" alone loops; the reset is on their side.
 		permissions_required:
-			'Signing in needs every permission the site asks for. Please try again and allow them all.',
+			'Signing in needs every permission the site asks for, and Battle.net remembers what you ' +
+			'allowed before. Go to account.battle.net, remove Blood Legion from the applications ' +
+			'connected to your account, then sign in again and leave every permission ticked.',
 		cancelled: 'Sign-in was cancelled.',
 		expired: 'That sign-in took too long or was already used. Please try again.',
 		verification_failed: 'We could not verify your sign-in. Please try again.',

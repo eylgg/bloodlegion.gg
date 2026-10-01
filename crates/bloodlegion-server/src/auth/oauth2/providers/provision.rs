@@ -388,6 +388,24 @@ fn provider_name(name: Option<&str>) -> Option<String> {
     name.filter(|value| !value.is_empty()).map(String::from)
 }
 
+/// The `iss` and `aud` an id_token *claims*, read without verifying it, for diagnosing a failed
+/// verification. Never trust these for anything else.
+pub(super) fn unverified_iss_aud(id_token: &str) -> (String, String) {
+    use base64ct::{Base64UrlUnpadded, Encoding};
+    let claims = id_token
+        .split('.')
+        .nth(1)
+        .and_then(|segment| Base64UrlUnpadded::decode_vec(segment.trim_end_matches('=')).ok())
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+        .unwrap_or_default();
+    let field = |key: &str| match claims.get(key) {
+        Some(serde_json::Value::String(value)) => value.clone(),
+        Some(other) => other.to_string(),
+        None => "-".to_string(),
+    };
+    (field("iss"), field("aud"))
+}
+
 /// Verifies the id_token's RS256 signature against the provider's JWKS and
 /// validates the issuer, audience, expiry, and nonce. Returns the typed claims
 /// alongside the raw verified payload (every claim the IdP sent), so the caller

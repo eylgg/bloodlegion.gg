@@ -210,7 +210,18 @@ async fn finish_login(
         let (claims, id_token_claims) =
             verify_id_token(id_token, &jwks, issuer, &provider.client_id, expected_nonce).map_err(
                 |error| {
-                    tracing::warn!(%error, "id_token verification failed");
+                    // The full cause chain (which check failed), plus what the token claims and
+                    // what we expected: enough to tell an issuer or audience mismatch from a bad
+                    // signature without capturing a token. `iss`/`aud` are not secrets.
+                    let (token_iss, token_aud) = super::provision::unverified_iss_aud(id_token);
+                    tracing::warn!(
+                        error = format!("{error:#}"),
+                        token_iss,
+                        token_aud,
+                        expected_iss = issuer,
+                        expected_aud = %provider.client_id,
+                        "id_token verification failed"
+                    );
                     crate::Error::External(ProviderError::InvalidIdToken)
                 },
             )?;
