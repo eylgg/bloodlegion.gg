@@ -7,9 +7,9 @@ import type { User } from '$lib/types';
  */
 export const NEXT_FALLBACK = '/';
 
-/** Asserts a session, redirecting to login (and back here afterwards) when there is none. */
+/** Asserts a session, redirecting to the front page to sign in (and back here afterwards). */
 export function requireUser(user: User | null, url: URL): asserts user is User {
 	if (user) return;
 	const next = url.pathname + url.search;
-	redirect(303, next === NEXT_FALLBACK ? '/login' : `/login?next=${encodeURIComponent(next)}`);
+	redirect(303, next === NEXT_FALLBACK ? '/' : `/?next=${encodeURIComponent(next)}`);
 }

@@ -16,7 +16,8 @@ use crate::{
 
 const FRONTEND_AUTHORIZE_PATH: &str = "/oauth2/authorize";
 
-const FRONTEND_LOGIN_PATH: &str = "/login";
+/// Where sign-in happens on the frontend: the front page, whose provider button carries `next`.
+const FRONTEND_LOGIN_PATH: &str = "/";
 
 #[derive(Debug, serde::Deserialize)]
 pub struct AuthorizeParams {

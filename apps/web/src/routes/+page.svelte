@@ -1,20 +1,26 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { PageProps } from './$types';
 	import type { LoginProvider } from '$lib/types';
 	import Logo from '$lib/components/Logo.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { api } from '$lib/api';
-	import { resolve } from '$app/paths';
 
 	let { data }: PageProps = $props();
 	let signingOut = $state(false);
 
-	const oauth2 = $derived(
+	const providers = $derived(
 		data.providers.filter(
 			(p): p is Exclude<LoginProvider, { kind: 'local' }> => p.kind === 'oauth2'
 		)
 	);
-	const localEnabled = $derived(data.providers.some((p) => p.kind === 'local'));
+
+	// A sign-in that was sent here from elsewhere (the OAuth2 consent screen) returns there after.
+	// The backend validates `next` and falls back to `/` if it is unsafe.
+	const nextQuery = $derived.by(() => {
+		const next = page.url.searchParams.get('next');
+		return next ? `?next=${encodeURIComponent(next)}` : '';
+	});
 
 	async function signOut() {
 		signingOut = true;
@@ -28,10 +34,14 @@
 
 <Logo>
 	{#if !data.user}
-		{#each oauth2 as provider (provider.slug)}
-			<!-- Battle.net gets its own blue; any other provider the house style. -->
+		{#each providers as provider (provider.slug)}
+			<!-- Battle.net gets its own blue; any other provider the house style. The link leaves
+			     the app for the backend (which redirects to the provider), so it must be a full page
+			     load: `data-sveltekit-reload` stops the client router from treating `/api/...` as one
+			     of its own pages and rendering its 404. -->
 			<Button
-				href={`/api/auth/oauth2/providers/${provider.slug}`}
+				data-sveltekit-reload
+				href={`/api/auth/oauth2/providers/${provider.slug}${nextQuery}`}
 				variant={provider.slug === 'battlenet' ? 'battlenet' : 'secondary'}
 				full
 			>
@@ -41,18 +51,14 @@
 	{/if}
 </Logo>
 
-<!-- The one line of chrome: who is signed in and the way out, or the fallback ways in. -->
-<footer class="account">
-	{#if data.user}
+{#if data.user}
+	<!-- Who is signed in, and the way out. -->
+	<footer class="account">
 		<span>{data.user.username}</span>
 		<span class="sep" aria-hidden="true">·</span>
 		<button type="button" onclick={signOut} disabled={signingOut}>Sign out</button>
-	{:else if localEnabled}
-		<a href={resolve('/login')}>Sign in with a password</a>
-	{:else if oauth2.length === 0}
-		<a href={resolve('/login')}>Sign in</a>
-	{/if}
-</footer>
+	</footer>
+{/if}
 
 <style>
 	.account {
@@ -70,7 +76,6 @@
 		color: var(--grey-soft);
 	}
 
-	a,
 	button {
 		color: inherit;
 		background: none;
@@ -82,7 +87,6 @@
 		text-underline-offset: 0.2em;
 	}
 
-	a:hover,
 	button:hover {
 		color: var(--grey-text-active);
 	}

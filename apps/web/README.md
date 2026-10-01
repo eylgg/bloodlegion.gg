@@ -13,8 +13,9 @@ pnpm build      # writes the Node server to build/
 
 Server-side loads call the backend at `BACKEND_URL` (default `http://localhost:8080`); the
 browser's own `/api` calls rely on the reverse proxy described in the repository README. With no
-backend reachable, every page still renders: visitors are simply anonymous and `/login` says
-sign-in is unavailable.
+backend reachable, every page still renders: visitors are simply anonymous and the front page
+shows only the logo. Sign-in is the provider button under the logo; there is no separate sign-in
+page.
 
 The shipped image is built from `Containerfile`; see the repository README for how it is
 published and run.

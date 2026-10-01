@@ -79,13 +79,7 @@ environment (in the container: `podman exec <container> bloodlegion-server ...`)
 
 Bootstrap, from a fresh database:
 
-1. While password login is still on, make the first admin. It prints a random password:
-
-   ```sh
-   bloodlegion-server create-superuser jon --email jon@example.com
-   ```
-
-2. Register Battle.net as a login source. Create an OAuth client at
+1. Register Battle.net as the login source. Create an OAuth client at
    <https://develop.battle.net> with the redirect URL `<ORIGIN>/auth/oauth2/callback`, then:
 
    ```sh
@@ -101,7 +95,8 @@ Bootstrap, from a fresh database:
    email. `wow.profile` additionally asks the person for access to their WoW account profile
    (their characters); the site does not store that token yet.
 
-3. Sign in with Battle.net once, then make that account an admin and turn passwords off:
+2. Sign in with the button under the logo on the front page, then make that account an admin and
+   turn password login off (the site has no password form, so it only matters for the API):
 
    ```sh
    bloodlegion-server users promote <the username you chose>
