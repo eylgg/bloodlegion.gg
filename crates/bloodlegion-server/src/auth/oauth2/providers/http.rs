@@ -27,6 +27,11 @@ pub struct Tokens {
     pub access_token: String,
     #[serde(default)]
     pub id_token: Option<String>,
+    /// The scopes actually granted, when the provider says. RFC 6749 section 5.1 makes it
+    /// optional when identical to the request; a consent screen with per-scope checkboxes
+    /// (Battle.net's) reports what the person left ticked.
+    #[serde(default)]
+    pub scope: Option<String>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]

@@ -28,3 +28,10 @@ test('the registration page needs a pending sign-in', async ({ page }) => {
 	expect(response?.status()).toBe(503);
 	await expect(page.getByRole('img', { name: 'Blood Legion' })).toBeVisible();
 });
+
+test('a failed sign-in shows a readable message, never text from the link', async ({ page }) => {
+	await page.goto('/?error=permissions_required');
+	await expect(page.getByRole('alert')).toContainText('every permission');
+	await page.goto('/?error=<b>anything</b>');
+	await expect(page.getByRole('alert')).toHaveText('Sign-in failed. Please try again.');
+});

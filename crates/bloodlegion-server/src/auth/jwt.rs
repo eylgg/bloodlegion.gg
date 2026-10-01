@@ -198,8 +198,8 @@ pub fn decode_header(token: &str) -> Result<Header, JwtError> {
 /// Builds an RS256 verifying key from a JWK's base64url-encoded modulus (`n`)
 /// and exponent (`e`).
 pub fn rsa_verifying_key(n: &str, e: &str) -> Result<VerifyingKey<Sha256>, JwtError> {
-    let modulus = Base64UrlUnpadded::decode_vec(n).map_err(|_| JwtError::InvalidKey)?;
-    let exponent = Base64UrlUnpadded::decode_vec(e).map_err(|_| JwtError::InvalidKey)?;
+    let modulus = decode_jwk_integer(n)?;
+    let exponent = decode_jwk_integer(e)?;
     // n and e are public key material, so a variable-time decode is fine.
     let public_key = RsaPublicKey::new(
         BoxedUint::from_be_slice_vartime(&modulus),
@@ -207,6 +207,23 @@ pub fn rsa_verifying_key(n: &str, e: &str) -> Result<VerifyingKey<Sha256>, JwtEr
     )
     .map_err(|_| JwtError::InvalidKey)?;
     Ok(VerifyingKey::<Sha256>::new(public_key))
+}
+
+/// Decodes a JWK integer (`n`, `e`). RFC 7518 requires unpadded base64url, but some identity
+/// providers publish standard, padded base64 instead (Battle.net's `n` is `AMyHr4r//...Xs=`), so
+/// both alphabets are accepted, with or without padding. Leniency is safe here: this is public key
+/// material, and the alphabets differ only in the two characters mapped below.
+fn decode_jwk_integer(value: &str) -> Result<Vec<u8>, JwtError> {
+    let normalized: String = value
+        .trim_end_matches('=')
+        .chars()
+        .map(|c| match c {
+            '+' => '-',
+            '/' => '_',
+            c => c,
+        })
+        .collect();
+    Base64UrlUnpadded::decode_vec(&normalized).map_err(|_| JwtError::InvalidKey)
 }
 
 /// The registered claims we validate. `aud` is single- or multi-valued per
@@ -436,5 +453,26 @@ mod tests {
         let verified: TestClaims =
             verify_rs256(&multi_aud(Some(AUDIENCE)), &key, ISSUER, AUDIENCE).expect("verifies");
         assert_eq!(verified.sub, "subject-1");
+    }
+
+    #[test]
+    fn jwk_integers_decode_from_base64url_or_padded_standard_base64() {
+        // Bytes that exercise both alphabet differences (0xfb -> '+'/'-', 0xff -> '/'/'_') and
+        // need padding, with a leading zero like Battle.net's moduli.
+        let bytes: &[u8] = &[0x00, 0xfb, 0xff, 0xbf, 0x10];
+        let url = Base64UrlUnpadded::encode_string(bytes);
+        let standard = base64ct::Base64::encode_string(bytes);
+        assert!(standard.contains('+') || standard.contains('/'));
+        assert!(standard.ends_with('='));
+        assert_eq!(decode_jwk_integer(&url).unwrap(), bytes);
+        assert_eq!(decode_jwk_integer(&standard).unwrap(), bytes);
+        assert!(decode_jwk_integer("not base64!").is_err());
+    }
+
+    #[test]
+    fn builds_a_key_from_battle_nets_published_format() {
+        // Battle.net's JWKS publishes `n` as padded standard base64; this is one of its keys.
+        let n = "AMyHr4r//CLrN25KyrGT31kQE4Q5zffJxEI1ZWOkNha1cqQkdrUTtxvu2cOZNI3TZ3sOQ3MDIxBIqNqVptdltO+qn+dfYp8b2hafkp31ywcDxCy14fZZxPumgaXeXUBRBA8akLAZRihyYupjSqxn2bjvaBkDL5krgPlJrhHs29tHQ1My6wZvOdoEslnffptv46b49dronMv01H6J67EGOH0ngMfQlWXZxE7DRqvGPAU/80tII3wrQkXO5u16GqjXd0zyGeMOEF7q2/CDtxwliX1hEE6YROQ07GjaiCLQ1HRDDxmvo16PV2Elj9u5pGXoj25fSzWUXUhRqwceNO7qrXs=";
+        assert!(rsa_verifying_key(n, "AQAB").is_ok());
     }
 }

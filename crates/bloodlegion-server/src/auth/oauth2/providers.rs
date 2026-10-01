@@ -50,6 +50,13 @@ pub enum ProviderError {
         detail = "The login request is invalid or has expired."
     )]
     InvalidState,
+    #[error("sign-in cancelled at the provider")]
+    #[problem(
+        status = FORBIDDEN,
+        title = "Sign-In Cancelled",
+        detail = "The sign-in was cancelled at the identity provider."
+    )]
+    Denied,
     #[error("could not verify the id token")]
     #[problem(
         status = UNAUTHORIZED,
@@ -78,6 +85,13 @@ pub enum ProviderError {
         detail = "There is no sign-in waiting to be completed. Start again from the sign-in page."
     )]
     NoPendingRegistration,
+    #[error("scopes not granted: {0}")]
+    #[problem(
+        status = FORBIDDEN,
+        title = "Permissions Required",
+        detail = format!("Signing in needs every permission the site asks for. Please sign in again and allow: {_0}.")
+    )]
+    ScopesNotGranted(String),
     #[error("registration disabled")]
     #[problem(
         status = FORBIDDEN,
@@ -130,6 +144,37 @@ pub(crate) async fn list(pool: &PgPool) -> sqlx::Result<Vec<db::ProviderSummary>
 /// Removes a provider by slug, returning whether one matched. The CLI's entry point.
 pub(crate) async fn remove(pool: &PgPool, slug: &crate::Slug) -> sqlx::Result<bool> {
     db::delete_provider(pool, slug).await
+}
+
+impl ProviderError {
+    /// A stable code for the front page to turn into a message, when a browser sign-in fails and
+    /// is sent back there (`/?error=<code>`). Codes rather than text, so a crafted link cannot
+    /// put arbitrary words on the site.
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::UnknownProvider => "unknown_provider",
+            Self::InvalidState | Self::NoPendingRegistration => "expired",
+            Self::Denied => "cancelled",
+            Self::InvalidIdToken | Self::SubjectMissing => "verification_failed",
+            Self::ScopesNotGranted(_) => "permissions_required",
+            Self::EmailInUse => "email_in_use",
+            Self::RegistrationDisabled => "registration_closed",
+            Self::CreateUser(_) => "account_failed",
+            Self::Upstream(_) => "unavailable",
+        }
+    }
+}
+
+/// The requested scopes the provider did not grant, space-separated, or `None` when all were.
+/// An absent `granted` means the provider granted exactly what was requested (RFC 6749 section
+/// 5.1 lets it omit the field then). Scopes are compared as whole tokens.
+fn missing_scopes(requested: &str, granted: Option<&str>) -> Option<String> {
+    let granted: Vec<&str> = granted?.split_whitespace().collect();
+    let missing: Vec<&str> = requested
+        .split_whitespace()
+        .filter(|scope| !granted.contains(scope))
+        .collect();
+    (!missing.is_empty()).then(|| missing.join(" "))
 }
 
 /// OAuth2 providers offered on the login page.
@@ -215,4 +260,31 @@ async fn resolve_metadata(
         .await
         .context("reloading the cached OIDC metadata")?
         .context("cached OIDC metadata vanished immediately after upsert")?)
+}
+
+#[cfg(test)]
+mod scope_tests {
+    use super::missing_scopes;
+
+    #[test]
+    fn every_requested_scope_must_be_granted() {
+        assert_eq!(missing_scopes("openid wow.profile", None), None);
+        assert_eq!(
+            missing_scopes("openid wow.profile", Some("wow.profile openid")),
+            None
+        );
+        assert_eq!(
+            missing_scopes("openid wow.profile", Some("openid")).as_deref(),
+            Some("wow.profile")
+        );
+        assert_eq!(
+            missing_scopes("openid wow.profile", Some("")).as_deref(),
+            Some("openid wow.profile")
+        );
+        // Whole tokens only: `wow.profile.extra` does not satisfy `wow.profile`.
+        assert_eq!(
+            missing_scopes("wow.profile", Some("wow.profile.extra")).as_deref(),
+            Some("wow.profile")
+        );
+    }
 }

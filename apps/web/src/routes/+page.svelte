@@ -4,6 +4,7 @@
 	import type { LoginProvider } from '$lib/types';
 	import Logo from '$lib/components/Logo.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import Alert from '$lib/components/Alert.svelte';
 	import { api } from '$lib/api';
 
 	let { data }: PageProps = $props();
@@ -22,6 +23,27 @@
 		return next ? `?next=${encodeURIComponent(next)}` : '';
 	});
 
+	// A failed sign-in comes back as `/?error=<code>` (see the backend's `ProviderError::code`).
+	// Only known codes get their own words; anything else is the generic message, so a crafted
+	// link cannot put arbitrary text on the page.
+	const ERRORS: Record<string, string> = {
+		permissions_required:
+			'Signing in needs every permission the site asks for. Please try again and allow them all.',
+		cancelled: 'Sign-in was cancelled.',
+		expired: 'That sign-in took too long or was already used. Please try again.',
+		verification_failed: 'We could not verify your sign-in. Please try again.',
+		registration_closed: 'New accounts are not being created right now.',
+		email_in_use: 'That email address already belongs to another account.',
+		unknown_provider: 'That sign-in method is not available.',
+		account_failed: 'Your account could not be created. Please try again.',
+		unavailable: 'Sign-in is unavailable right now. Please try again later.'
+	};
+	const loginError = $derived.by(() => {
+		const code = page.url.searchParams.get('error');
+		if (!code) return null;
+		return ERRORS[code] ?? 'Sign-in failed. Please try again.';
+	});
+
 	async function signOut() {
 		signingOut = true;
 		try {
@@ -33,6 +55,9 @@
 </script>
 
 <Logo>
+	{#if !data.user && loginError}
+		<Alert variant="error">{loginError}</Alert>
+	{/if}
 	{#if !data.user}
 		{#each providers as provider (provider.slug)}
 			<!-- Battle.net gets its own blue; any other provider the house style. The link leaves
