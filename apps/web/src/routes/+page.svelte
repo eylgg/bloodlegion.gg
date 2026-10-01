@@ -18,9 +18,16 @@
 
 	// A sign-in that was sent here from elsewhere (the OAuth2 consent screen) returns there after.
 	// The backend validates `next` and falls back to `/` if it is unsafe.
+	// After a permissions failure, the retry asks the provider to show its consent screen again:
+	// otherwise it silently re-grants whatever was allowed the first time and fails the same way.
 	const nextQuery = $derived.by(() => {
+		const parts: string[] = [];
 		const next = page.url.searchParams.get('next');
-		return next ? `?next=${encodeURIComponent(next)}` : '';
+		if (next) parts.push(`next=${encodeURIComponent(next)}`);
+		if (page.url.searchParams.get('error') === 'permissions_required') {
+			parts.push('prompt=consent');
+		}
+		return parts.length ? `?${parts.join('&')}` : '';
 	});
 
 	// A failed sign-in comes back as `/?error=<code>` (see the backend's `ProviderError::code`).

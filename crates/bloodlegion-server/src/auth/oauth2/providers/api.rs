@@ -18,6 +18,18 @@ use super::provision::{
 use super::register;
 use super::{ProviderError, db, http, redirect_uri, resolve_metadata, upstream};
 
+/// The start-login query: the usual `next`, plus `prompt=consent` to force the provider's consent
+/// screen. A provider remembers what a person granted and re-grants exactly that silently, so
+/// someone who once withheld a scope would otherwise be refused forever; the front page adds this
+/// on the retry after a permissions failure. Only `consent` is passed through.
+#[derive(Deserialize)]
+struct LoginQuery {
+    #[serde(flatten)]
+    params: Params,
+    #[serde(default)]
+    prompt: Option<String>,
+}
+
 #[derive(Deserialize)]
 pub struct CallbackQuery {
     code: Option<String>,
@@ -48,14 +60,14 @@ fn to_front_page<T: IntoResponse>(result: Result<T, ProviderError>) -> Response 
 }
 
 /// `GET /api/auth/oauth2/providers/{slug}`: starts a sign-in (see [`to_front_page`]).
-async fn login(state: State, slug: Path<Slug>, params: Query<Params>) -> Response {
+async fn login(state: State, slug: Path<Slug>, params: Query<LoginQuery>) -> Response {
     to_front_page(start_login(state, slug, params).await)
 }
 
 async fn start_login(
     state: State,
     Path(slug): Path<Slug>,
-    Query(params): Query<Params>,
+    Query(LoginQuery { params, prompt }): Query<LoginQuery>,
 ) -> Result<Redirect, ProviderError> {
     let provider = db::find_provider_by_slug(&state.pool, &slug)
         .await
@@ -95,6 +107,9 @@ async fn start_login(
         .append_pair("code_challenge_method", "S256");
     if let Some(nonce) = &nonce {
         url.query_pairs_mut().append_pair("nonce", nonce);
+    }
+    if prompt.as_deref() == Some("consent") {
+        url.query_pairs_mut().append_pair("prompt", "consent");
     }
 
     Ok(Redirect::to(url.as_str()))
