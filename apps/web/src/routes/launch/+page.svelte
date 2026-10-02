@@ -7,7 +7,6 @@
 	import RoleIcon from '$lib/components/RoleIcon.svelte';
 	import LaunchCountdown from '$lib/components/LaunchCountdown.svelte';
 	import Button from '$lib/components/Button.svelte';
-	import Input from '$lib/components/Input.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 
 	let { data }: PageProps = $props();
@@ -92,7 +91,6 @@
 	// The editor: `editing` is the sign-up being changed, or null when reserving a new one.
 	let open = $state(false);
 	let editing = $state<Character | null>(null);
-	let name = $state('');
 	let classSlug = $state('');
 	let specs = $state<string[]>([]);
 	let isMain = $state(false);
@@ -101,9 +99,12 @@
 
 	const selectedClass = $derived(classBySlug.get(classSlug));
 
+	// One sign-up per class: the member's other classes are taken, the one being edited is not.
+	const takenClasses = $derived(characters.filter((c) => c.id !== editing?.id).map((c) => c.class));
+	const allClassesTaken = $derived(characters.length >= data.classes.length);
+
 	function startNew() {
 		editing = null;
-		name = '';
 		classSlug = '';
 		specs = [];
 		// A first sign-up is the main whatever the box says; showing it ticked says so.
@@ -114,7 +115,6 @@
 
 	function startEdit(character: Character) {
 		editing = character;
-		name = character.name;
 		classSlug = character.class;
 		specs = [...character.specs];
 		isMain = character.is_main;
@@ -155,7 +155,7 @@
 		}
 		saving = true;
 		error = '';
-		const body: CharacterInput = { name, class: classSlug, specs, is_main: isMain };
+		const body: CharacterInput = { class: classSlug, specs, is_main: isMain };
 		try {
 			const saved = editing
 				? await api.put<Character>(`/api/launch/characters/${editing.id}`, body)
@@ -177,7 +177,6 @@
 	async function makeMain(character: Character) {
 		try {
 			const saved = await api.put<Character>(`/api/launch/characters/${character.id}`, {
-				name: character.name,
 				class: character.class,
 				specs: character.specs,
 				is_main: true
@@ -192,7 +191,8 @@
 	}
 
 	async function remove(character: Character) {
-		if (!confirm(`Remove ${character.name} from your sign-ups?`)) return;
+		const className = classBySlug.get(character.class)?.name ?? character.class;
+		if (!confirm(`Remove ${className} from your sign-ups?`)) return;
 		try {
 			await api.del(`/api/launch/characters/${character.id}`);
 			characters = characters.filter((c) => c.id !== character.id);
@@ -218,8 +218,8 @@
 			<p class="kicker">World of Warcraft: Forever</p>
 			<h1>Launch sign-ups</h1>
 			<p class="lede">
-				Reserve the characters you'll make on day one, and the specs you hope to play. Names are
-				yours to claim when the realms open.
+				Tell the guild which classes you'll play on day one, your main and your alts, and the specs
+				you hope to play. No names needed yet.
 			</p>
 			<LaunchCountdown />
 		</section>
@@ -232,7 +232,7 @@
 			<h2>Your sign-ups</h2>
 
 			{#if characters.length === 0 && !open}
-				<p class="muted">Nothing reserved yet. Start with your main.</p>
+				<p class="muted">Nothing yet. Start with the class you'll main.</p>
 			{/if}
 
 			<ul class="characters">
@@ -248,10 +248,9 @@
 						/>
 						<div class="identity">
 							<div class="name-line">
-								<span class="name">{character.name}</span>
+								<span class="name">{wowClass?.name ?? character.class}</span>
 								{#if character.is_main}<span class="main-badge">Main</span>{/if}
 							</div>
-							<span class="class">{wowClass?.name ?? character.class}</span>
 							{#if character.specs.length > 0}
 								<ul class="specs">
 									{#each character.specs as slug (slug)}
@@ -283,22 +282,15 @@
 
 			{#if open}
 				<form class="editor" onsubmit={save}>
-					<h3>{editing ? `Edit ${editing.name}` : 'Reserve a character'}</h3>
+					<h3>
+						{editing
+							? `Edit ${classBySlug.get(editing.class)?.name ?? editing.class}`
+							: 'Add a class'}
+					</h3>
 
 					{#if error}
 						<Alert variant="error">{error}</Alert>
 					{/if}
-
-					<Input
-						label="Character name"
-						name="name"
-						required
-						minlength={2}
-						maxlength={12}
-						autocomplete="off"
-						spellcheck={false}
-						bind:value={name}
-					/>
 
 					<fieldset>
 						<legend>Class</legend>
@@ -310,6 +302,10 @@
 									class:selected={wowClass.slug === classSlug}
 									style:--class-color={wowClass.color}
 									aria-pressed={wowClass.slug === classSlug}
+									disabled={takenClasses.includes(wowClass.slug)}
+									title={takenClasses.includes(wowClass.slug)
+										? 'Already in your sign-ups'
+										: undefined}
 									onclick={() => pickClass(wowClass.slug)}
 								>
 									<img src={classIcon(wowClass.slug)} alt="" width="28" height="28" />
@@ -356,16 +352,18 @@
 					<div class="form-actions">
 						<Button type="button" variant="secondary" onclick={() => (open = false)}>Cancel</Button>
 						<Button type="submit" variant="primary" disabled={saving}>
-							{saving ? 'Saving...' : editing ? 'Save' : 'Reserve'}
+							{saving ? 'Saving...' : editing ? 'Save' : 'Sign up'}
 						</Button>
 					</div>
 				</form>
 			{:else}
-				<div>
-					<Button variant="primary" onclick={startNew}>
-						{characters.length === 0 ? 'Reserve your main' : 'Reserve another character'}
-					</Button>
-				</div>
+				{#if !allClassesTaken}
+					<div>
+						<Button variant="primary" onclick={startNew}>
+							{characters.length === 0 ? 'Sign up your main' : 'Add an alt'}
+						</Button>
+					</div>
+				{/if}
 			{/if}
 		</section>
 
@@ -422,7 +420,7 @@
 										<li class="player">
 											<span class="player-name">{player.username}</span>
 											<ul class="player-characters">
-												{#each player.characters as { entry, specs } (entry.name)}
+												{#each player.characters as { entry, specs } (entry.class)}
 													{@const wowClass = classBySlug.get(entry.class)}
 													<li
 														class="entry"
@@ -441,7 +439,7 @@
 																/>
 															{/each}
 														</span>
-														<span class="entry-name">{entry.name}</span>
+														<span class="entry-name">{wowClass?.name ?? entry.class}</span>
 														{#if !entry.is_main}<span class="alt-tag">alt</span>{/if}
 													</li>
 												{/each}
@@ -457,10 +455,13 @@
 				{#if undecided.length > 0}
 					<p class="undecided">
 						<span class="muted">Specs not picked yet:</span>
-						{#each undecided as entry, i (entry.username + entry.name)}
+						{#each undecided as entry, i (entry.username + entry.class)}
 							{@const wowClass = classBySlug.get(entry.class)}
-							<span style:color={wowClass?.color}>{entry.name}</span>
-							<span class="muted">({entry.username})</span>{i < undecided.length - 1 ? ', ' : ''}
+							{entry.username}
+							<span style:color={wowClass?.color}>({wowClass?.name ?? entry.class})</span>{i <
+							undecided.length - 1
+								? ', '
+								: ''}
 						{/each}
 					</p>
 				{/if}
@@ -613,11 +614,6 @@
 		font-weight: 700;
 	}
 
-	.class {
-		color: var(--grey-text);
-		font-size: var(--text-sm);
-	}
-
 	.main-badge {
 		padding: 0 var(--space-2);
 		font-size: var(--text-xs);
@@ -729,8 +725,13 @@
 		border-radius: var(--radius-sm);
 	}
 
-	.class-choice:hover {
+	.class-choice:hover:not(:disabled) {
 		border-color: var(--class-color);
+	}
+
+	.class-choice:disabled {
+		opacity: 0.35;
+		cursor: not-allowed;
 	}
 
 	.class-choice.selected {

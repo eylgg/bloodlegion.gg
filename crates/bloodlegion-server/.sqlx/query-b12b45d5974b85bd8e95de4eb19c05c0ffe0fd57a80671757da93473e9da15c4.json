@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE launch_characters\n        SET name = $3, class = $4, specs = $5, is_main = $6\n        WHERE id = $2 AND user_id = $1\n        RETURNING id, name, class, specs, is_main, created_at, updated_at\n        ",
+  "query": "\n        INSERT INTO launch_characters (user_id, class, specs, is_main)\n        VALUES ($1, $2, $3, $4)\n        RETURNING id, class, specs, is_main, created_at, updated_at\n        ",
   "describe": {
     "columns": [
       {
@@ -16,17 +16,6 @@
       },
       {
         "ordinal": 1,
-        "name": "name",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "launch_characters",
-            "name": "name"
-          }
-        }
-      },
-      {
-        "ordinal": 2,
         "name": "class",
         "type_info": "Text",
         "origin": {
@@ -37,7 +26,7 @@
         }
       },
       {
-        "ordinal": 3,
+        "ordinal": 2,
         "name": "specs",
         "type_info": "TextArray",
         "origin": {
@@ -48,7 +37,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "is_main",
         "type_info": "Bool",
         "origin": {
@@ -59,7 +48,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -70,7 +59,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -84,8 +73,6 @@
     "parameters": {
       "Left": [
         "Int8",
-        "Int8",
-        "Text",
         "Text",
         "TextArray",
         "Bool"
@@ -97,9 +84,8 @@
       false,
       false,
       false,
-      false,
       false
     ]
   },
-  "hash": "8567342853ecbc390ac134148d3cbb31e9a5da4147929e76c2493ae743677ecd"
+  "hash": "b12b45d5974b85bd8e95de4eb19c05c0ffe0fd57a80671757da93473e9da15c4"
 }

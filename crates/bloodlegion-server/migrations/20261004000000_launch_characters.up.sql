@@ -1,7 +1,9 @@
--- Launch sign-ups for WoW: Forever: the characters each member plans to create when the game
--- launches (their main and their alts, with the specs they hope to play), so names are spoken for
--- and the guild can see its shape before day one. Self-reported reservations, not real
--- characters: those will come from Blizzard's API once it serves Forever, into their own table.
+-- Launch sign-ups for WoW: Forever: the classes each member plans to play when the game launches
+-- (their main and their alts, with the specs they hope to play), so the guild can see its shape
+-- before day one. Unnamed on purpose: Forever characters have a first and a last name, and few
+-- members will have picked theirs yet; the member's username stands in. Self-reported plans, not
+-- real characters: those will come from Blizzard's API once it serves Forever, into their own
+-- table.
 CREATE TABLE launch_characters (
     id bigint
         PRIMARY KEY
@@ -9,16 +11,6 @@ CREATE TABLE launch_characters (
     user_id bigint
         NOT NULL
         REFERENCES users(id) ON DELETE CASCADE,
-    -- As the member typed it. WoW names are 2-12 letters, accents included; the app checks the
-    -- letters-only rule (a Unicode class this file cannot express collation-independently).
-    name text
-        NOT NULL
-        CONSTRAINT launch_characters_name_check
-        CHECK (char_length(name) >= 2 AND char_length(name) <= 12),
-    -- Lowercase form: one character per name per member, regardless of case.
-    name_normalized text
-        NOT NULL
-        GENERATED ALWAYS AS (lower(name)) STORED,
     -- The Forever classes. The app's catalog (launch::catalog) holds the names, colors, and specs.
     class text
         NOT NULL
@@ -39,7 +31,8 @@ CREATE TABLE launch_characters (
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     updated_at timestamp with time zone NOT NULL DEFAULT now(),
 
-    CONSTRAINT launch_characters_user_id_name_normalized_key UNIQUE (user_id, name_normalized)
+    -- One sign-up per class per member: without names, a class is what tells them apart.
+    CONSTRAINT launch_characters_user_id_class_key UNIQUE (user_id, class)
 );
 
 -- At most one main per member. Partial unique indexes are non-deferrable, so moving the main
@@ -48,14 +41,12 @@ CREATE UNIQUE INDEX launch_characters_one_main_per_user_idx
     ON launch_characters (user_id)
     WHERE is_main;
 
--- Gated on the explicit non-generated columns (NEW.* would include the generated
--- name_normalized, which a BEFORE trigger's WHEN cannot reference).
 CREATE TRIGGER launch_characters_updated_at_trig
     BEFORE UPDATE ON launch_characters
     FOR EACH ROW
     WHEN (
-        (OLD.name, OLD.class, OLD.specs, OLD.is_main)
+        (OLD.class, OLD.specs, OLD.is_main)
         IS DISTINCT FROM
-        (NEW.name, NEW.class, NEW.specs, NEW.is_main)
+        (NEW.class, NEW.specs, NEW.is_main)
     )
     EXECUTE FUNCTION tf_set_updated_at();

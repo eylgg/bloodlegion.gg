@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT u.username, c.name, c.class, c.specs, c.is_main, c.created_at\n        FROM launch_characters c\n        JOIN users u ON u.id = c.user_id\n        WHERE u.disabled_at IS NULL\n        ORDER BY u.username_normalized, c.is_main DESC, c.created_at\n        ",
+  "query": "\n        SELECT u.username, c.class, c.specs, c.is_main\n        FROM launch_characters c\n        JOIN users u ON u.id = c.user_id\n        WHERE u.disabled_at IS NULL\n        ORDER BY u.username_normalized, c.is_main DESC, c.class\n        ",
   "describe": {
     "columns": [
       {
@@ -16,17 +16,6 @@
       },
       {
         "ordinal": 1,
-        "name": "name",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "launch_characters",
-            "name": "name"
-          }
-        }
-      },
-      {
-        "ordinal": 2,
         "name": "class",
         "type_info": "Text",
         "origin": {
@@ -37,7 +26,7 @@
         }
       },
       {
-        "ordinal": 3,
+        "ordinal": 2,
         "name": "specs",
         "type_info": "TextArray",
         "origin": {
@@ -48,24 +37,13 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "is_main",
         "type_info": "Bool",
         "origin": {
           "Table": {
             "table": "launch_characters",
             "name": "is_main"
-          }
-        }
-      },
-      {
-        "ordinal": 5,
-        "name": "created_at",
-        "type_info": "Timestamptz",
-        "origin": {
-          "Table": {
-            "table": "launch_characters",
-            "name": "created_at"
           }
         }
       }
@@ -77,10 +55,8 @@
       false,
       false,
       false,
-      false,
-      false,
       false
     ]
   },
-  "hash": "a5bc299a0bdcdacae6e97b823f75f53acfcb02aa3b8e0eaff48697be9cbaeda3"
+  "hash": "ebbc844eaafd57c3b6506d54a26494436038aff1b64721906c60689a4c766cf8"
 }

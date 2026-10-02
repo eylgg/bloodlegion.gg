@@ -7,7 +7,7 @@ pub async fn list(pool: &PgPool, user_id: UserId) -> sqlx::Result<Vec<Character>
     sqlx::query_as!(
         Character,
         r#"
-        SELECT id, name, class, specs, is_main, created_at, updated_at
+        SELECT id, class, specs, is_main, created_at, updated_at
         FROM launch_characters
         WHERE user_id = $1
         ORDER BY is_main DESC, created_at
@@ -55,7 +55,6 @@ pub async fn clear_main_except(
 pub async fn insert(
     conn: &mut PgConnection,
     user_id: UserId,
-    name: &str,
     class: &str,
     specs: &[String],
     is_main: bool,
@@ -63,12 +62,11 @@ pub async fn insert(
     sqlx::query_as!(
         Character,
         r#"
-        INSERT INTO launch_characters (user_id, name, class, specs, is_main)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, name, class, specs, is_main, created_at, updated_at
+        INSERT INTO launch_characters (user_id, class, specs, is_main)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, class, specs, is_main, created_at, updated_at
         "#,
         user_id.0,
-        name,
         class,
         specs,
         is_main,
@@ -77,12 +75,10 @@ pub async fn insert(
     .await
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn update(
     conn: &mut PgConnection,
     user_id: UserId,
     id: i64,
-    name: &str,
     class: &str,
     specs: &[String],
     is_main: bool,
@@ -91,13 +87,12 @@ pub async fn update(
         Character,
         r#"
         UPDATE launch_characters
-        SET name = $3, class = $4, specs = $5, is_main = $6
+        SET class = $3, specs = $4, is_main = $5
         WHERE id = $2 AND user_id = $1
-        RETURNING id, name, class, specs, is_main, created_at, updated_at
+        RETURNING id, class, specs, is_main, created_at, updated_at
         "#,
         user_id.0,
         id,
-        name,
         class,
         specs,
         is_main,
@@ -121,11 +116,11 @@ pub async fn list_all(pool: &PgPool) -> sqlx::Result<Vec<RosterEntry>> {
     sqlx::query_as!(
         RosterEntry,
         r#"
-        SELECT u.username, c.name, c.class, c.specs, c.is_main, c.created_at
+        SELECT u.username, c.class, c.specs, c.is_main
         FROM launch_characters c
         JOIN users u ON u.id = c.user_id
         WHERE u.disabled_at IS NULL
-        ORDER BY u.username_normalized, c.is_main DESC, c.created_at
+        ORDER BY u.username_normalized, c.is_main DESC, c.class
         "#,
     )
     .fetch_all(pool)

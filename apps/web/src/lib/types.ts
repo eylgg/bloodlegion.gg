@@ -62,7 +62,6 @@ export type WowClass = { slug: string; name: string; color: string; specs: Spec[
 /** A character reserved for launch: a sign-up, not a real character. */
 export type Character = {
 	id: number;
-	name: string;
 	class: string;
 	specs: string[];
 	is_main: boolean;
@@ -71,7 +70,6 @@ export type Character = {
 };
 
 export type CharacterInput = {
-	name: string;
 	class: string;
 	specs: string[];
 	is_main: boolean;
@@ -80,9 +78,7 @@ export type CharacterInput = {
 /** One member's sign-up, as the guild-wide list shows it. */
 export type RosterEntry = {
 	username: string;
-	name: string;
 	class: string;
 	specs: string[];
 	is_main: boolean;
-	created_at: string;
 };

@@ -232,10 +232,7 @@ pub async fn launch() -> Result<()> {
     let entries = crate::launch::list_all(&pool)
         .await
         .context("listing the launch sign-ups")?;
-    println!(
-        "{:<24} {:<14} {:<5} {:<9} SPECS",
-        "MEMBER", "CHARACTER", "", "CLASS"
-    );
+    println!("{:<24} {:<5} {:<9} SPECS", "MEMBER", "", "CLASS");
     for entry in &entries {
         let class = crate::launch::catalog::find(&entry.class);
         let specs: Vec<&str> = entry
@@ -248,15 +245,14 @@ pub async fn launch() -> Result<()> {
             })
             .collect();
         println!(
-            "{:<24} {:<14} {:<5} {:<9} {}",
+            "{:<24} {:<5} {:<9} {}",
             entry.username,
-            entry.name,
             if entry.is_main { "main" } else { "alt" },
             class.map_or(entry.class.as_str(), |c| c.name),
             specs.join(", "),
         );
     }
-    eprintln!("{} characters", entries.len());
+    eprintln!("{} sign-ups", entries.len());
     Ok(())
 }
 
