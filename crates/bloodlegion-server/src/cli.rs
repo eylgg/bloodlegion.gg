@@ -225,6 +225,41 @@ pub async fn users_characters(
     Ok(())
 }
 
+/// `launch`: every member's launch sign-ups, mains first, with class and specs by name.
+#[tokio::main(flavor = "current_thread")]
+pub async fn launch() -> Result<()> {
+    let pool = State::load_pool().await?;
+    let entries = crate::launch::list_all(&pool)
+        .await
+        .context("listing the launch sign-ups")?;
+    println!(
+        "{:<24} {:<14} {:<5} {:<9} SPECS",
+        "MEMBER", "CHARACTER", "", "CLASS"
+    );
+    for entry in &entries {
+        let class = crate::launch::catalog::find(&entry.class);
+        let specs: Vec<&str> = entry
+            .specs
+            .iter()
+            .map(|slug| {
+                class
+                    .and_then(|c| c.specs.iter().find(|s| s.slug == slug))
+                    .map_or(slug.as_str(), |s| s.name)
+            })
+            .collect();
+        println!(
+            "{:<24} {:<14} {:<5} {:<9} {}",
+            entry.username,
+            entry.name,
+            if entry.is_main { "main" } else { "alt" },
+            class.map_or(entry.class.as_str(), |c| c.name),
+            specs.join(", "),
+        );
+    }
+    eprintln!("{} characters", entries.len());
+    Ok(())
+}
+
 /// `passwords status`: prints `enabled` or `disabled`.
 #[tokio::main(flavor = "current_thread")]
 pub async fn passwords_status() -> Result<()> {

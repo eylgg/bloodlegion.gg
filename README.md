@@ -111,6 +111,7 @@ The rest:
 bloodlegion-server users list
 bloodlegion-server users demote <username>
 bloodlegion-server users rename <username> <new username>
+bloodlegion-server launch                # every member's WoW: Forever launch sign-ups
 bloodlegion-server users disable <username>     # suspend: sessions stop, login refused
 bloodlegion-server users enable <username>
 bloodlegion-server passwords status | enable

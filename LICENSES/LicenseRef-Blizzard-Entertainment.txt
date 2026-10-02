@@ -1,0 +1,4 @@
+The class and talent-tree icons under apps/web/static/wow are artwork from World of Warcraft,
+copyright Blizzard Entertainment, Inc. They are not covered by this project's MIT or Apache-2.0
+licenses. They are used on this non-commercial guild site as fan content under Blizzard's
+policies; all rights remain with Blizzard Entertainment, Inc.

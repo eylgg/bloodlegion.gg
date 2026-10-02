@@ -6,6 +6,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import { api } from '$lib/api';
+	import { resolve } from '$app/paths';
 
 	let { data }: PageProps = $props();
 	let signingOut = $state(false);
@@ -66,6 +67,9 @@
 </script>
 
 <Logo>
+	{#if data.user}
+		<Button href={resolve('/launch')} variant="primary" full>WoW: Forever launch sign-ups</Button>
+	{/if}
 	{#if !data.user && loginError}
 		<Alert variant="error">{loginError}</Alert>
 	{/if}

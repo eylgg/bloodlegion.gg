@@ -35,3 +35,9 @@ test('a failed sign-in shows a readable message, never text from the link', asyn
 	await page.goto('/?error=<b>anything</b>');
 	await expect(page.getByRole('alert')).toHaveText('Sign-in failed. Please try again.');
 });
+
+test('launch sign-ups are for members: a visitor is sent to sign in first', async ({ page }) => {
+	await page.goto('/launch');
+	await expect(page).toHaveURL('/?next=%2Flaunch');
+	await expect(page.getByRole('img', { name: 'Blood Legion' })).toBeVisible();
+});

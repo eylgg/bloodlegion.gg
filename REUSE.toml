@@ -16,3 +16,11 @@ path = [
 ]
 SPDX-FileCopyrightText = "2026 Jonathan Eyolfson <jon@eyolfson.com>"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+# Blizzard's artwork, vendored for the launch sign-ups; listed after the project-wide annotation
+# above so it takes precedence for these files.
+[[annotations]]
+path = "apps/web/static/wow/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Blizzard Entertainment, Inc."
+SPDX-License-Identifier = "LicenseRef-Blizzard-Entertainment"

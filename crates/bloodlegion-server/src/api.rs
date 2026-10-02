@@ -17,5 +17,6 @@ where
 pub fn router() -> Router<State> {
     Router::new()
         .nest("/users", crate::users::router())
+        .nest("/launch", crate::launch::router())
         .nest("/auth", crate::auth::api::router())
 }

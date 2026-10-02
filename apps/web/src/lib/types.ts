@@ -50,3 +50,39 @@ export type Registration = {
 	/** A username to prefill, derived from `identity`, or null when nothing usable was asserted. */
 	suggestion: string | null;
 };
+
+/** A spec's place in a raid: the in-game tank and healer, with damage split by range. */
+export type Role = 'tank' | 'healer' | 'melee' | 'ranged';
+
+export type Spec = { slug: string; name: string; roles: Role[] };
+
+/** A WoW: Forever class, from `GET /api/launch/classes`; `color` is the official class color. */
+export type WowClass = { slug: string; name: string; color: string; specs: Spec[] };
+
+/** A character reserved for launch: a sign-up, not a real character. */
+export type Character = {
+	id: number;
+	name: string;
+	class: string;
+	specs: string[];
+	is_main: boolean;
+	created_at: string;
+	updated_at: string;
+};
+
+export type CharacterInput = {
+	name: string;
+	class: string;
+	specs: string[];
+	is_main: boolean;
+};
+
+/** One member's sign-up, as the guild-wide list shows it. */
+export type RosterEntry = {
+	username: string;
+	name: string;
+	class: string;
+	specs: string[];
+	is_main: boolean;
+	created_at: string;
+};

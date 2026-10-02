@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT u.username, c.name, c.class, c.specs, c.is_main, c.created_at\n        FROM launch_characters c\n        JOIN users u ON u.id = c.user_id\n        WHERE u.disabled_at IS NULL\n        ORDER BY u.username_normalized, c.is_main DESC, c.created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "launch_characters",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "class",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "launch_characters",
+            "name": "class"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "specs",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "launch_characters",
+            "name": "specs"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "is_main",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "launch_characters",
+            "name": "is_main"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "launch_characters",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a5bc299a0bdcdacae6e97b823f75f53acfcb02aa3b8e0eaff48697be9cbaeda3"
+}

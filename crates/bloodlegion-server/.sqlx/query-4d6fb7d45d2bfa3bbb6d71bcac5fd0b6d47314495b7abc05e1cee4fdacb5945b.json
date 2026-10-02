@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE launch_characters SET is_main = false WHERE user_id = $1 AND is_main AND id <> $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4d6fb7d45d2bfa3bbb6d71bcac5fd0b6d47314495b7abc05e1cee4fdacb5945b"
+}

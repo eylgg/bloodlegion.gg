@@ -6,6 +6,7 @@ mod crypto;
 mod error;
 mod extract;
 mod fallbacks;
+mod launch;
 mod newtype;
 mod observability;
 mod problem;
@@ -69,6 +70,8 @@ enum Command {
         #[command(subcommand)]
         command: PasswordsCommand,
     },
+    /// Every member's WoW: Forever launch sign-ups.
+    Launch,
     /// Manage the OAuth2 / OpenID Connect login sources, such as Battle.net.
     Oauth2Providers {
         #[command(subcommand)]
@@ -302,6 +305,7 @@ fn main() -> Result<()> {
                 locale,
             } => cli::users_characters(username, provider, region, namespace, locale),
         },
+        Some(Command::Launch) => cli::launch(),
         Some(Command::Passwords { command }) => match command {
             PasswordsCommand::Status => cli::passwords_status(),
             PasswordsCommand::Enable => cli::passwords_set_enabled(true),
