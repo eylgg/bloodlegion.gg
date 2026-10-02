@@ -15,6 +15,7 @@ mod state;
 mod uri;
 mod users;
 mod well_known;
+mod wow;
 
 use anyhow::Context;
 use axum::Router;
@@ -87,6 +88,19 @@ enum UsersCommand {
     Disable { username: String },
     /// Lift an account's suspension.
     Enable { username: String },
+    /// List the WoW characters on a user's Battle.net account, using the token from their latest
+    /// sign-in (which needs the `wow.profile` scope). Also shows that token's status.
+    Characters {
+        username: String,
+        /// The provider the user signed in through.
+        #[arg(long, default_value = "battlenet")]
+        provider: String,
+        /// The Battle.net region the account plays in: us, eu, kr, or tw.
+        #[arg(long, default_value = "us")]
+        region: String,
+        #[arg(long, default_value = "en_US")]
+        locale: String,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -264,6 +278,12 @@ fn main() -> Result<()> {
             UsersCommand::Demote { username } => cli::users_set_superuser(username, false),
             UsersCommand::Disable { username } => cli::users_set_disabled(username, true),
             UsersCommand::Enable { username } => cli::users_set_disabled(username, false),
+            UsersCommand::Characters {
+                username,
+                provider,
+                region,
+                locale,
+            } => cli::users_characters(username, provider, region, locale),
         },
         Some(Command::Passwords { command }) => match command {
             PasswordsCommand::Status => cli::passwords_status(),

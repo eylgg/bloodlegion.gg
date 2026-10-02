@@ -177,6 +177,39 @@ fn missing_scopes(requested: &str, granted: Option<&str>) -> Option<String> {
     (!missing.is_empty()).then(|| missing.join(" "))
 }
 
+/// A user's decrypted provider tokens, for calling the provider's APIs on their behalf.
+pub(crate) struct ProviderTokens {
+    pub access_token: String,
+    pub has_refresh_token: bool,
+    pub expires_at: Option<OffsetDateTime>,
+    pub scope: String,
+    pub updated_at: OffsetDateTime,
+}
+
+/// The tokens from the user's latest sign-in through the provider named by `slug`, or `None` when
+/// they have no connected identity there (or signed in before tokens were kept).
+pub(crate) async fn tokens_for_user(
+    state: &State,
+    user_id: UserId,
+    slug: &crate::Slug,
+) -> anyhow::Result<Option<ProviderTokens>> {
+    let Some(stored) = db::find_tokens_for_user(&state.pool, user_id, slug)
+        .await
+        .context("loading the stored provider tokens")?
+    else {
+        return Ok(None);
+    };
+    Ok(Some(ProviderTokens {
+        access_token: state
+            .decrypt(&stored.access_token)
+            .context("decrypting the access token")?,
+        has_refresh_token: stored.refresh_token.is_some(),
+        expires_at: stored.expires_at,
+        scope: stored.scope,
+        updated_at: stored.updated_at,
+    }))
+}
+
 /// OAuth2 providers offered on the login page.
 pub async fn list_login_providers(
     pool: &PgPool,

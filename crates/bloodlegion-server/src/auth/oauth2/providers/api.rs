@@ -252,6 +252,39 @@ async fn finish_login(
 
     // Single-use gate: atomically record completion (subject + raw userinfo)
     // before provisioning. A replayed callback loses this race and is rejected.
+    // Keep the tokens so the server can call the provider's APIs for this person later (the WoW
+    // profile, for Battle.net). Stored before provisioning, so a first sign-in that still needs
+    // a username keeps them too; the credential created then joins on (provider, subject).
+    tracing::info!(
+        provider = %provider.slug,
+        has_refresh_token = tokens.refresh_token.is_some(),
+        expires_in = tokens.expires_in,
+        "oauth2 tokens received"
+    );
+    let access_token = state
+        .encrypt(&tokens.access_token)
+        .context("encrypting the access token")?;
+    let refresh_token = tokens
+        .refresh_token
+        .as_deref()
+        .map(|token| state.encrypt(token))
+        .transpose()
+        .context("encrypting the refresh token")?;
+    let expires_at = tokens
+        .expires_in
+        .map(|seconds| time::OffsetDateTime::now_utc() + time::Duration::seconds(seconds));
+    db::upsert_tokens(
+        &state.pool,
+        provider.id,
+        &subject,
+        &access_token,
+        refresh_token.as_ref(),
+        expires_at,
+        tokens.scope.as_deref().unwrap_or(&provider.scope),
+    )
+    .await
+    .context("storing the provider tokens")?;
+
     let completed = db::complete_request(&state.pool, request.id, &subject, &userinfo)
         .await
         .context("completing the in-flight OAuth2 request")?;

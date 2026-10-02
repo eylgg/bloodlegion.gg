@@ -146,6 +146,62 @@ pub async fn users_set_disabled(username: String, disabled: bool) -> Result<()> 
     Ok(())
 }
 
+/// `users characters`: the token status, then the characters on the user's WoW account.
+#[tokio::main(flavor = "current_thread")]
+pub async fn users_characters(
+    username: String,
+    provider: String,
+    region: String,
+    locale: String,
+) -> Result<()> {
+    let state = State::new().await?;
+    let id = user_id(&state.pool, &username).await?;
+    let slug = crate::Slug::try_from(provider.as_str()).context("invalid provider slug")?;
+    let Some(tokens) = crate::auth::oauth2::providers::tokens_for_user(&state, id, &slug).await?
+    else {
+        return Err(anyhow::anyhow!(
+            "'{username}' has no stored {slug} token; they need to sign in through {slug} again"
+        )
+        .into());
+    };
+    let now = time::OffsetDateTime::now_utc();
+    let expiry = match tokens.expires_at {
+        Some(at) if at <= now => format!("expired {at}"),
+        Some(at) => format!("expires {at}"),
+        None => "no expiry given".to_string(),
+    };
+    eprintln!(
+        "{slug} token from the sign-in at {}: {expiry}; refresh token: {}; scope: {}",
+        tokens.updated_at,
+        if tokens.has_refresh_token {
+            "yes"
+        } else {
+            "no"
+        },
+        tokens.scope,
+    );
+    let characters =
+        crate::wow::account_characters(&state.http_client, &region, &locale, &tokens.access_token)
+            .await?;
+    println!(
+        "{:<14} {:<22} {:>5} {:<14} {:<20} FACTION",
+        "NAME", "REALM", "LEVEL", "CLASS", "RACE"
+    );
+    for character in &characters {
+        println!(
+            "{:<14} {:<22} {:>5} {:<14} {:<20} {}",
+            character.name,
+            character.realm,
+            character.level,
+            character.class,
+            character.race,
+            character.faction,
+        );
+    }
+    eprintln!("{} characters", characters.len());
+    Ok(())
+}
+
 /// `passwords status`: prints `enabled` or `disabled`.
 #[tokio::main(flavor = "current_thread")]
 pub async fn passwords_status() -> Result<()> {

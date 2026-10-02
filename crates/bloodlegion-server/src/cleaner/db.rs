@@ -30,6 +30,19 @@ pub async fn sweep(pool: &PgPool) -> sqlx::Result<u64> {
     .execute(&mut *conn)
     .await?
     .rows_affected();
+    // Tokens for an identity that never became an account (a first sign-in abandoned at the
+    // username step); a linked identity keeps its row, which every sign-in rewrites.
+    total += sqlx::query!(
+        "DELETE FROM auth_oauth2_provider_tokens t
+         WHERE t.updated_at < now() - interval '1 day'
+           AND NOT EXISTS (
+               SELECT 1 FROM auth_oauth2_provider_credentials c
+               WHERE c.provider_id = t.provider_id AND c.subject = t.subject
+           )"
+    )
+    .execute(&mut *conn)
+    .await?
+    .rows_affected();
     total += sqlx::query!("DELETE FROM auth_oauth2_provider_requests WHERE expires_at < now()")
         .execute(&mut *conn)
         .await?

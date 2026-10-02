@@ -303,6 +303,75 @@ pub async fn complete_request(
     Ok(result.rows_affected() > 0)
 }
 
+/// Records the tokens issued at a sign-in for the upstream identity, replacing the previous ones.
+#[allow(clippy::too_many_arguments)]
+pub async fn upsert_tokens(
+    pool: &PgPool,
+    provider_id: ProviderId,
+    subject: &str,
+    access_token: &Ciphertext,
+    refresh_token: Option<&Ciphertext>,
+    expires_at: Option<OffsetDateTime>,
+    scope: &str,
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        r#"
+        INSERT INTO auth_oauth2_provider_tokens
+            (provider_id, subject, access_token_ciphertext, refresh_token_ciphertext, expires_at,
+             scope)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (provider_id, subject) DO UPDATE
+        SET access_token_ciphertext = EXCLUDED.access_token_ciphertext,
+            refresh_token_ciphertext = EXCLUDED.refresh_token_ciphertext,
+            expires_at = EXCLUDED.expires_at,
+            scope = EXCLUDED.scope,
+            updated_at = now()
+        "#,
+        provider_id.0,
+        subject,
+        access_token.as_ref(),
+        refresh_token.map(|token| token.as_ref()),
+        expires_at,
+        scope,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// The tokens stored for a user's connected identity at the provider named by `slug`.
+pub struct StoredTokens {
+    pub access_token: Ciphertext,
+    pub refresh_token: Option<Ciphertext>,
+    pub expires_at: Option<OffsetDateTime>,
+    pub scope: String,
+    pub updated_at: OffsetDateTime,
+}
+
+pub async fn find_tokens_for_user(
+    pool: &PgPool,
+    user_id: UserId,
+    slug: &Slug,
+) -> sqlx::Result<Option<StoredTokens>> {
+    sqlx::query_as!(
+        StoredTokens,
+        r#"
+        SELECT t.access_token_ciphertext AS "access_token: Ciphertext",
+               t.refresh_token_ciphertext AS "refresh_token: Ciphertext",
+               t.expires_at, t.scope, t.updated_at
+        FROM auth_oauth2_provider_credentials c
+        JOIN auth_providers p ON p.id = c.provider_id
+        JOIN auth_oauth2_provider_tokens t
+            ON t.provider_id = c.provider_id AND t.subject = c.subject
+        WHERE c.user_id = $1 AND p.slug = $2 AND c.disconnected_at IS NULL
+        "#,
+        user_id.0,
+        slug.as_ref(),
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 /// A completed, unexpired login request: the identity it verified, parked until the person
 /// chooses a username.
 pub struct CompletedRequest {
@@ -680,6 +749,89 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    #[sqlx::test]
+    async fn tokens_are_kept_per_identity_and_found_through_the_credential(pool: PgPool) {
+        let provider_id = provider_id(&pool).await;
+        let google = Slug::try_from("google").unwrap();
+        let mut tx = pool.begin().await.unwrap();
+        let user = crate::users::insert_user(
+            &mut tx,
+            &crate::users::CreateUserPayload {
+                username: "Thrall".into(),
+                email: None,
+                first_name: None,
+                last_name: None,
+                is_superuser: false,
+            },
+            false,
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+
+        // Stored before the account exists (a first sign-in at the username step)...
+        upsert_tokens(
+            &pool,
+            provider_id,
+            "sub-1",
+            &Ciphertext::for_test("access-1"),
+            None,
+            None,
+            "openid wow.profile",
+        )
+        .await
+        .unwrap();
+        assert!(
+            find_tokens_for_user(&pool, user.id, &google)
+                .await
+                .unwrap()
+                .is_none()
+        );
+
+        // ...and found once the credential links the identity to the account.
+        let mut conn = pool.acquire().await.unwrap();
+        insert_credential(
+            &mut conn,
+            provider_id,
+            "sub-1",
+            user.id,
+            &serde_json::json!({}),
+            &serde_json::json!({}),
+        )
+        .await
+        .unwrap();
+        let found = find_tokens_for_user(&pool, user.id, &google)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.access_token.as_ref(), "access-1");
+        assert!(found.refresh_token.is_none());
+        assert_eq!(found.scope, "openid wow.profile");
+
+        // The next sign-in replaces them.
+        upsert_tokens(
+            &pool,
+            provider_id,
+            "sub-1",
+            &Ciphertext::for_test("access-2"),
+            Some(&Ciphertext::for_test("refresh-2")),
+            Some(OffsetDateTime::now_utc()),
+            "openid wow.profile",
+        )
+        .await
+        .unwrap();
+        let found = find_tokens_for_user(&pool, user.id, &google)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.access_token.as_ref(), "access-2");
+        assert_eq!(
+            found.refresh_token.as_ref().map(AsRef::as_ref),
+            Some("refresh-2")
+        );
+        assert!(found.expires_at.is_some());
     }
 
     #[sqlx::test]

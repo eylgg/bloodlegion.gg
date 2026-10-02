@@ -32,6 +32,12 @@ pub struct Tokens {
     /// (Battle.net's) reports what the person left ticked.
     #[serde(default)]
     pub scope: Option<String>,
+    /// Absent when the provider issues none.
+    #[serde(default)]
+    pub refresh_token: Option<String>,
+    /// The access token's lifetime in seconds, when the provider says.
+    #[serde(default)]
+    pub expires_in: Option<i64>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
