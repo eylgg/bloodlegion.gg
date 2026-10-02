@@ -152,8 +152,10 @@ pub async fn users_characters(
     username: String,
     provider: String,
     region: String,
+    namespace: Option<String>,
     locale: String,
 ) -> Result<()> {
+    let namespace = namespace.unwrap_or_else(|| format!("profile-{region}"));
     let state = State::new().await?;
     let id = user_id(&state.pool, &username).await?;
     let slug = crate::Slug::try_from(provider.as_str()).context("invalid provider slug")?;
@@ -180,9 +182,14 @@ pub async fn users_characters(
         },
         tokens.scope,
     );
-    let characters =
-        crate::wow::account_characters(&state.http_client, &region, &locale, &tokens.access_token)
-            .await?;
+    let characters = crate::wow::account_characters(
+        &state.http_client,
+        &region,
+        &namespace,
+        &locale,
+        &tokens.access_token,
+    )
+    .await?;
     println!(
         "{:<14} {:<22} {:>5} {:<14} {:<20} FACTION",
         "NAME", "REALM", "LEVEL", "CLASS", "RACE"

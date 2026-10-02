@@ -24,17 +24,20 @@ fn api_host(region: &str) -> String {
 }
 
 /// `GET /profile/user/wow`: every character on every WoW license of the account the token belongs
-/// to. A 401 means the token expired or was revoked; a 403 means `wow.profile` was not granted.
+/// to, in the game the `namespace` selects (`profile-<region>` is retail; Classic flavors have
+/// their own, such as `profile-classic1x-<region>` for Classic Era). A 401 means the token expired
+/// or was revoked; a 403 means `wow.profile` was not granted.
 pub async fn account_characters(
     http: &reqwest::Client,
     region: &str,
+    namespace: &str,
     locale: &str,
     access_token: &str,
 ) -> anyhow::Result<Vec<Character>> {
     let mut url = url::Url::parse(&format!("{}/profile/user/wow", api_host(region)))
         .context("building the WoW account profile URL")?;
     url.query_pairs_mut()
-        .append_pair("namespace", &format!("profile-{region}"))
+        .append_pair("namespace", namespace)
         .append_pair("locale", locale);
     let response = http
         .get(url)
@@ -47,7 +50,7 @@ pub async fn account_characters(
         let hint = match status.as_u16() {
             401 => " (the access token expired or was revoked: sign in again)",
             403 => " (the token lacks the wow.profile scope)",
-            404 => " (no WoW license on this account in that region)",
+            404 => " (no characters for this account in that region and namespace)",
             _ => "",
         };
         anyhow::bail!("the WoW account profile API answered {status}{hint}");

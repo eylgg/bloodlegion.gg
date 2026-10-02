@@ -98,6 +98,11 @@ enum UsersCommand {
         /// The Battle.net region the account plays in: us, eu, kr, or tw.
         #[arg(long, default_value = "us")]
         region: String,
+        /// The profile API namespace, which selects the game: `profile-<region>` (the default) is
+        /// retail, `profile-classic1x-<region>` Classic Era, `profile-classic-<region>` progression
+        /// Classic.
+        #[arg(long)]
+        namespace: Option<String>,
         #[arg(long, default_value = "en_US")]
         locale: String,
     },
@@ -282,8 +287,9 @@ fn main() -> Result<()> {
                 username,
                 provider,
                 region,
+                namespace,
                 locale,
-            } => cli::users_characters(username, provider, region, locale),
+            } => cli::users_characters(username, provider, region, namespace, locale),
         },
         Some(Command::Passwords { command }) => match command {
             PasswordsCommand::Status => cli::passwords_status(),
