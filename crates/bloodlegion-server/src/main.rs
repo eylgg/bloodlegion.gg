@@ -88,6 +88,13 @@ enum UsersCommand {
     Disable { username: String },
     /// Lift an account's suspension.
     Enable { username: String },
+    /// Rename an account. The new name follows the signup rules (2 to 32 characters, a letter
+    /// then letters and digits, not reserved, not taken); changing only its capitalization is
+    /// allowed.
+    Rename {
+        username: String,
+        new_username: String,
+    },
     /// List the WoW characters on a user's Battle.net account, using the token from their latest
     /// sign-in (which needs the `wow.profile` scope). Also shows that token's status.
     Characters {
@@ -283,6 +290,10 @@ fn main() -> Result<()> {
             UsersCommand::Demote { username } => cli::users_set_superuser(username, false),
             UsersCommand::Disable { username } => cli::users_set_disabled(username, true),
             UsersCommand::Enable { username } => cli::users_set_disabled(username, false),
+            UsersCommand::Rename {
+                username,
+                new_username,
+            } => cli::users_rename(username, new_username),
             UsersCommand::Characters {
                 username,
                 provider,

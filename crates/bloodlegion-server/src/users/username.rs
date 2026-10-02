@@ -13,12 +13,12 @@ use crate::newtype::string_newtype;
 #[problem(
     status = UNPROCESSABLE_ENTITY,
     title = "Invalid Username",
-    detail = "The username must be 3 to 32 characters: a letter, then letters and digits."
+    detail = "The username must be 2 to 32 characters: a letter, then letters and digits."
 )]
 pub struct Error(String);
 
 /// A validated account username. Mirrors the `users_username_check` database
-/// constraint (`^[A-Za-z][A-Za-z0-9]*$`, 3-32 chars), so constructing one is the
+/// constraint (`^[A-Za-z][A-Za-z0-9]*$`, 2-32 chars), so constructing one is the
 /// single Rust-side check that a string is a usable username, the same shape
 /// the database enforces, and a URL-path-safe charset (no `/`, `.`, `%`, or
 /// whitespace). Capitals are kept for display; [`Username::normalized`] is the
@@ -27,7 +27,7 @@ pub struct Error(String);
 pub struct Username(String);
 
 fn is_valid(username: &str) -> bool {
-    username.len() >= 3
+    username.len() >= 2
         && username.len() <= 32
         && username.starts_with(|c: char| c.is_ascii_alphabetic())
         && username.chars().all(|c| c.is_ascii_alphanumeric())
@@ -57,12 +57,12 @@ mod tests {
 
     #[test]
     fn enforces_the_database_username_shape() {
-        for ok in ["abc", "Thrall", "student01", &"a".repeat(32)] {
+        for ok in ["Ey", "abc", "Thrall", "student01", &"a".repeat(32)] {
             assert!(Username::try_from(ok).is_ok(), "{ok:?} should be valid");
         }
         assert_eq!(Username::try_from("Thrall").unwrap().normalized(), "thrall");
         for (bad, why) in [
-            ("ab", "too short"),
+            ("a", "too short"),
             (&"a".repeat(33), "too long"),
             ("1abc", "must start with a letter"),
             ("a_b", "no underscore"),

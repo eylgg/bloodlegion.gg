@@ -55,7 +55,7 @@
 			name="username"
 			type="text"
 			required
-			minlength={3}
+			minlength={2}
 			maxlength={32}
 			pattern="[A-Za-z][A-Za-z0-9]*"
 			autocomplete="username"
@@ -64,7 +64,7 @@
 			bind:value={username}
 		/>
 		<p class="hint">
-			3 to 32 characters: a letter, then letters and digits. Capitals are kept for display; names
+			2 to 32 characters: a letter, then letters and digits. Capitals are kept for display; names
 			are unique regardless of case.
 		</p>
 		<FormActions align="end">

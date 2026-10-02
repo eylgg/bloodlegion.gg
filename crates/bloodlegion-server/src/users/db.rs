@@ -28,6 +28,19 @@ pub async fn find_user_by_id(pool: &PgPool, user_id: UserId) -> sqlx::Result<Opt
     .await
 }
 
+/// Sets a user's username. Returns whether a row matched. The unique constraint on
+/// `username_normalized` rejects a name another account holds in any capitalization.
+pub async fn set_username(pool: &PgPool, user_id: UserId, username: &str) -> sqlx::Result<bool> {
+    let result = sqlx::query!(
+        "UPDATE users SET username = $2 WHERE id = $1",
+        user_id.0,
+        username,
+    )
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
 /// Grants or revokes the superuser flag. Returns whether a row matched.
 pub async fn set_user_superuser(
     pool: &PgPool,

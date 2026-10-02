@@ -130,6 +130,22 @@ pub async fn users_set_superuser(username: String, is_superuser: bool) -> Result
     Ok(())
 }
 
+/// `users rename`.
+#[tokio::main(flavor = "current_thread")]
+pub async fn users_rename(username: String, new_username: String) -> Result<()> {
+    let pool = State::load_pool().await?;
+    let id = user_id(&pool, &username).await?;
+    match crate::users::rename_user(&pool, id, &new_username).await {
+        Ok(()) => {}
+        Err(crate::Error::External(problem)) => {
+            return Err(anyhow::anyhow!("{}", crate::Problem::detail(&problem)).into());
+        }
+        Err(crate::Error::Internal(error)) => return Err(error.into()),
+    }
+    eprintln!("renamed '{username}' to '{new_username}'");
+    Ok(())
+}
+
 /// `users disable` / `users enable`: suspends or restores an account.
 #[tokio::main(flavor = "current_thread")]
 pub async fn users_set_disabled(username: String, disabled: bool) -> Result<()> {

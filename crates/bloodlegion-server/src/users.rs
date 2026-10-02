@@ -246,6 +246,30 @@ pub async fn list_user_listings(pool: &PgPool) -> sqlx::Result<Vec<UserListing>>
     db::list_user_listings(pool).await
 }
 
+/// Renames an account. The new name goes through the same gates as a new account's (shape,
+/// reserved names, uniqueness regardless of case), so a rename can never produce a name signup
+/// would refuse. Changing only the capitalization of the current name is allowed.
+pub async fn rename_user(
+    pool: &PgPool,
+    user_id: UserId,
+    new_username: &str,
+) -> Result<(), UsersError> {
+    if let Err(error) = Username::try_from(new_username) {
+        return Err(Error::External(UsersError::InvalidUsername(error)));
+    }
+    if RESERVED_USERNAMES
+        .iter()
+        .any(|reserved| reserved.eq_ignore_ascii_case(new_username))
+    {
+        return Err(Error::External(UsersError::UsernameReserved));
+    }
+    match db::set_username(pool, user_id, new_username).await {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(Error::External(UsersError::NotFound)),
+        Err(error) => Err(classify(error)),
+    }
+}
+
 /// Grants or revokes the superuser flag (the admin role). Returns whether a row matched.
 pub async fn set_user_superuser(
     pool: &PgPool,
@@ -431,6 +455,56 @@ mod tests {
         assert!(matches!(
             result,
             Err(Error::External(UsersError::UsernameTaken))
+        ));
+    }
+
+    #[sqlx::test]
+    async fn renaming_applies_the_signup_rules(pool: PgPool) {
+        let mut tx = pool.begin().await.unwrap();
+        let thrall = create_user(&mut tx, &payload("Thrall", "t@example.com"), false)
+            .await
+            .unwrap();
+        create_user(&mut tx, &payload("Jaina", "j@example.com"), false)
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+
+        rename_user(&pool, thrall.id, "Ey").await.unwrap();
+        assert_eq!(
+            find_user_id_by_username(&pool, "ey").await.unwrap(),
+            Some(thrall.id)
+        );
+        assert!(
+            find_user_id_by_username(&pool, "thrall")
+                .await
+                .unwrap()
+                .is_none()
+        );
+
+        // A change of capitalization alone is fine.
+        rename_user(&pool, thrall.id, "EY").await.unwrap();
+        let user = db::find_user_by_id(&pool, thrall.id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(user.username, "EY");
+
+        // Taken in any case, reserved, malformed, or no such account: refused.
+        assert!(matches!(
+            rename_user(&pool, thrall.id, "JAINA").await,
+            Err(Error::External(UsersError::UsernameTaken))
+        ));
+        assert!(matches!(
+            rename_user(&pool, thrall.id, "Admin").await,
+            Err(Error::External(UsersError::UsernameReserved))
+        ));
+        assert!(matches!(
+            rename_user(&pool, thrall.id, "no spaces").await,
+            Err(Error::External(UsersError::InvalidUsername(_)))
+        ));
+        assert!(matches!(
+            rename_user(&pool, UserId(999_999), "Nobody").await,
+            Err(Error::External(UsersError::NotFound))
         ));
     }
 

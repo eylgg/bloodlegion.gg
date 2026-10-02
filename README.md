@@ -110,6 +110,7 @@ The rest:
 ```sh
 bloodlegion-server users list
 bloodlegion-server users demote <username>
+bloodlegion-server users rename <username> <new username>
 bloodlegion-server users disable <username>     # suspend: sessions stop, login refused
 bloodlegion-server users enable <username>
 bloodlegion-server passwords status | enable
@@ -126,7 +127,7 @@ person picks their own on first sign-in; `:normalize` on a username mapping inst
 asserted value into the username shape. Mapping an `email` is optional throughout: an account may
 have none.
 
-Usernames are 3 to 32 characters, a letter then letters and digits. The capitalization the person
+Usernames are 2 to 32 characters, a letter then letters and digits. The capitalization the person
 chose is kept for display; sign-in and uniqueness are case-insensitive.
 
 ## Images

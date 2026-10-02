@@ -26,7 +26,7 @@ fn api_host(region: &str) -> String {
 /// `GET /profile/user/wow`: every character on every WoW license of the account the token belongs
 /// to, in the game the `namespace` selects (`profile-<region>` is retail; Classic flavors have
 /// their own, such as `profile-classic1x-<region>` for Classic Era). A 401 means the token expired
-/// or was revoked; a 403 means `wow.profile` was not granted.
+/// or was revoked; a 403 means either a namespace the API does not serve or no `wow.profile`.
 pub async fn account_characters(
     http: &reqwest::Client,
     region: &str,
@@ -49,7 +49,9 @@ pub async fn account_characters(
     if !status.is_success() {
         let hint = match status.as_u16() {
             401 => " (the access token expired or was revoked: sign in again)",
-            403 => " (the token lacks the wow.profile scope)",
+            // Blizzard answers 403 both for a token without `wow.profile` and for a namespace it
+            // does not serve (an unknown or unreleased game), so name both.
+            403 => " (the API does not serve this namespace, or the token lacks wow.profile)",
             404 => " (no characters for this account in that region and namespace)",
             _ => "",
         };
