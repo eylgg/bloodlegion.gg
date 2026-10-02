@@ -185,9 +185,11 @@ the changes.
   served from it: no third-party tooltip script. It syncs from Battle.net's Game Data API with the
   `battlenet` provider's client (a client credentials token; no extra configuration), daily and on
   demand. Until the API serves WoW: Forever it mirrors Classic Era (`static-classic1x-us`), listing
-  every rare, epic, and legendary item and fetching each one's tooltip and icon; a refresh asks with
-  `If-Modified-Since`, so unchanged items cost little. Recording loot searches it; a guild item
-  picked from it is linked by the game's item id.
+  every epic and legendary item (dropping any other the guild has not won) and fetching each one's tooltip and icon; a refresh asks with
+  `If-Modified-Since`, so unchanged items cost little; a call that fails for a moment (a timeout,
+  a 5xx, a 429) is retried, and an item still missing its tooltip or icon is retried next sync.
+  The Items page browses it, 50 at a time; recording loot searches it, and a guild item picked from
+  it is linked by the game's item id.
 
   ```sh
   bloodlegion-server items sync               # everything (the first run fetches thousands of items)

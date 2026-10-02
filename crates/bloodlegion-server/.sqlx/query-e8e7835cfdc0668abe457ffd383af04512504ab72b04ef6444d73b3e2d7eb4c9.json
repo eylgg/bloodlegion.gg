@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT count(*) AS \"count!\"\n        FROM game_items g\n        WHERE g.name_normalized LIKE '%' || $1 || '%'\n            AND ($2::text IS NULL OR g.quality = $2)\n            AND ($3::text IS NULL OR g.slot = $3)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e8e7835cfdc0668abe457ffd383af04512504ab72b04ef6444d73b3e2d7eb4c9"
+}

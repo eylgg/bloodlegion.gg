@@ -53,6 +53,33 @@ pub async fn upsert_summary(pool: &PgPool, item: &Summary) -> sqlx::Result<()> {
     Ok(())
 }
 
+/// Drops the items whose quality is not one of `qualities`, unless the guild has an item for
+/// them, then the icons no item uses. Returns how many items went.
+pub async fn prune(pool: &PgPool, qualities: &[String]) -> sqlx::Result<u64> {
+    let mut tx = pool.begin().await?;
+    let pruned = sqlx::query!(
+        r#"
+        DELETE FROM game_items g
+        WHERE NOT (g.quality = ANY($1))
+            AND NOT EXISTS (SELECT 1 FROM items i WHERE i.game_item_id = g.id)
+        "#,
+        qualities,
+    )
+    .execute(&mut *tx)
+    .await?
+    .rows_affected();
+    sqlx::query!(
+        r#"
+        DELETE FROM game_item_icons i
+        WHERE NOT EXISTS (SELECT 1 FROM game_items g WHERE g.icon = i.name)
+        "#
+    )
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(pruned)
+}
+
 /// Records an item's page: its summary and tooltip, and when it was fetched.
 pub async fn upsert_detail(pool: &PgPool, detail: &Detail) -> sqlx::Result<()> {
     let item = &detail.summary;
@@ -105,13 +132,16 @@ pub async fn touch(pool: &PgPool, id: i32) -> sqlx::Result<()> {
     Ok(())
 }
 
-/// Items whose page is missing or was fetched before `before`, the oldest first.
+/// Items whose page is missing or was fetched before `before`, or whose icon is missing (a
+/// failed download is tried again next sync, not a week later), the oldest first.
 pub async fn stale_ids(pool: &PgPool, before: OffsetDateTime) -> sqlx::Result<Vec<i32>> {
     sqlx::query_scalar!(
         r#"
-        SELECT id FROM game_items
-        WHERE detailed_at IS NULL OR detailed_at < $1
-        ORDER BY detailed_at NULLS FIRST, id
+        SELECT g.id FROM game_items g
+        WHERE g.detailed_at IS NULL
+            OR g.detailed_at < $1
+            OR NOT EXISTS (SELECT 1 FROM game_item_icons i WHERE i.name = g.icon)
+        ORDER BY g.detailed_at NULLS FIRST, g.id
         "#,
         before,
     )
@@ -196,18 +226,59 @@ fn like_literal(query: &str) -> String {
         .replace('_', "\\_")
 }
 
-pub async fn search(pool: &PgPool, query: &str, limit: i64) -> sqlx::Result<Vec<GameItemSummary>> {
-    sqlx::query_as!(
+pub async fn browse(
+    pool: &PgPool,
+    browse: &super::Browse,
+    limit: i64,
+    offset: i64,
+) -> sqlx::Result<super::Page> {
+    let query = like_literal(browse.q.trim());
+    let quality = browse.quality.as_deref().filter(|q| !q.is_empty());
+    let slot = browse.slot.as_deref().filter(|s| !s.is_empty());
+    let items = sqlx::query_as!(
         GameItemSummary,
         r#"
-        SELECT id, name, quality, item_level, required_level, slot, item_subclass, icon
-        FROM game_items
-        WHERE name_normalized LIKE '%' || $1 || '%'
-        ORDER BY name_normalized LIKE $1 || '%' DESC, item_level DESC, name_normalized, id
-        LIMIT $2
+        SELECT g.id AS "id!", g.name AS "name!", g.quality AS "quality!",
+               g.item_level AS "item_level!", g.required_level AS "required_level!",
+               g.slot AS "slot!", g.item_subclass AS "item_subclass!", g.icon,
+               i.id AS "guild_item_id?",
+               (SELECT count(*) FROM loot l WHERE l.item_id = i.id) AS "drops!"
+        FROM game_items g
+        LEFT JOIN items i ON i.game_item_id = g.id
+        WHERE g.name_normalized LIKE '%' || $1 || '%'
+            AND ($2::text IS NULL OR g.quality = $2)
+            AND ($3::text IS NULL OR g.slot = $3)
+        ORDER BY g.name_normalized LIKE $1 || '%' DESC, g.item_level DESC, g.name_normalized, g.id
+        LIMIT $4 OFFSET $5
         "#,
-        like_literal(query),
+        query,
+        quality,
+        slot,
         limit,
+        offset,
+    )
+    .fetch_all(pool)
+    .await?;
+    let total = sqlx::query_scalar!(
+        r#"
+        SELECT count(*) AS "count!"
+        FROM game_items g
+        WHERE g.name_normalized LIKE '%' || $1 || '%'
+            AND ($2::text IS NULL OR g.quality = $2)
+            AND ($3::text IS NULL OR g.slot = $3)
+        "#,
+        query,
+        quality,
+        slot,
+    )
+    .fetch_one(pool)
+    .await?;
+    Ok(super::Page { items, total })
+}
+
+pub async fn slots(pool: &PgPool) -> sqlx::Result<Vec<String>> {
+    sqlx::query_scalar!(
+        r#"SELECT DISTINCT slot AS "slot!" FROM game_items WHERE slot <> '' ORDER BY 1"#
     )
     .fetch_all(pool)
     .await
@@ -216,10 +287,12 @@ pub async fn search(pool: &PgPool, query: &str, limit: i64) -> sqlx::Result<Vec<
 pub async fn find(pool: &PgPool, id: i32) -> sqlx::Result<Option<GameItem>> {
     let row = sqlx::query!(
         r#"
-        SELECT id, name, quality, item_level, required_level, slot, item_subclass, icon, preview,
-               detailed_at
-        FROM game_items
-        WHERE id = $1
+        SELECT g.id, g.name, g.quality, g.item_level, g.required_level, g.slot, g.item_subclass,
+               g.icon, g.preview, g.detailed_at, i.id AS "guild_item_id?",
+               (SELECT count(*) FROM loot l WHERE l.item_id = i.id) AS "drops!"
+        FROM game_items g
+        LEFT JOIN items i ON i.game_item_id = g.id
+        WHERE g.id = $1
         "#,
         id,
     )
@@ -235,6 +308,8 @@ pub async fn find(pool: &PgPool, id: i32) -> sqlx::Result<Option<GameItem>> {
             slot: row.slot,
             item_subclass: row.item_subclass,
             icon: row.icon,
+            guild_item_id: row.guild_item_id,
+            drops: row.drops,
         },
         preview: row.preview,
         detailed_at: row.detailed_at,

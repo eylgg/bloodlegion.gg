@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, name, quality, item_level, required_level, slot, item_subclass, icon, preview,\n               detailed_at\n        FROM game_items\n        WHERE id = $1\n        ",
+  "query": "\n        SELECT g.id AS \"id!\", g.name AS \"name!\", g.quality AS \"quality!\",\n               g.item_level AS \"item_level!\", g.required_level AS \"required_level!\",\n               g.slot AS \"slot!\", g.item_subclass AS \"item_subclass!\", g.icon,\n               i.id AS \"guild_item_id?\",\n               (SELECT count(*) FROM loot l WHERE l.item_id = i.id) AS \"drops!\"\n        FROM game_items g\n        LEFT JOIN items i ON i.game_item_id = g.id\n        WHERE g.name_normalized LIKE '%' || $1 || '%'\n            AND ($2::text IS NULL OR g.quality = $2)\n            AND ($3::text IS NULL OR g.slot = $3)\n        ORDER BY g.name_normalized LIKE $1 || '%' DESC, g.item_level DESC, g.name_normalized, g.id\n        LIMIT $4 OFFSET $5\n        ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
+        "name": "id!",
         "type_info": "Int4",
         "origin": {
           "Table": {
@@ -16,7 +16,7 @@
       },
       {
         "ordinal": 1,
-        "name": "name",
+        "name": "name!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -27,7 +27,7 @@
       },
       {
         "ordinal": 2,
-        "name": "quality",
+        "name": "quality!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -38,7 +38,7 @@
       },
       {
         "ordinal": 3,
-        "name": "item_level",
+        "name": "item_level!",
         "type_info": "Int4",
         "origin": {
           "Table": {
@@ -49,7 +49,7 @@
       },
       {
         "ordinal": 4,
-        "name": "required_level",
+        "name": "required_level!",
         "type_info": "Int4",
         "origin": {
           "Table": {
@@ -60,7 +60,7 @@
       },
       {
         "ordinal": 5,
-        "name": "slot",
+        "name": "slot!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -71,7 +71,7 @@
       },
       {
         "ordinal": 6,
-        "name": "item_subclass",
+        "name": "item_subclass!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -93,30 +93,29 @@
       },
       {
         "ordinal": 8,
-        "name": "preview",
-        "type_info": "Jsonb",
+        "name": "guild_item_id?",
+        "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "game_items",
-            "name": "preview"
+            "table": "items",
+            "name": "id"
           }
         }
       },
       {
         "ordinal": 9,
-        "name": "detailed_at",
-        "type_info": "Timestamptz",
-        "origin": {
-          "Table": {
-            "table": "game_items",
-            "name": "detailed_at"
-          }
-        }
+        "name": "drops!",
+        "type_info": "Int8",
+        "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
-        "Int4"
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
       ]
     },
     "nullable": [
@@ -128,9 +127,9 @@
       false,
       false,
       true,
-      true,
-      true
+      false,
+      null
     ]
   },
-  "hash": "247631a15550102dc1282e3babf31b86ead709a605cf9e18f96972e2b2623e26"
+  "hash": "ad75e7c229ebfec9909333c6a1f882a3bee4ed5ad34ed3bf72d593b62bb1488b"
 }

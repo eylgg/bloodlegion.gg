@@ -135,7 +135,7 @@ enum UsersCommand {
 #[derive(Debug, Subcommand)]
 enum ItemsCommand {
     /// Sync the mirror from Battle.net's Game Data API now, with the `battlenet` provider's client
-    /// (the server also syncs daily): list every rare, epic, and legendary item, then fetch the
+    /// (the server also syncs daily): list every epic and legendary item, then fetch the
     /// pages and icons that are missing or stale.
     Sync {
         /// Fetch only these item ids (repeatable), listed or not.

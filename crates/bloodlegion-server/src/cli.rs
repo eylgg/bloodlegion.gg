@@ -498,8 +498,9 @@ pub async fn items_sync(ids: Vec<i32>) -> Result<()> {
         }
         crate::game_items::Outcome::Done(report) => {
             eprintln!(
-                "listed {}, fetched {}, unchanged {}, unknown {}, icons {}, failed {}",
+                "listed {}, pruned {}, fetched {}, unchanged {}, unknown {}, icons {}, failed {}",
                 report.listed,
+                report.pruned,
                 report.fetched,
                 report.unchanged,
                 report.missing,

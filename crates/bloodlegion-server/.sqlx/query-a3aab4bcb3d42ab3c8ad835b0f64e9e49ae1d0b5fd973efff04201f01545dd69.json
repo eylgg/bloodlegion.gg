@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM items",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a3aab4bcb3d42ab3c8ad835b0f64e9e49ae1d0b5fd973efff04201f01545dd69"
+}

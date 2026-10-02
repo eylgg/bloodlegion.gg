@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { api } from '$lib/api';
 	import { QUALITY_COLOR } from '$lib/guild';
-	import type { GameItemSummary, Quality } from '$lib/types';
+	import type { GameItemPage, GameItemSummary, Quality } from '$lib/types';
 	import { itemIcon } from '$lib/wow/items';
 
 	/**
@@ -36,7 +36,7 @@
 		timer = setTimeout(async () => {
 			const ticket = ++latest;
 			try {
-				const found = await api.get<GameItemSummary[]>(
+				const { items: found } = await api.get<GameItemPage>(
 					`/api/game-items?q=${encodeURIComponent(query)}&limit=12`
 				);
 				if (ticket !== latest) return;

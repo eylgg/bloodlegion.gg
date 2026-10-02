@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO items (name, quality, game_item_id) VALUES ('Band of Accuria', 'rare', 17063)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ef49b0feec161d660004563a4a0e8c512fc0500ee62fab386e74522084eb7771"
+}

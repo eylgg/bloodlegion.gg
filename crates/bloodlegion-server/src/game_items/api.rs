@@ -7,25 +7,17 @@ use axum::{Json, Router};
 use crate::users::User;
 use crate::{Result, State};
 
-use super::{GameItem, GameItemSummary};
+use super::{Browse, GameItem, Page};
 
-#[derive(Debug, serde::Deserialize)]
-struct SearchQuery {
-    #[serde(default)]
-    q: String,
-    #[serde(default)]
-    limit: Option<i64>,
+/// `GET /api/game-items?q=&quality=&slot=&offset=&limit=`: a page of mirrored items, for the item
+/// browser and the item picker. Every filter is optional.
+async fn browse(state: State, _user: User, Query(browse): Query<Browse>) -> Result<Json<Page>> {
+    Ok(Json(super::browse(&state.pool, &browse).await?))
 }
 
-/// `GET /api/game-items?q=&limit=`: mirrored items whose name contains `q`, for the item picker.
-async fn search(
-    state: State,
-    _user: User,
-    Query(query): Query<SearchQuery>,
-) -> Result<Json<Vec<GameItemSummary>>> {
-    Ok(Json(
-        super::search(&state.pool, &query.q, query.limit.unwrap_or(20)).await?,
-    ))
+/// `GET /api/game-items/slots`: the slots the mirror's items go in.
+async fn slots(state: State, _user: User) -> Result<Json<Vec<String>>> {
+    Ok(Json(super::slots(&state.pool).await?))
 }
 
 /// `GET /api/game-items/{id}`: one mirrored item with its tooltip; 404 when the mirror lacks it.
@@ -61,7 +53,8 @@ async fn icon(state: State, Path(name): Path<String>) -> Result<Response> {
 
 pub fn router() -> Router<State> {
     Router::new()
-        .route("/", get(search))
+        .route("/", get(browse))
+        .route("/slots", get(slots))
         .route("/{id}", get(find))
         .route("/icons/{name}", get(icon))
 }

@@ -181,7 +181,14 @@ export type GameItemSummary = {
 	slot: string;
 	item_subclass: string;
 	icon: string | null;
+	/** The guild's item for it, once won (or added by an officer). */
+	guild_item_id: number | null;
+	/** How many times the guild has won it. */
+	drops: number;
 };
+
+/** A page of the item mirror, from `GET /api/game-items`. */
+export type GameItemPage = { items: GameItemSummary[]; total: number };
 
 /** One display line of the game's tooltip data. */
 type Display = { display_string: string; color?: { r: number; g: number; b: number } };

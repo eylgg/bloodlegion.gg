@@ -154,6 +154,45 @@ fn icon_name(url: &str) -> Option<String> {
     (!name.is_empty()).then(|| name.to_string())
 }
 
+/// Tries per call: the first, then two retries.
+const ATTEMPTS: u32 = 3;
+/// The wait before the first retry, doubling for the next.
+const BACKOFF: std::time::Duration = std::time::Duration::from_millis(750);
+
+/// Runs `call` again when it fails in a way a moment's wait can fix: the API stalls (a timeout,
+/// mid-body too), drops the connection, answers 5xx (it does, briefly, in bursts), or rate limits
+/// (429). Anything else (a 404, a body that is not what was expected) fails at once.
+pub async fn retry<T, F, Fut>(mut call: F) -> anyhow::Result<T>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = anyhow::Result<T>>,
+{
+    let mut attempt = 1;
+    loop {
+        match call().await {
+            Err(error) if attempt < ATTEMPTS && is_transient(&error) => {
+                tokio::time::sleep(BACKOFF * 2u32.pow(attempt - 1)).await;
+                attempt += 1;
+            }
+            result => return result,
+        }
+    }
+}
+
+fn is_transient(error: &anyhow::Error) -> bool {
+    error
+        .chain()
+        .filter_map(|cause| cause.downcast_ref::<reqwest::Error>())
+        .any(|error| {
+            error.is_timeout()
+                || error.is_connect()
+                || error.is_body()
+                || error.status().is_some_and(|status| {
+                    status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+                })
+        })
+}
+
 impl Client {
     fn url(&self, path: &str) -> anyhow::Result<url::Url> {
         let mut url = url::Url::parse(&format!("{API_HOST}{path}")).context("building a URL")?;
@@ -163,6 +202,10 @@ impl Client {
 
     /// One page of items of `quality` (`EPIC`), by id from `from_id`.
     pub async fn search(&self, quality: &str, from_id: i32) -> anyhow::Result<Vec<Summary>> {
+        retry(|| self.search_once(quality, from_id)).await
+    }
+
+    async fn search_once(&self, quality: &str, from_id: i32) -> anyhow::Result<Vec<Summary>> {
         let mut url = self.url("/data/wow/search/item")?;
         url.query_pairs_mut()
             .append_pair("quality.type", quality)
@@ -187,6 +230,14 @@ impl Client {
     /// The item's page, or `None` when it has not changed since `if_modified_since` (a 304) or
     /// the API does not know the id (a 404).
     pub async fn item(
+        &self,
+        id: i32,
+        if_modified_since: Option<&str>,
+    ) -> anyhow::Result<Option<Detail>> {
+        retry(|| self.item_once(id, if_modified_since)).await
+    }
+
+    async fn item_once(
         &self,
         id: i32,
         if_modified_since: Option<&str>,
@@ -218,6 +269,10 @@ impl Client {
 
     /// The item's icon, when it has one.
     pub async fn icon(&self, id: i32) -> anyhow::Result<Option<Icon>> {
+        retry(|| self.icon_once(id)).await
+    }
+
+    async fn icon_once(&self, id: i32) -> anyhow::Result<Option<Icon>> {
         let response = self
             .http
             .get(self.url(&format!("/data/wow/media/item/{id}"))?)
@@ -249,6 +304,10 @@ impl Client {
     /// The icon image's bytes and content type (from Blizzard's render service, which needs no
     /// token).
     pub async fn download(&self, url: &str) -> anyhow::Result<(Vec<u8>, String)> {
+        retry(|| self.download_once(url)).await
+    }
+
+    async fn download_once(&self, url: &str) -> anyhow::Result<(Vec<u8>, String)> {
         let response = self
             .http
             .get(url)
@@ -271,6 +330,46 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn retries_what_waiting_can_fix_and_nothing_else() {
+        // A real reqwest error with a status, from a response built in place.
+        async fn status_error(status: u16) -> anyhow::Error {
+            let response = reqwest::Response::from(
+                axum::http::Response::builder()
+                    .status(status)
+                    .body("")
+                    .unwrap(),
+            );
+            anyhow::Error::new(response.error_for_status().unwrap_err()).context("fetching")
+        }
+        assert!(is_transient(&status_error(500).await));
+        assert!(is_transient(&status_error(429).await));
+        assert!(!is_transient(&status_error(404).await));
+        assert!(!is_transient(&anyhow::anyhow!("not a network error")));
+
+        // Fails twice with a 503, then succeeds: three calls in all.
+        let calls = std::sync::atomic::AtomicU32::new(0);
+        let result = retry(|| async {
+            match calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) {
+                0 | 1 => Err(status_error(503).await),
+                _ => Ok("fetched"),
+            }
+        })
+        .await;
+        assert_eq!(result.unwrap(), "fetched");
+        assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 3);
+
+        // A 404 is not retried.
+        let calls = std::sync::atomic::AtomicU32::new(0);
+        let result: anyhow::Result<()> = retry(|| async {
+            calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Err(status_error(404).await)
+        })
+        .await;
+        assert!(result.is_err());
+        assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
 
     #[test]
     fn reads_icon_names_from_render_urls() {

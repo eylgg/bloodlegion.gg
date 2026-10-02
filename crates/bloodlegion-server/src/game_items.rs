@@ -26,8 +26,9 @@ pub use api::router;
 /// The sign-in provider whose client the API takes.
 pub const PROVIDER: &str = "battlenet";
 
-/// The qualities the listing mirrors: what a raid drops.
-pub const QUALITIES: &[&str] = &["RARE", "EPIC", "LEGENDARY"];
+/// The qualities the listing mirrors, as the API names them: what a raid drops. A full sync drops
+/// any other item from the mirror, unless the guild has won it.
+pub const QUALITIES: &[&str] = &["EPIC", "LEGENDARY"];
 
 /// How long an item's page is trusted before the sync asks again.
 const REFRESH_AFTER: time::Duration = time::Duration::days(7);
@@ -53,6 +54,10 @@ pub struct GameItemSummary {
     pub slot: String,
     pub item_subclass: String,
     pub icon: Option<String>,
+    /// The guild's item for it, once it has been won (or added by an officer).
+    pub guild_item_id: Option<i64>,
+    /// How many times the guild has won it.
+    pub drops: i64,
 }
 
 /// A mirrored item with its tooltip: the API's `preview_item`, display strings and all.
@@ -65,14 +70,45 @@ pub struct GameItem {
     pub detailed_at: Option<OffsetDateTime>,
 }
 
-/// Mirrored items whose name contains `query` (case-insensitively), names that start with it
-/// first, at most `limit`.
-pub async fn search(pool: &PgPool, query: &str, limit: i64) -> sqlx::Result<Vec<GameItemSummary>> {
-    let query = query.trim();
-    if query.is_empty() {
-        return Ok(Vec::new());
-    }
-    db::search(pool, query, limit.clamp(1, 50)).await
+/// The most items one page holds.
+pub const PAGE_LIMIT: i64 = 100;
+
+/// Which mirrored items to list, one page at a time; every filter is optional.
+#[derive(Debug, Default, serde::Deserialize)]
+pub struct Browse {
+    /// Part of the name, case-insensitively; names that start with it come first.
+    #[serde(default)]
+    pub q: String,
+    /// `epic`.
+    #[serde(default)]
+    pub quality: Option<String>,
+    /// The slot as the game names it, `Feet`.
+    #[serde(default)]
+    pub slot: Option<String>,
+    #[serde(default)]
+    pub offset: i64,
+    /// At most [`PAGE_LIMIT`]; 50 when omitted.
+    #[serde(default)]
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct Page {
+    pub items: Vec<GameItemSummary>,
+    /// How many match, over every page.
+    pub total: i64,
+}
+
+/// A page of mirrored items, highest item level first (after names starting with the query).
+pub async fn browse(pool: &PgPool, browse: &Browse) -> sqlx::Result<Page> {
+    let limit = browse.limit.unwrap_or(50).clamp(1, PAGE_LIMIT);
+    let offset = browse.offset.max(0);
+    db::browse(pool, browse, limit, offset).await
+}
+
+/// The slots the mirror's items go in, for the browser's filter.
+pub async fn slots(pool: &PgPool) -> sqlx::Result<Vec<String>> {
+    db::slots(pool).await
 }
 
 pub async fn find(pool: &PgPool, id: i32) -> sqlx::Result<Option<GameItem>> {
@@ -89,6 +125,8 @@ pub async fn icon(pool: &PgPool, name: &str) -> sqlx::Result<Option<(String, Vec
 pub struct Report {
     /// Items the listing returned.
     pub listed: usize,
+    /// Items of other qualities dropped from the mirror (none the guild has won).
+    pub pruned: u64,
     /// Item pages fetched new or changed.
     pub fetched: usize,
     /// Item pages unchanged since the last fetch (a 304).
@@ -128,7 +166,8 @@ pub async fn sync(state: &State, ids: Option<&[i32]>) -> anyhow::Result<Outcome>
 
 async fn run(state: &State, ids: Option<&[i32]>) -> anyhow::Result<Outcome> {
     let slug = crate::Slug::try_from(PROVIDER).context("the provider slug")?;
-    let Some(token) = crate::auth::oauth2::providers::app_access_token(state, &slug).await? else {
+    let token = blizzard::retry(|| crate::auth::oauth2::providers::app_access_token(state, &slug));
+    let Some(token) = token.await? else {
         return Ok(Outcome::NoProvider);
     };
     let client = blizzard::Client {
@@ -143,6 +182,8 @@ async fn run(state: &State, ids: Option<&[i32]>) -> anyhow::Result<Outcome> {
             for quality in QUALITIES {
                 report.listed += list(&state.pool, &client, quality).await?;
             }
+            let kept: Vec<String> = QUALITIES.iter().map(|q| q.to_lowercase()).collect();
+            report.pruned = db::prune(&state.pool, &kept).await?;
             db::stale_ids(&state.pool, OffsetDateTime::now_utc() - REFRESH_AFTER).await?
         }
     };
@@ -167,9 +208,9 @@ async fn run(state: &State, ids: Option<&[i32]>) -> anyhow::Result<Outcome> {
         match result {
             Ok(Refreshed { page, icon }) => {
                 match page {
-                    Page::Fetched => report.fetched += 1,
-                    Page::Unchanged => report.unchanged += 1,
-                    Page::Missing => report.missing += 1,
+                    Fetch::Fetched => report.fetched += 1,
+                    Fetch::Unchanged => report.unchanged += 1,
+                    Fetch::Missing => report.missing += 1,
                 }
                 report.icons += usize::from(icon);
             }
@@ -203,14 +244,14 @@ async fn list(pool: &PgPool, client: &blizzard::Client, quality: &str) -> anyhow
     }
 }
 
-enum Page {
+enum Fetch {
     Fetched,
     Unchanged,
     Missing,
 }
 
 struct Refreshed {
-    page: Page,
+    page: Fetch,
     /// Whether an icon was downloaded.
     icon: bool,
 }
@@ -222,15 +263,15 @@ async fn refresh(pool: &PgPool, client: &blizzard::Client, id: i32) -> anyhow::R
     let page = match client.item(id, since).await? {
         Some(detail) => {
             db::upsert_detail(pool, &detail).await?;
-            Page::Fetched
+            Fetch::Fetched
         }
         None if cached.is_some() => {
             db::touch(pool, id).await?;
-            Page::Unchanged
+            Fetch::Unchanged
         }
         None => {
             return Ok(Refreshed {
-                page: Page::Missing,
+                page: Fetch::Missing,
                 icon: false,
             });
         }
@@ -332,6 +373,21 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(due, vec![16805]);
+        // A page without its icon (a failed download) stays due, so the next sync retries it.
+        db::upsert_detail(
+            &pool,
+            &blizzard::Detail {
+                summary: summary(16805, "Felheart Gloves"),
+                preview: serde_json::json!({}),
+                last_modified: None,
+            },
+        )
+        .await
+        .unwrap();
+        let due = db::stale_ids(&pool, OffsetDateTime::now_utc() - REFRESH_AFTER)
+            .await
+            .unwrap();
+        assert_eq!(due, vec![16805]);
         let cached = db::cached(&pool, 16800).await.unwrap().unwrap();
         assert_eq!(
             cached.last_modified.as_deref(),
@@ -347,23 +403,57 @@ mod tests {
         assert_eq!(item.preview.unwrap()["armor"]["value"], 70);
         assert_eq!(item.summary.icon.as_deref(), Some("inv_boots_07"));
 
-        // Search finds by any part of the name, starts first.
-        let found: Vec<_> = search(&pool, "boots", 10)
+        // A full sync drops qualities it no longer mirrors, except an item the guild has won.
+        let mut rare = summary(18832, "Brutality Blade");
+        rare.quality = "rare".into();
+        db::upsert_summary(&pool, &rare).await.unwrap();
+        let mut won = summary(17063, "Band of Accuria");
+        won.quality = "rare".into();
+        db::upsert_summary(&pool, &won).await.unwrap();
+        sqlx::query!(
+            "INSERT INTO items (name, quality, game_item_id) VALUES ('Band of Accuria', 'rare', 17063)"
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let kept = ["epic".to_string(), "legendary".to_string()];
+        assert_eq!(db::prune(&pool, &kept).await.unwrap(), 1);
+        assert!(find(&pool, 18832).await.unwrap().is_none());
+        assert!(find(&pool, 17063).await.unwrap().is_some());
+        // The boots' icon is still in use, so it stays.
+        assert!(icon(&pool, "inv_boots_07").await.unwrap().is_some());
+        sqlx::query!("DELETE FROM items")
+            .execute(&pool)
             .await
-            .unwrap()
-            .into_iter()
-            .map(|i| i.name)
-            .collect();
-        assert_eq!(found, vec!["Arcanist Boots"]);
-        let found: Vec<_> = search(&pool, "fel", 10)
-            .await
-            .unwrap()
-            .into_iter()
-            .map(|i| i.id)
-            .collect();
-        assert_eq!(found, vec![16805]);
+            .unwrap();
+        db::prune(&pool, &kept).await.unwrap();
+
+        // Browsing finds by any part of the name; unfiltered, it pages through everything.
+        let names = |page: Page| page.items.into_iter().map(|i| i.name).collect::<Vec<_>>();
+        let by = |q: &str| Browse {
+            q: q.into(),
+            ..Browse::default()
+        };
+        assert_eq!(
+            names(browse(&pool, &by("boots")).await.unwrap()),
+            ["Arcanist Boots"]
+        );
+        assert_eq!(
+            names(browse(&pool, &by("fel")).await.unwrap()),
+            ["Felheart Gloves"]
+        );
         // Wildcards in the query are literal.
-        assert!(search(&pool, "%", 10).await.unwrap().is_empty());
+        assert_eq!(browse(&pool, &by("%")).await.unwrap().total, 0);
+        let page = |offset| Browse {
+            limit: Some(1),
+            offset,
+            ..Browse::default()
+        };
+        let first = browse(&pool, &page(0)).await.unwrap();
+        assert_eq!((first.items.len(), first.total), (1, 2));
+        let second = browse(&pool, &page(1)).await.unwrap();
+        assert_ne!(first.items[0].id, second.items[0].id);
+        assert_eq!(slots(&pool).await.unwrap(), ["Feet"]);
         assert_eq!(
             icon(&pool, "inv_boots_07").await.unwrap().unwrap().0,
             "image/jpeg"
