@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT i.id AS item_id, i.name AS item_name, i.quality AS item_quality, i.game_item_id,\n               count(*) AS \"count!\"\n        FROM loot l\n        JOIN items i ON i.id = l.item_id\n        WHERE l.boss_id = $1\n        GROUP BY i.id\n        ORDER BY count(*) DESC, i.name_normalized\n        ",
+  "query": "\n        SELECT i.id, i.name, i.quality, i.game_item_id, g.icon AS \"icon?\",\n               (SELECT count(*) FROM loot l WHERE l.item_id = i.id) AS \"drops!\"\n        FROM items i\n        LEFT JOIN game_items g ON g.id = i.game_item_id\n        ORDER BY i.name_normalized\n        ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "item_id",
+        "name": "id",
         "type_info": "Int8",
         "origin": {
           "Table": {
@@ -16,7 +16,7 @@
       },
       {
         "ordinal": 1,
-        "name": "item_name",
+        "name": "name",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -27,7 +27,7 @@
       },
       {
         "ordinal": 2,
-        "name": "item_quality",
+        "name": "quality",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -49,23 +49,33 @@
       },
       {
         "ordinal": 4,
-        "name": "count!",
+        "name": "icon?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "icon"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "drops!",
         "type_info": "Int8",
         "origin": "Expression"
       }
     ],
     "parameters": {
-      "Left": [
-        "Int8"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
       false,
       false,
       true,
+      true,
       null
     ]
   },
-  "hash": "aa28edfceeb2bdc5eddd7e399d64bf9d911494a60058f486e60ab3019a7bfe8c"
+  "hash": "e2ff3214f9cc1a20a889f400c1feb6b85e91fe425c2f27ae975723e6fdd199b8"
 }

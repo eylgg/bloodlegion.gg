@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT l.id, l.raid_id, r.zone, r.title AS raid_title, r.starts_at AS raid_starts_at,\n               l.boss_id, b.name AS \"boss_name?\", l.item_id, i.name AS item_name,\n               i.quality AS item_quality, i.game_item_id, l.character_id,\n               c.first_name AS \"first_name?\", c.last_name AS \"last_name?\", c.class AS \"class?\"\n        FROM loot l\n        JOIN raids r ON r.id = l.raid_id\n        JOIN items i ON i.id = l.item_id\n        LEFT JOIN bosses b ON b.id = l.boss_id\n        LEFT JOIN characters c ON c.id = l.character_id\n        WHERE l.id = $1\n        ",
+  "query": "\n        SELECT l.id AS \"id!\", l.raid_id AS \"raid_id!\", r.zone AS \"zone!\", r.title AS raid_title,\n               r.starts_local AS \"raid_starts_local!\", r.time_zone AS \"raid_time_zone!\",\n               r.starts_at AS \"raid_starts_at!\", l.boss_id, b.name AS \"boss_name?\",\n               l.item_id AS \"item_id!\", i.name AS \"item_name!\", i.quality AS \"item_quality!\",\n               i.game_item_id, g.icon AS \"item_icon?\", l.character_id,\n               c.first_name AS \"first_name?\", c.last_name AS \"last_name?\", c.class AS \"class?\"\n        FROM loot l\n        JOIN raids r ON r.id = l.raid_id\n        JOIN items i ON i.id = l.item_id\n        LEFT JOIN bosses b ON b.id = l.boss_id\n        LEFT JOIN game_items g ON g.id = i.game_item_id\n        LEFT JOIN characters c ON c.id = l.character_id\n        WHERE ($1::bigint IS NULL OR l.raid_id = $1)\n            AND ($2::bigint IS NULL OR l.boss_id = $2)\n            AND ($3::bigint IS NULL OR l.item_id = $3)\n            AND ($4::bigint IS NULL OR l.character_id = $4)\n            AND ($5::text IS NULL OR r.zone = $5)\n            AND ($6::text IS NULL OR c.class = $6)\n            AND ($7::text IS NULL OR i.quality = $7)\n            AND ($8::timestamptz IS NULL OR r.starts_at >= $8)\n            AND ($9::timestamptz IS NULL OR r.starts_at < $9)\n        ORDER BY r.starts_at DESC, l.id DESC\n        LIMIT $10\n        ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
+        "name": "id!",
         "type_info": "Int8",
         "origin": {
           "Table": {
@@ -16,7 +16,7 @@
       },
       {
         "ordinal": 1,
-        "name": "raid_id",
+        "name": "raid_id!",
         "type_info": "Int8",
         "origin": {
           "Table": {
@@ -27,7 +27,7 @@
       },
       {
         "ordinal": 2,
-        "name": "zone",
+        "name": "zone!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -49,7 +49,29 @@
       },
       {
         "ordinal": 4,
-        "name": "raid_starts_at",
+        "name": "raid_starts_local!",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "raids",
+            "name": "starts_local"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "raid_time_zone!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "raids",
+            "name": "time_zone"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "raid_starts_at!",
         "type_info": "Timestamptz",
         "origin": {
           "Table": {
@@ -59,7 +81,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 7,
         "name": "boss_id",
         "type_info": "Int8",
         "origin": {
@@ -70,7 +92,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 8,
         "name": "boss_name?",
         "type_info": "Text",
         "origin": {
@@ -81,8 +103,8 @@
         }
       },
       {
-        "ordinal": 7,
-        "name": "item_id",
+        "ordinal": 9,
+        "name": "item_id!",
         "type_info": "Int8",
         "origin": {
           "Table": {
@@ -92,8 +114,8 @@
         }
       },
       {
-        "ordinal": 8,
-        "name": "item_name",
+        "ordinal": 10,
+        "name": "item_name!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -103,8 +125,8 @@
         }
       },
       {
-        "ordinal": 9,
-        "name": "item_quality",
+        "ordinal": 11,
+        "name": "item_quality!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -114,7 +136,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "game_item_id",
         "type_info": "Int4",
         "origin": {
@@ -125,7 +147,18 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
+        "name": "item_icon?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "icon"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
         "name": "character_id",
         "type_info": "Int8",
         "origin": {
@@ -136,7 +169,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 15,
         "name": "first_name?",
         "type_info": "Text",
         "origin": {
@@ -147,7 +180,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 16,
         "name": "last_name?",
         "type_info": "Text",
         "origin": {
@@ -158,7 +191,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 17,
         "name": "class?",
         "type_info": "Text",
         "origin": {
@@ -171,6 +204,15 @@
     ],
     "parameters": {
       "Left": [
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
         "Int8"
       ]
     },
@@ -180,17 +222,20 @@
       false,
       true,
       false,
-      true,
+      false,
+      false,
       true,
       false,
       false,
       false,
+      false,
       true,
       true,
       true,
-      true,
-      true
+      false,
+      false,
+      false
     ]
   },
-  "hash": "804831ca778560f7a31ad88ec9a6bfc57e543cf43f2cc9d35e569e9a7a61ee90"
+  "hash": "900e1a8c65e75866f15488ae595d66efa7b8a6a20195efbddfb4fca552c0d686"
 }

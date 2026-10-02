@@ -12,12 +12,17 @@ use crate::{Result, State};
 
 use super::{
     Attendee, Boss, BossDetail, BossInput, Item, ItemDetail, ItemInput, LootEntry, LootFilter,
-    LootInput, LootUpdate, Raid, RaidDetail, RaidError, RaidInput, catalog,
+    LootInput, LootUpdate, Raid, RaidDetail, RaidError, RaidInput, calendar, catalog,
 };
 
 /// `GET /api/raids/zones`: the raid zones and their sizes. Public, like the class catalog.
 async fn zones() -> Json<&'static [catalog::Zone]> {
     Json(catalog::ZONES)
+}
+
+/// `GET /api/raids/calendar`: when the raids open, the weekly reset, and the weeks so far. Public.
+async fn calendar() -> Json<calendar::Calendar> {
+    Json(calendar::calendar(time::OffsetDateTime::now_utc()))
 }
 
 /* --- raids --- */
@@ -236,6 +241,7 @@ pub fn router() -> Router<State> {
     Router::new()
         .route("/raids", get(list_raids).post(create_raid))
         .route("/raids/zones", get(zones))
+        .route("/raids/calendar", get(calendar))
         .route(
             "/raids/{id}",
             get(raid_detail).put(update_raid).delete(delete_raid),

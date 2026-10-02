@@ -108,6 +108,29 @@ pub async fn exchange_code(
         .await
 }
 
+/// The client credentials grant (RFC 6749 section 4.4): a token for the provider's own APIs, as
+/// this site rather than any person. The client authenticates with HTTP Basic, which every
+/// provider must accept.
+pub async fn client_credentials(
+    http: &reqwest::Client,
+    token_endpoint: &str,
+    client_id: &str,
+    client_secret: &str,
+) -> reqwest::Result<Tokens> {
+    http.post(token_endpoint)
+        .basic_auth(client_id, Some(client_secret))
+        .header(
+            reqwest::header::CONTENT_TYPE,
+            "application/x-www-form-urlencoded",
+        )
+        .body("grant_type=client_credentials")
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await
+}
+
 /// Fetches the userinfo document for a plain OAuth2 provider (no id_token), using
 /// the access token as a bearer credential. Returns the raw JSON.
 pub async fn fetch_userinfo(

@@ -1,6 +1,6 @@
 use sqlx::{PgConnection, PgPool};
 
-use super::Rank;
+use super::{Rank, Settings};
 use crate::users::UserId;
 
 pub struct MemberRow {
@@ -42,4 +42,40 @@ pub async fn set_rank(conn: &mut PgConnection, user_id: UserId, rank: Rank) -> s
     .execute(&mut *conn)
     .await?;
     Ok(())
+}
+
+pub async fn settings(pool: &PgPool) -> sqlx::Result<Settings> {
+    sqlx::query_as!(
+        Settings,
+        "SELECT time_zone, default_raid_time FROM guild_settings"
+    )
+    .fetch_one(pool)
+    .await
+}
+
+pub async fn is_known_time_zone(pool: &PgPool, name: &str) -> sqlx::Result<bool> {
+    sqlx::query_scalar!(
+        r#"SELECT EXISTS (SELECT 1 FROM pg_timezone_names WHERE name = $1) AS "exists!""#,
+        name,
+    )
+    .fetch_one(pool)
+    .await
+}
+
+pub async fn set_settings(
+    pool: &PgPool,
+    time_zone: &str,
+    default_raid_time: time::Time,
+) -> sqlx::Result<Settings> {
+    sqlx::query_as!(
+        Settings,
+        r#"
+        UPDATE guild_settings SET time_zone = $1, default_raid_time = $2
+        RETURNING time_zone, default_raid_time
+        "#,
+        time_zone,
+        default_raid_time,
+    )
+    .fetch_one(pool)
+    .await
 }

@@ -68,7 +68,13 @@
 	<ul class="items">
 		{#each shown as item (item.id)}
 			<li>
-				<ItemLink id={item.id} name={item.name} quality={item.quality} />
+				<ItemLink
+					id={item.id}
+					name={item.name}
+					quality={item.quality}
+					icon={item.icon}
+					gameItemId={item.game_item_id}
+				/>
 				<span class="muted">{item.drops}×</span>
 			</li>
 		{/each}

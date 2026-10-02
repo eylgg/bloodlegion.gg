@@ -34,7 +34,13 @@
 		<ul class="drops">
 			{#each detail.drops as drop (drop.item_id)}
 				<li>
-					<ItemLink id={drop.item_id} name={drop.item_name} quality={drop.item_quality} />
+					<ItemLink
+						id={drop.item_id}
+						name={drop.item_name}
+						quality={drop.item_quality}
+						icon={drop.item_icon}
+						gameItemId={drop.game_item_id}
+					/>
 					<span class="bar" style:--share={drop.count / Math.max(detail.kills, 1)}></span>
 					<span class="rate">{percent(drop.count)}</span>
 					<span class="muted">{drop.count}×</span>

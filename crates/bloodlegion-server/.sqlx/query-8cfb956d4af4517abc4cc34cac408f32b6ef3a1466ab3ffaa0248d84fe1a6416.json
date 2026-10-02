@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT r.id, r.zone, r.title, r.starts_at,\n               (SELECT count(*) FROM raid_attendees a WHERE a.raid_id = r.id) AS \"attendee_count!\",\n               (SELECT count(*) FROM loot l WHERE l.raid_id = r.id) AS \"loot_count!\"\n        FROM raids r\n        ORDER BY r.starts_at DESC, r.id DESC\n        ",
+  "query": "\n        SELECT r.id, r.zone, r.title, r.starts_local, r.time_zone, r.starts_at,\n               (SELECT count(*) FROM raid_attendees a WHERE a.raid_id = r.id) AS \"attendee_count!\",\n               (SELECT count(*) FROM loot l WHERE l.raid_id = r.id) AS \"loot_count!\"\n        FROM raids r\n        ORDER BY r.starts_at DESC, r.id DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -38,6 +38,28 @@
       },
       {
         "ordinal": 3,
+        "name": "starts_local",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "raids",
+            "name": "starts_local"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "time_zone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "raids",
+            "name": "time_zone"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
         "name": "starts_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -48,13 +70,13 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 6,
         "name": "attendee_count!",
         "type_info": "Int8",
         "origin": "Expression"
       },
       {
-        "ordinal": 5,
+        "ordinal": 7,
         "name": "loot_count!",
         "type_info": "Int8",
         "origin": "Expression"
@@ -68,9 +90,11 @@
       false,
       true,
       false,
+      false,
+      false,
       null,
       null
     ]
   },
-  "hash": "96a4b4f7391f256b65ea4d60ddf361f0babdaedfd71ae29485a853060e6cf1c5"
+  "hash": "8cfb956d4af4517abc4cc34cac408f32b6ef3a1466ab3ffaa0248d84fe1a6416"
 }

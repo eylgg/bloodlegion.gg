@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { api, errorMessage } from '$lib/api';
-	import { fromLocalInput, toLocalInput } from '$lib/guild';
+	import { todayAt, zoneCity } from '$lib/guild';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
-	import type { Raid, Zone } from '$lib/types';
+	import type { GuildSettings, Raid, Zone } from '$lib/types';
 
 	/** Schedules a raid, or edits one: its zone, an optional title, and when it starts. */
 	let {
@@ -14,20 +14,19 @@
 	}: { raid?: Raid | null; onsaved: (raid: Raid) => void; oncancel: () => void } = $props();
 
 	const zones = $derived((page.data.zones as Zone[] | undefined) ?? []);
-
-	// A new raid defaults to tonight at eight, local time.
-	function tonight(): string {
-		const now = new Date();
-		const eight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20);
-		return toLocalInput(eight.toISOString());
-	}
+	const settings = $derived(page.data.settings as GuildSettings);
+	// The start is entered on the raid's own clock: a new raid is in the guild's zone, an existing
+	// one keeps the zone it was scheduled in.
+	const timeZone = $derived(raid?.time_zone ?? settings.time_zone);
 
 	// svelte-ignore state_referenced_locally
 	let zone = $state(raid?.zone ?? '');
 	// svelte-ignore state_referenced_locally
 	let title = $state(raid?.title ?? '');
 	// svelte-ignore state_referenced_locally
-	let startsAt = $state(raid ? toLocalInput(raid.starts_at) : tonight());
+	let startsLocal = $state(
+		raid?.starts_local ?? todayAt(settings.default_raid_time, settings.time_zone)
+	);
 	let saving = $state(false);
 	let error = $state('');
 
@@ -39,7 +38,7 @@
 		}
 		saving = true;
 		error = '';
-		const body = { zone, title: title.trim() || null, starts_at: fromLocalInput(startsAt) };
+		const body = { zone, title: title.trim() || null, starts_local: startsLocal };
 		try {
 			onsaved(
 				raid
@@ -68,8 +67,8 @@
 			</select>
 		</label>
 		<label class="field">
-			Starts
-			<input type="datetime-local" bind:value={startsAt} required />
+			Starts ({zoneCity(timeZone)} time)
+			<input type="datetime-local" bind:value={startsLocal} required />
 		</label>
 		<label class="field">
 			Title (optional)

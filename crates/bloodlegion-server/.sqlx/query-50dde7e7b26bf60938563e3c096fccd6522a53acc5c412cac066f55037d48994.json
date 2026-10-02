@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO game_items\n            (id, name, quality, item_level, required_level, inventory_type, slot, item_class,\n             item_subclass, is_equippable, preview, last_modified, detailed_at)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now())\n        ON CONFLICT (id) DO UPDATE SET\n            name = EXCLUDED.name,\n            quality = EXCLUDED.quality,\n            item_level = EXCLUDED.item_level,\n            required_level = EXCLUDED.required_level,\n            inventory_type = EXCLUDED.inventory_type,\n            slot = EXCLUDED.slot,\n            item_class = EXCLUDED.item_class,\n            item_subclass = EXCLUDED.item_subclass,\n            is_equippable = EXCLUDED.is_equippable,\n            preview = EXCLUDED.preview,\n            last_modified = EXCLUDED.last_modified,\n            detailed_at = now()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "50dde7e7b26bf60938563e3c096fccd6522a53acc5c412cac066f55037d48994"
+}

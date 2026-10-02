@@ -7,8 +7,10 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
     sqlx::query_as!(
         Character,
         r#"
-        SELECT c.id, c.user_id AS "user_id: UserId", u.username AS "username?", c.first_name,
-               c.last_name, c.class, c.is_main, c.created_at, c.updated_at
+        SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
+               c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
+               c.is_main AS "is_main!", c.created_at AS "created_at!",
+               c.updated_at AS "updated_at!"
         FROM characters c
         LEFT JOIN users u ON u.id = c.user_id
         ORDER BY c.name_normalized
@@ -22,8 +24,10 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
     sqlx::query_as!(
         Character,
         r#"
-        SELECT c.id, c.user_id AS "user_id: UserId", u.username AS "username?", c.first_name,
-               c.last_name, c.class, c.is_main, c.created_at, c.updated_at
+        SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
+               c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
+               c.is_main AS "is_main!", c.created_at AS "created_at!",
+               c.updated_at AS "updated_at!"
         FROM characters c
         LEFT JOIN users u ON u.id = c.user_id
         WHERE c.id = $1

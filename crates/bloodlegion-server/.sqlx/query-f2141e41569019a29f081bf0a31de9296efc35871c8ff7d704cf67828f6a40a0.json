@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT r.id, r.zone, r.title, r.starts_at,\n               (SELECT count(*) FROM raid_attendees a WHERE a.raid_id = r.id) AS \"attendee_count!\",\n               (SELECT count(*) FROM loot l WHERE l.raid_id = r.id) AS \"loot_count!\"\n        FROM raids r\n        WHERE r.id = $1\n        ",
+  "query": "\n        SELECT r.id, r.zone, r.title, r.starts_local, r.time_zone, r.starts_at,\n               (SELECT count(*) FROM raid_attendees a WHERE a.raid_id = r.id) AS \"attendee_count!\",\n               (SELECT count(*) FROM loot l WHERE l.raid_id = r.id) AS \"loot_count!\"\n        FROM raids r\n        WHERE r.id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -38,6 +38,28 @@
       },
       {
         "ordinal": 3,
+        "name": "starts_local",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "raids",
+            "name": "starts_local"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "time_zone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "raids",
+            "name": "time_zone"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
         "name": "starts_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -48,13 +70,13 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 6,
         "name": "attendee_count!",
         "type_info": "Int8",
         "origin": "Expression"
       },
       {
-        "ordinal": 5,
+        "ordinal": 7,
         "name": "loot_count!",
         "type_info": "Int8",
         "origin": "Expression"
@@ -70,9 +92,11 @@
       false,
       true,
       false,
+      false,
+      false,
       null,
       null
     ]
   },
-  "hash": "5eb7c500a4dcb4f48d02b6e230e9be3352c6164bd6090bbb433a63c6d21124a3"
+  "hash": "f2141e41569019a29f081bf0a31de9296efc35871c8ff7d704cf67828f6a40a0"
 }

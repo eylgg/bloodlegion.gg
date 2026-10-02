@@ -246,6 +246,40 @@ pub(crate) async fn tokens_for_user(
         .collect()
 }
 
+/// An access token for the provider's own APIs as this site, not as any person (the client
+/// credentials grant), with the client registered for sign-in: Battle.net's Game Data API takes
+/// one. `None` when no provider has the slug.
+pub(crate) async fn app_access_token(
+    state: &State,
+    slug: &crate::Slug,
+) -> anyhow::Result<Option<String>> {
+    let Some(provider) = db::find_provider_by_slug(&state.pool, slug)
+        .await
+        .context("looking up the provider")?
+    else {
+        return Ok(None);
+    };
+    let metadata = resolve_metadata(state, &provider)
+        .await
+        .map_err(|error| match error {
+            crate::Error::External(problem) => anyhow::anyhow!("{problem}"),
+            crate::Error::Internal(error) => error,
+        })
+        .context("resolving the provider's endpoints")?;
+    let client_secret = state
+        .decrypt(&provider.client_secret)
+        .context("decrypting the client secret")?;
+    let tokens = http::client_credentials(
+        &state.http_client,
+        &metadata.token_endpoint,
+        &provider.client_id,
+        &client_secret,
+    )
+    .await
+    .context("requesting a client credentials token")?;
+    Ok(Some(tokens.access_token))
+}
+
 /// OAuth2 providers offered on the login page.
 pub async fn list_login_providers(
     pool: &PgPool,

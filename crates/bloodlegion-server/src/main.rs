@@ -7,8 +7,10 @@ mod crypto;
 mod error;
 mod extract;
 mod fallbacks;
+mod game_items;
 mod guild;
 mod launch;
+mod local_time;
 mod newtype;
 mod observability;
 mod problem;
@@ -76,6 +78,11 @@ enum Command {
     },
     /// Every member's WoW: Forever launch sign-ups.
     Launch,
+    /// The mirror of the game's item database.
+    Items {
+        #[command(subcommand)]
+        command: ItemsCommand,
+    },
     /// Manage the OAuth2 / OpenID Connect login sources, such as Battle.net.
     Oauth2Providers {
         #[command(subcommand)]
@@ -122,6 +129,18 @@ enum UsersCommand {
         namespace: Option<String>,
         #[arg(long, default_value = "en_US")]
         locale: String,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum ItemsCommand {
+    /// Sync the mirror from Battle.net's Game Data API now, with the `battlenet` provider's client
+    /// (the server also syncs daily): list every rare, epic, and legendary item, then fetch the
+    /// pages and icons that are missing or stale.
+    Sync {
+        /// Fetch only these item ids (repeatable), listed or not.
+        #[arg(long = "id")]
+        ids: Vec<i32>,
     },
 }
 
@@ -273,6 +292,7 @@ async fn serve() -> Result<()> {
         }
     });
     cleaner::spawn(state.pool.clone());
+    game_items::spawn(state.clone());
 
     let router = router(state);
     let app = router.layer(ServiceBuilder::new().layer(TraceLayer::new_for_http().on_request(())));
@@ -323,6 +343,9 @@ fn main() -> Result<()> {
             } => cli::users_characters(username, provider, region, namespace, locale),
         },
         Some(Command::Launch) => cli::launch(),
+        Some(Command::Items { command }) => match command {
+            ItemsCommand::Sync { ids } => cli::items_sync(ids),
+        },
         Some(Command::Passwords { command }) => match command {
             PasswordsCommand::Status => cli::passwords_status(),
             PasswordsCommand::Enable => cli::passwords_set_enabled(true),

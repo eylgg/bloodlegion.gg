@@ -2,13 +2,14 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { api, errorMessage } from '$lib/api';
-	import { QUALITIES, QUALITY_LABEL, formatDateTime, fullName, zoneName } from '$lib/guild';
+	import { QUALITIES, QUALITY_LABEL, formatInZone, fullName, zoneName } from '$lib/guild';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import LootTable from '$lib/components/guild/LootTable.svelte';
+	import GameItemPicker from '$lib/components/guild/GameItemPicker.svelte';
 	import RaidForm from '../RaidForm.svelte';
-	import type { Attendee, LootEntry, Quality, Raid } from '$lib/types';
+	import type { Attendee, GameItemSummary, LootEntry, Quality, Raid } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -101,12 +102,16 @@
 	// svelte-ignore state_referenced_locally
 	let bossId = $state(String(zoneBosses[0]?.id ?? ''));
 	let itemName = $state('');
+	// The item mirror's item, when one was picked from the suggestions.
+	let gameItem = $state<GameItemSummary | null>(null);
 	let quality = $state<Quality>('epic');
 	let gameItemId = $state('');
 	let winner = $state('');
 	let recording = $state(false);
 
-	// A typed name that matches a known item reuses it; anything else creates a new one.
+	// A picked mirror item is used as is. A typed name that matches one of the guild's items
+	// reuses it; the server also matches it against the mirror. Only a name neither knows needs a
+	// quality.
 	const knownItem = $derived(
 		data.items.find((i) => i.name.toLowerCase() === itemName.trim().toLowerCase())
 	);
@@ -128,17 +133,20 @@
 			await api.post<LootEntry>(`/api/raids/${raid.id}/loot`, {
 				boss_id: bossId ? Number(bossId) : null,
 				character_id: winner ? Number(winner) : null,
-				...(knownItem
-					? { item_id: knownItem.id }
-					: {
-							item_name: itemName.trim(),
-							item_quality: quality,
-							game_item_id: gameItemId ? Number(gameItemId) : null
-						})
+				...(gameItem
+					? { game_item_id: gameItem.id }
+					: knownItem
+						? { item_id: knownItem.id }
+						: {
+								item_name: itemName.trim(),
+								item_quality: quality,
+								game_item_id: gameItemId ? Number(gameItemId) : null
+							})
 			});
 			// Refetched rather than patched: the loot keeps the server's order, and a new item joins
 			// the picker.
 			itemName = '';
+			gameItem = null;
 			gameItemId = '';
 			winner = '';
 			await invalidateAll();
@@ -168,7 +176,9 @@
 
 <div class="page-head">
 	<div>
-		<p class="kicker">{formatDateTime(raid.starts_at)}</p>
+		<p class="kicker">
+			{raid.week ? `Week ${raid.week.number} · ` : ''}{formatInZone(raid.starts_at, raid.time_zone)}
+		</p>
 		<h1>{zoneName(data.zones, raid.zone)}{raid.title ? ` · ${raid.title}` : ''}</h1>
 		<p class="muted">
 			{attendees.length}/{size} characters · {loot.length}
@@ -314,12 +324,7 @@
 				</label>
 				<label class="field">
 					Item
-					<input type="text" list="known-items" bind:value={itemName} maxlength="128" required />
-					<datalist id="known-items">
-						{#each data.items as item (item.id)}
-							<option value={item.name}></option>
-						{/each}
-					</datalist>
+					<GameItemPicker bind:name={itemName} bind:selected={gameItem} />
 				</label>
 				<label class="field">
 					Won by
@@ -338,7 +343,7 @@
 					</select>
 				</label>
 			</div>
-			{#if itemName.trim() && !knownItem}
+			{#if itemName.trim() && !gameItem && !knownItem}
 				<div class="row">
 					<label class="field">
 						Quality (a new item)

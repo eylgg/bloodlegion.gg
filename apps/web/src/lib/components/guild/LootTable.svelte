@@ -4,7 +4,7 @@
 	import CharacterLink from './CharacterLink.svelte';
 	import ItemLink from './ItemLink.svelte';
 	import Button from '$lib/components/Button.svelte';
-	import { formatDate, zoneName } from '$lib/guild';
+	import { formatDateInZone, zoneName } from '$lib/guild';
 	import type { LootEntry, Zone } from '$lib/types';
 
 	// Which columns to show: a raid's own page needs no raid column, a character's no winner.
@@ -50,7 +50,11 @@
 								<a href={resolve('/(guild)/raids/[id]', { id: String(entry.raid_id) })}>
 									{zoneName(zones, entry.zone)}{entry.raid_title ? ` · ${entry.raid_title}` : ''}
 								</a>
-								<span class="date">{formatDate(entry.raid_starts_at)}</span>
+								<span class="date">
+									{formatDateInZone(entry.raid_starts_at, entry.raid_time_zone)}{entry.raid_week
+										? ` · Week ${entry.raid_week}`
+										: ''}
+								</span>
 							</td>
 						{/if}
 						{#if boss}
@@ -69,6 +73,8 @@
 								id={entry.item_id}
 								name={entry.item_name}
 								quality={entry.item_quality}
+								icon={entry.item_icon}
+								gameItemId={entry.game_item_id}
 							/></td
 						>
 						{#if winner}

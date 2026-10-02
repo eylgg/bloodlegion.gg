@@ -78,15 +78,51 @@ const dateTimeFormat = new Intl.DateTimeFormat(undefined, {
 export const formatDate = (iso: string) => dateFormat.format(new Date(iso));
 export const formatDateTime = (iso: string) => dateTimeFormat.format(new Date(iso));
 
-/** An instant as a `datetime-local` input wants it: the reader's local time, to the minute. */
-export function toLocalInput(iso: string): string {
-	const date = new Date(iso);
-	const pad = (n: number) => String(n).padStart(2, '0');
-	return (
-		`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
-		`T${pad(date.getHours())}:${pad(date.getMinutes())}`
-	);
+/**
+ * Today in `timeZone`, at `clock` (`20:00`), as a `datetime-local` value: the default start for a
+ * new raid, on the guild's clock rather than the reader's.
+ */
+export function todayAt(clock: string, timeZone: string): string {
+	const day = new Intl.DateTimeFormat('en-CA', {
+		timeZone,
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit'
+	}).format(new Date());
+	return `${day}T${clock}`;
 }
 
-/** A `datetime-local` value (the reader's local time) as the instant the API takes. */
-export const fromLocalInput = (value: string) => new Date(value).toISOString();
+/** A zone's city, for prose: `America/New_York` is `New York`. */
+export const zoneCity = (timeZone: string) =>
+	timeZone.split('/').pop()?.replace(/_/g, ' ') ?? timeZone;
+
+/** A day as a clock in `timeZone` reads it. */
+export function formatDateInZone(iso: string, timeZone: string): string {
+	return new Intl.DateTimeFormat(undefined, {
+		weekday: 'short',
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+		timeZone
+	}).format(new Date(iso));
+}
+
+/** An instant as a clock in `timeZone` reads it, with the zone's abbreviation (`6:00 PM EST`). */
+export function formatInZone(iso: string, timeZone: string): string {
+	return new Intl.DateTimeFormat(undefined, {
+		weekday: 'short',
+		month: 'short',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: '2-digit',
+		timeZone,
+		timeZoneName: 'short'
+	}).format(new Date(iso));
+}
+
+const spanFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+
+/** A raiding week's days, `Dec 15 – Dec 22`, in the reader's zone. */
+export function formatWeekSpan(week: { starts_at: string; ends_at: string }): string {
+	return spanFormat.formatRange(new Date(week.starts_at), new Date(week.ends_at));
+}

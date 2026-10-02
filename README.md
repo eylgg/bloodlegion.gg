@@ -128,6 +128,7 @@ bloodlegion-server users demote <username>
 bloodlegion-server users rename <username> <new username>
 bloodlegion-server users rank <username> <rank>  # leader, officer, raider, trial, member, friend, retired
 bloodlegion-server users characters <username>   # the WoW characters on each linked Battle.net account
+bloodlegion-server items sync [--id <item id>]... # sync the item mirror now (the server syncs daily)
 bloodlegion-server launch                # every member's WoW: Forever launch sign-ups
 bloodlegion-server users disable <username>     # suspend: sessions stop, login refused
 bloodlegion-server users enable <username>
@@ -166,10 +167,32 @@ the changes.
 - **Raids** are one night in a zone, with the characters who came and the loot they won. The zones
   and their sizes are the app's catalog (`raids::catalog`, mirrored by the database's
   `raid_zone_size()`, which caps attendance): Barrow Deeps (10), Hyjal Summit (20), and Onyxia's
-  Lair (40).
+  Lair (40). A raid's start is stored as local time (`starts_local`, the guild's clock: 8 PM) with
+  its time zone; the database derives the instant (`starts_at`). A raid keeps the zone it was
+  scheduled in.
+- **Settings** (`/settings`, superusers): the guild's time zone (default `America/New_York`) and
+  the time raids usually start (default 20:00), which a new raid is scheduled in and defaults to.
+- **Weeks** number the lockouts (`raids::calendar`). The raids open December 9, 2026 at 6 PM New
+  York time, kept as that wall-clock time and zone (the timezone database is bundled into the
+  binary). Lockouts reset every Tuesday at 15:00 UTC, so in local time the reset moves by an hour
+  with daylight saving. Week 1 runs from the release to the first reset (December 15); each reset
+  starts the next. A raid's week is derived from its start, never stored, so moving the release
+  renumbers everything.
 - **Bosses and items** are entered as the guild meets them, since Forever's raids are new. Only
   Onyxia is seeded. Recording loot by item name creates the item on first sight. A boss's page shows
   how often each item dropped.
+- **The item database** is a local mirror of the game's (`game_items`), with tooltips and icons
+  served from it: no third-party tooltip script. It syncs from Battle.net's Game Data API with the
+  `battlenet` provider's client (a client credentials token; no extra configuration), daily and on
+  demand. Until the API serves WoW: Forever it mirrors Classic Era (`static-classic1x-us`), listing
+  every rare, epic, and legendary item and fetching each one's tooltip and icon; a refresh asks with
+  `If-Modified-Since`, so unchanged items cost little. Recording loot searches it; a guild item
+  picked from it is linked by the game's item id.
+
+  ```sh
+  bloodlegion-server items sync               # everything (the first run fetches thousands of items)
+  bloodlegion-server items sync --id 16800    # just these, listed or not
+  ```
 - **Questions**: officers ask yes-or-no questions; members answer and may change their minds.
 
 ## Images

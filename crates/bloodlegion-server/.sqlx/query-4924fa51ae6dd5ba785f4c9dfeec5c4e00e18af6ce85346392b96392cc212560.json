@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id, c.user_id AS \"user_id: UserId\", u.username AS \"username?\", c.first_name,\n               c.last_name, c.class, c.is_main, c.created_at, c.updated_at\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        ORDER BY c.name_normalized\n        ",
+  "query": "\n        SELECT c.id AS \"character_id!\", c.user_id AS \"user_id: UserId\",\n               u.username AS \"username?\", c.first_name AS \"first_name!\",\n               c.last_name AS \"last_name!\", c.class AS \"class!\", c.is_main AS \"is_main!\"\n        FROM raid_attendees a\n        JOIN characters c ON c.id = a.character_id\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE a.raid_id = $1\n        ORDER BY c.class, c.name_normalized\n        ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
+        "name": "character_id!",
         "type_info": "Int8",
         "origin": {
           "Table": {
@@ -38,7 +38,7 @@
       },
       {
         "ordinal": 3,
-        "name": "first_name",
+        "name": "first_name!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -49,7 +49,7 @@
       },
       {
         "ordinal": 4,
-        "name": "last_name",
+        "name": "last_name!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -60,7 +60,7 @@
       },
       {
         "ordinal": 5,
-        "name": "class",
+        "name": "class!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -71,7 +71,7 @@
       },
       {
         "ordinal": 6,
-        "name": "is_main",
+        "name": "is_main!",
         "type_info": "Bool",
         "origin": {
           "Table": {
@@ -79,32 +79,12 @@
             "name": "is_main"
           }
         }
-      },
-      {
-        "ordinal": 7,
-        "name": "created_at",
-        "type_info": "Timestamptz",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "created_at"
-          }
-        }
-      },
-      {
-        "ordinal": 8,
-        "name": "updated_at",
-        "type_info": "Timestamptz",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "updated_at"
-          }
-        }
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Int8"
+      ]
     },
     "nullable": [
       false,
@@ -113,10 +93,8 @@
       false,
       false,
       false,
-      false,
-      false,
       false
     ]
   },
-  "hash": "d5a91ebb419df28e6b5fdf603043c0782a4ec59404c6dd8594564546da07f39b"
+  "hash": "4924fa51ae6dd5ba785f4c9dfeec5c4e00e18af6ce85346392b96392cc212560"
 }

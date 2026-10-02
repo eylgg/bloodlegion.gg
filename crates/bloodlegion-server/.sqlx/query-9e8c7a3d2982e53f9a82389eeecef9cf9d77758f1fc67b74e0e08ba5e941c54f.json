@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE guild_settings SET time_zone = $1, default_raid_time = $2\n        RETURNING time_zone, default_raid_time\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time_zone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "guild_settings",
+            "name": "time_zone"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "default_raid_time",
+        "type_info": "Time",
+        "origin": {
+          "Table": {
+            "table": "guild_settings",
+            "name": "default_raid_time"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Time"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "9e8c7a3d2982e53f9a82389eeecef9cf9d77758f1fc67b74e0e08ba5e941c54f"
+}

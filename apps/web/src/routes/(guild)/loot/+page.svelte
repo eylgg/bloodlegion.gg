@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { QUALITIES, QUALITY_LABEL } from '$lib/guild';
+	import { QUALITIES, QUALITY_LABEL, formatWeekSpan } from '$lib/guild';
 	import LootTable from '$lib/components/guild/LootTable.svelte';
 	import type { PageProps } from './$types';
 
@@ -39,6 +39,15 @@
 </div>
 
 <div class="row">
+	<label class="field">
+		Week
+		<select value={value('week')} onchange={(e) => set('week', e.currentTarget.value)}>
+			<option value="">Every week</option>
+			{#each [...data.calendar.weeks].reverse() as week (week.number)}
+				<option value={String(week.number)}>Week {week.number} · {formatWeekSpan(week)}</option>
+			{/each}
+		</select>
+	</label>
 	<label class="field">
 		Raid
 		<select value={zone} onchange={(e) => set('zone', e.currentTarget.value)}>

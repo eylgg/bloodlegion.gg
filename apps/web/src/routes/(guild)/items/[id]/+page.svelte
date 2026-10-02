@@ -6,6 +6,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import LootTable from '$lib/components/guild/LootTable.svelte';
+	import ItemTooltip from '$lib/components/guild/ItemTooltip.svelte';
 	import ItemForm from '../ItemForm.svelte';
 	import type { Item } from '$lib/types';
 	import type { PageProps } from './$types';
@@ -53,6 +54,20 @@
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
 
+{#if data.gameItem?.preview}
+	<section>
+		<ItemTooltip
+			preview={data.gameItem.preview}
+			name={item.name}
+			quality={data.gameItem.quality}
+			icon={data.gameItem.icon}
+		/>
+		<p class="muted small">
+			From the game's item database (Classic Era until WoW: Forever's is available).
+		</p>
+	</section>
+{/if}
+
 {#if editing}
 	<ItemForm
 		{item}
@@ -70,6 +85,10 @@
 </section>
 
 <style>
+	.small {
+		font-size: var(--text-sm);
+	}
+
 	.actions {
 		display: flex;
 		gap: var(--space-2);

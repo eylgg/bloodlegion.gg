@@ -6,11 +6,12 @@
 //! Everyone signed in reads; officers write.
 
 pub mod api;
+pub mod calendar;
 pub mod catalog;
 mod db;
 
 use sqlx::PgPool;
-use time::{OffsetDateTime, serde::iso8601};
+use time::{OffsetDateTime, PrimitiveDateTime, serde::iso8601};
 
 use crate::users::UserId;
 use crate::{Error, Problem, Result};
@@ -110,6 +111,13 @@ pub enum RaidError {
         detail = "An item of that name already exists."
     )]
     ItemNameTaken,
+    #[error("ambiguous item")]
+    #[problem(
+        status = CONFLICT,
+        title = "Which Item?",
+        detail = "More than one item has that name; pick the one that dropped from the list."
+    )]
+    AmbiguousItem,
     #[error("item id taken")]
     #[problem(
         status = CONFLICT,
@@ -147,7 +155,7 @@ fn classify(error: sqlx::Error) -> Error<RaidError> {
         "bosses_zone_name_key" => Some(RaidError::BossTaken),
         "loot_boss_id_fkey" => Some(RaidError::BossNotFound),
         "loot_boss_zone_consistent_check" => Some(RaidError::BossNotInZone),
-        "items_name_normalized_key" => Some(RaidError::ItemNameTaken),
+        "items_name_normalized_unlinked_idx" => Some(RaidError::ItemNameTaken),
         "items_game_item_id_key" => Some(RaidError::ItemIdTaken),
         "loot_item_id_fkey" => Some(RaidError::ItemNotFound),
         _ => None,
@@ -217,6 +225,7 @@ pub struct Drop {
     pub item_name: String,
     pub item_quality: String,
     pub game_item_id: Option<i32>,
+    pub item_icon: Option<String>,
     pub count: i64,
 }
 
@@ -260,6 +269,8 @@ pub struct Item {
     pub quality: String,
     /// The game's own item id, once officers know it.
     pub game_item_id: Option<i32>,
+    /// Its icon in the item mirror (`game_items`), when the mirror has the item.
+    pub icon: Option<String>,
     /// How many times it has been won.
     pub drops: i64,
 }
@@ -357,15 +368,46 @@ pub async fn item_detail(pool: &PgPool, id: i64) -> Result<ItemDetail, RaidError
 
 /* --- raids --- */
 
+/// A raid as stored, with the counts the listings show.
 #[derive(Debug, serde::Serialize)]
-pub struct Raid {
+pub struct RaidRow {
     pub id: i64,
     pub zone: String,
     pub title: Option<String>,
+    /// When it starts, as a clock in `time_zone` reads it: what was scheduled.
+    #[serde(with = "crate::local_time::minute")]
+    pub starts_local: PrimitiveDateTime,
+    pub time_zone: String,
+    /// The same moment as an instant, derived by the database.
     #[serde(with = "iso8601")]
     pub starts_at: OffsetDateTime,
     pub attendee_count: i64,
     pub loot_count: i64,
+}
+
+/// A raid with the raiding week it falls in (`None` before the release), serialized flat.
+#[derive(Debug, serde::Serialize)]
+pub struct Raid {
+    #[serde(flatten)]
+    pub row: RaidRow,
+    pub week: Option<calendar::Week>,
+}
+
+impl From<RaidRow> for Raid {
+    fn from(row: RaidRow) -> Self {
+        Raid {
+            week: calendar::week_of(row.starts_at),
+            row,
+        }
+    }
+}
+
+impl std::ops::Deref for Raid {
+    type Target = RaidRow;
+
+    fn deref(&self) -> &RaidRow {
+        &self.row
+    }
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -373,8 +415,10 @@ pub struct RaidInput {
     pub zone: String,
     #[serde(default)]
     pub title: Option<String>,
-    #[serde(with = "iso8601")]
-    pub starts_at: OffsetDateTime,
+    /// As the guild's clock reads it; the raid is in the guild's time zone of the moment it is
+    /// scheduled, and keeps that zone.
+    #[serde(with = "crate::local_time::minute")]
+    pub starts_local: PrimitiveDateTime,
 }
 
 /// The title, trimmed, with an empty one meaning none.
@@ -393,17 +437,25 @@ pub async fn raids(pool: &PgPool) -> sqlx::Result<Vec<Raid>> {
 
 pub async fn create_raid(pool: &PgPool, input: &RaidInput) -> Result<Raid, RaidError> {
     let zone = zone(&input.zone)?;
-    let id = db::insert_raid(pool, zone.slug, title(input)?, input.starts_at).await?;
+    let time_zone = crate::guild::settings(pool).await?.time_zone;
+    let id = db::insert_raid(
+        pool,
+        zone.slug,
+        title(input)?,
+        input.starts_local,
+        &time_zone,
+    )
+    .await?;
     Ok(db::find_raid(pool, id)
         .await?
         .expect("the raid was just created"))
 }
 
-/// Changes a raid's zone, title, or time. A new zone must hold everyone who came, and a raid with
-/// boss loot keeps its zone.
+/// Changes a raid's zone, title, or time (on the clock of the time zone it was scheduled in). A new
+/// zone must hold everyone who came, and a raid with boss loot keeps its zone.
 pub async fn update_raid(pool: &PgPool, id: i64, input: &RaidInput) -> Result<Raid, RaidError> {
     let zone = zone(&input.zone)?;
-    if !db::update_raid(pool, id, zone.slug, title(input)?, input.starts_at)
+    if !db::update_raid(pool, id, zone.slug, title(input)?, input.starts_local)
         .await
         .map_err(classify)?
     {
@@ -513,11 +565,14 @@ pub async fn raids_attended(pool: &PgPool, character_id: i64) -> sqlx::Result<i6
 /// One item won: in which raid, from which boss (none for trash), by whom (none when nobody took
 /// it: disenchanted, or banked).
 #[derive(Debug, serde::Serialize)]
-pub struct LootEntry {
+pub struct LootRow {
     pub id: i64,
     pub raid_id: i64,
     pub zone: String,
     pub raid_title: Option<String>,
+    #[serde(with = "crate::local_time::minute")]
+    pub raid_starts_local: PrimitiveDateTime,
+    pub raid_time_zone: String,
     #[serde(with = "iso8601")]
     pub raid_starts_at: OffsetDateTime,
     pub boss_id: Option<i64>,
@@ -526,10 +581,36 @@ pub struct LootEntry {
     pub item_name: String,
     pub item_quality: String,
     pub game_item_id: Option<i32>,
+    pub item_icon: Option<String>,
     pub character_id: Option<i64>,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
     pub class: Option<String>,
+}
+
+/// A loot row with the number of the raiding week its raid fell in, serialized flat.
+#[derive(Debug, serde::Serialize)]
+pub struct LootEntry {
+    #[serde(flatten)]
+    pub row: LootRow,
+    pub raid_week: Option<i64>,
+}
+
+impl From<LootRow> for LootEntry {
+    fn from(row: LootRow) -> Self {
+        LootEntry {
+            raid_week: calendar::week_of(row.raid_starts_at).map(|week| week.number),
+            row,
+        }
+    }
+}
+
+impl std::ops::Deref for LootEntry {
+    type Target = LootRow;
+
+    fn deref(&self) -> &LootRow {
+        &self.row
+    }
 }
 
 /// Which loot to list; every field narrows it, and an absent one matches anything.
@@ -542,6 +623,8 @@ pub struct LootFilter {
     pub zone: Option<String>,
     pub class: Option<String>,
     pub quality: Option<String>,
+    /// The raiding week (see [`calendar`]) the raid fell in.
+    pub week: Option<i64>,
     /// At most this many, latest first (default and ceiling [`LOOT_LIMIT`]).
     pub limit: Option<i64>,
 }
@@ -563,8 +646,10 @@ pub async fn loot_for_character(pool: &PgPool, character_id: i64) -> sqlx::Resul
     .await
 }
 
-/// Loot as an officer records it. The item is an existing one (`item_id`), or named: an item of
-/// that name is reused, else created with the given quality (epic when omitted) and id.
+/// Loot as an officer records it. The item is one of the guild's (`item_id`); or the game's
+/// (`game_item_id`), reusing the guild's item for it or creating one from the item mirror; or
+/// named: the guild's item of that name, else the mirror's, else a new item with the given quality
+/// (epic when omitted).
 #[derive(Debug, serde::Deserialize)]
 pub struct LootInput {
     #[serde(default)]
@@ -590,24 +675,7 @@ pub async fn record_loot(
     if !db::lock_raid(&mut tx, raid_id).await? {
         return external(RaidError::RaidNotFound);
     }
-    let item_id = match (input.item_id, input.item_name.as_deref()) {
-        (Some(id), _) => id,
-        (None, Some(name)) => {
-            let item = ItemInput {
-                name: name.to_string(),
-                quality: input.item_quality.clone().unwrap_or_else(|| "epic".into()),
-                game_item_id: input.game_item_id,
-            };
-            let valid = validate_item(&item)?;
-            match db::find_item_id_by_name(&mut tx, valid.name).await? {
-                Some(id) => id,
-                None => db::insert_item(&mut tx, valid.name, valid.quality, valid.game_item_id)
-                    .await
-                    .map_err(classify)?,
-            }
-        }
-        (None, None) => return external(RaidError::InvalidItem),
-    };
+    let item_id = resolve_item(&mut tx, input).await?;
     let id = db::insert_loot(&mut tx, raid_id, input.boss_id, item_id, input.character_id)
         .await
         .map_err(classify)?;
@@ -615,6 +683,65 @@ pub async fn record_loot(
     Ok(db::find_loot(pool, id)
         .await?
         .expect("the loot was just recorded"))
+}
+
+/// The guild's item `input` names, created when it is new (see [`LootInput`]).
+async fn resolve_item(conn: &mut sqlx::PgConnection, input: &LootInput) -> Result<i64, RaidError> {
+    if let Some(id) = input.item_id {
+        return Ok(id);
+    }
+    let name = input
+        .item_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|n| !n.is_empty());
+    let game_item_id = match (input.game_item_id, name) {
+        (Some(game_item_id), _) => Some(game_item_id),
+        (None, Some(name)) => {
+            // A name the guild already has is that item; two of them is a question.
+            let ours = db::item_ids_by_name(conn, name).await?;
+            match ours.as_slice() {
+                [id] => return Ok(*id),
+                [] => {}
+                _ => return external(RaidError::AmbiguousItem),
+            }
+            // Else the mirror's item of that name, when exactly one has it.
+            match db::game_item_ids_by_name(conn, name).await?.as_slice() {
+                [id] => Some(*id),
+                [] => None,
+                _ => return external(RaidError::AmbiguousItem),
+            }
+        }
+        (None, None) => return external(RaidError::InvalidItem),
+    };
+    if let Some(game_item_id) = game_item_id {
+        if let Some(id) = db::item_id_by_game_item(conn, game_item_id).await? {
+            return Ok(id);
+        }
+        if let Some(mirrored) = db::mirrored_item(conn, game_item_id).await? {
+            // The guild's qualities stop at legendary, as Classic's do.
+            let quality = QUALITIES
+                .iter()
+                .find(|q| **q == mirrored.quality)
+                .unwrap_or(&"epic");
+            return db::insert_item(conn, &mirrored.name, quality, Some(game_item_id))
+                .await
+                .map_err(classify);
+        }
+    }
+    // An item the mirror does not know (a Forever newcomer), as typed.
+    let Some(name) = name else {
+        return external(RaidError::ItemNotFound);
+    };
+    let item = ItemInput {
+        name: name.to_string(),
+        quality: input.item_quality.clone().unwrap_or_else(|| "epic".into()),
+        game_item_id,
+    };
+    let valid = validate_item(&item)?;
+    db::insert_item(conn, valid.name, valid.quality, valid.game_item_id)
+        .await
+        .map_err(classify)
 }
 
 /// What can change about recorded loot: who won it and which boss dropped it. The item is fixed;
@@ -661,7 +788,7 @@ mod tests {
         RaidInput {
             zone: zone.into(),
             title: None,
-            starts_at: OffsetDateTime::now_utc(),
+            starts_local: time::macros::datetime!(2026-12-10 20:00),
         }
     }
 
@@ -881,6 +1008,159 @@ mod tests {
                 crate::characters::CharacterError::HasHistory
             ))
         ));
+    }
+
+    #[sqlx::test]
+    async fn raids_and_loot_carry_their_week(pool: PgPool) {
+        use time::macros::datetime;
+        let at = |starts_local| RaidInput {
+            zone: "onyxias-lair".into(),
+            title: None,
+            starts_local,
+        };
+        // Before the release (a test run), on release night, and the night after the first reset:
+        // 8 PM in New York, the guild's default zone.
+        let beta = create_raid(&pool, &at(datetime!(2026-11-19 20:00)))
+            .await
+            .unwrap();
+        let launch = create_raid(&pool, &at(datetime!(2026-12-09 20:00)))
+            .await
+            .unwrap();
+        assert_eq!(launch.starts_at, datetime!(2026-12-10 01:00 UTC));
+        let second = create_raid(&pool, &at(datetime!(2026-12-15 20:00)))
+            .await
+            .unwrap();
+        assert_eq!(beta.week, None);
+        assert_eq!(launch.week.map(|w| w.number), Some(1));
+        assert_eq!(second.week.map(|w| w.number), Some(2));
+
+        for raid in [&launch, &second] {
+            record_loot(&pool, raid.id, &named("Head of Onyxia", None, None))
+                .await
+                .unwrap();
+        }
+        let week = |week| LootFilter {
+            week: Some(week),
+            ..LootFilter::default()
+        };
+        let in_week_two = loot(&pool, &week(2)).await.unwrap();
+        assert_eq!(in_week_two.len(), 1);
+        assert_eq!(
+            (in_week_two[0].raid_id, in_week_two[0].raid_week),
+            (second.id, Some(2))
+        );
+        assert!(loot(&pool, &week(0)).await.unwrap().is_empty());
+        assert_eq!(loot(&pool, &LootFilter::default()).await.unwrap().len(), 2);
+    }
+
+    #[sqlx::test]
+    async fn raids_keep_the_time_zone_they_were_scheduled_in(pool: PgPool) {
+        use time::macros::datetime;
+        let new_york = create_raid(&pool, &raid("onyxias-lair")).await.unwrap();
+        assert_eq!(new_york.time_zone, "America/New_York");
+        assert_eq!(new_york.starts_at, datetime!(2026-12-11 01:00 UTC));
+        assert_eq!(
+            serde_json::to_value(&new_york).unwrap()["starts_local"],
+            "2026-12-10T20:00"
+        );
+
+        // The guild moves to Berlin: the New York raid stays put, and new ones are in Berlin.
+        crate::guild::set_settings(
+            &pool,
+            &crate::guild::Settings {
+                time_zone: "Europe/Berlin".into(),
+                default_raid_time: time::macros::time!(20:00),
+            },
+        )
+        .await
+        .unwrap();
+        let berlin = create_raid(&pool, &raid("onyxias-lair")).await.unwrap();
+        assert_eq!(berlin.starts_at, datetime!(2026-12-10 19:00 UTC));
+        let unchanged = raid_detail(&pool, new_york.id).await.unwrap().raid;
+        assert_eq!(unchanged.starts_at, new_york.starts_at);
+
+        // Editing moves the time on the raid's own clock.
+        let mut later = raid("onyxias-lair");
+        later.starts_local = datetime!(2026-12-10 21:30);
+        let moved = update_raid(&pool, new_york.id, &later).await.unwrap();
+        assert_eq!(moved.time_zone, "America/New_York");
+        assert_eq!(moved.starts_at, datetime!(2026-12-11 02:30 UTC));
+    }
+
+    #[sqlx::test]
+    async fn loot_links_to_the_item_mirror(pool: PgPool) {
+        for (id, name) in [
+            (18563, "Bindings of the Windseeker"),
+            (18564, "Bindings of the Windseeker"),
+            (16800, "Arcanist Boots"),
+        ] {
+            sqlx::query!(
+                r#"
+                INSERT INTO game_items
+                    (id, name, quality, item_level, required_level, inventory_type, slot,
+                     item_class, item_subclass, is_equippable)
+                VALUES ($1, $2, $3, 66, 60, 'feet', 'Feet', 'Armor', 'Cloth', true)
+                "#,
+                id,
+                name,
+                if id == 16800 { "epic" } else { "legendary" },
+            )
+            .execute(&pool)
+            .await
+            .unwrap();
+        }
+        let raid = create_raid(&pool, &raid("onyxias-lair")).await.unwrap();
+        let by_game_id = |id| LootInput {
+            boss_id: None,
+            character_id: None,
+            item_id: None,
+            item_name: None,
+            item_quality: None,
+            game_item_id: Some(id),
+        };
+
+        // Picked from the mirror: the guild's item is made from it, and reused after.
+        let left = record_loot(&pool, raid.id, &by_game_id(18563))
+            .await
+            .unwrap();
+        assert_eq!(
+            (left.item_name.as_str(), left.item_quality.as_str()),
+            ("Bindings of the Windseeker", "legendary")
+        );
+        let right = record_loot(&pool, raid.id, &by_game_id(18564))
+            .await
+            .unwrap();
+        assert_ne!(left.item_id, right.item_id, "the same name, two items");
+        assert_eq!(
+            record_loot(&pool, raid.id, &by_game_id(18563))
+                .await
+                .unwrap()
+                .item_id,
+            left.item_id
+        );
+
+        // Typed: a name the mirror has once links to it; a shared name asks which.
+        let boots = record_loot(&pool, raid.id, &named("arcanist boots", None, None))
+            .await
+            .unwrap();
+        assert_eq!(
+            (boots.item_name.as_str(), boots.game_item_id),
+            ("Arcanist Boots", Some(16800))
+        );
+        assert!(matches!(
+            record_loot(
+                &pool,
+                raid.id,
+                &named("Bindings of the Windseeker", None, None)
+            )
+            .await,
+            Err(Error::External(RaidError::AmbiguousItem))
+        ));
+        // A name the mirror lacks is a new item of the guild's own.
+        let new = record_loot(&pool, raid.id, &named("Barrow Crown", None, None))
+            .await
+            .unwrap();
+        assert_eq!(new.game_item_id, None);
     }
 
     #[test]

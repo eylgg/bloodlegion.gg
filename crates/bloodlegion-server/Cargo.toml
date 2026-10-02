@@ -15,6 +15,7 @@ axum-extra = { version = "0.12.6", features = ["cookie", "typed-header"] }
 base64ct = "1.8.3"
 bloodlegion-macros = { version = "0.1.0", path = "../bloodlegion-macros" }
 clap = { version = "4.6.2", features = ["derive"] }
+jiff = { version = "0.2.37", default-features = false, features = ["std", "tzdb-bundle-always"] }
 rand = "0.10.1"
 reqwest = { version = "0.13.4", features = ["json", "form"] }
 rsa = { version = "0.10.0-rc.18", features = ["sha2"] }
@@ -26,8 +27,8 @@ thiserror = "2.0.18"
 # `serde-human-readable` is what makes the time types serialize as strings in JSON. Without it they
 # fall back to a compact positional form even for a human-readable format, so a plain "2026-09-01"
 # is rejected on the way in and an unreadable tuple goes out.
-time = { version = "0.3.47", features = ["serde", "serde-human-readable", "formatting", "parsing"] }
-tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "signal"] }
+time = { version = "0.3.47", features = ["serde", "serde-human-readable", "formatting", "parsing", "macros"] }
+tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "signal", "sync"] }
 tower = "0.5.3"
 tower-http = { version = "0.6.11", features = ["trace"] }
 tracing = "0.1.44"

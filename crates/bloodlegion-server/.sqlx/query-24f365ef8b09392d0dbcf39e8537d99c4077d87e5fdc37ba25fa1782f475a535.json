@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT i.id, i.name, i.quality, i.game_item_id,\n               (SELECT count(*) FROM loot l WHERE l.item_id = i.id) AS \"drops!\"\n        FROM items i\n        ORDER BY i.name_normalized\n        ",
+  "query": "\n        SELECT i.id AS item_id, i.name AS item_name, i.quality AS item_quality, i.game_item_id,\n               g.icon AS \"item_icon?\", count(*) AS \"count!\"\n        FROM loot l\n        JOIN items i ON i.id = l.item_id\n        LEFT JOIN game_items g ON g.id = i.game_item_id\n        WHERE l.boss_id = $1\n        GROUP BY i.id, g.icon\n        ORDER BY count(*) DESC, i.name_normalized\n        ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
+        "name": "item_id",
         "type_info": "Int8",
         "origin": {
           "Table": {
@@ -16,7 +16,7 @@
       },
       {
         "ordinal": 1,
-        "name": "name",
+        "name": "item_name",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -27,7 +27,7 @@
       },
       {
         "ordinal": 2,
-        "name": "quality",
+        "name": "item_quality",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -49,21 +49,35 @@
       },
       {
         "ordinal": 4,
-        "name": "drops!",
+        "name": "item_icon?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "icon"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "count!",
         "type_info": "Int8",
         "origin": "Expression"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Int8"
+      ]
     },
     "nullable": [
       false,
       false,
       false,
       true,
+      true,
       null
     ]
   },
-  "hash": "3975e6cbab3ff53c9f7b72d43085cd3b6598ebe904887a791319948306e691f7"
+  "hash": "24f365ef8b09392d0dbcf39e8537d99c4077d87e5fdc37ba25fa1782f475a535"
 }

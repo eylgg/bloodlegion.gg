@@ -1,0 +1,113 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, quality, item_level, required_level, slot, item_subclass, icon\n        FROM game_items\n        WHERE name_normalized LIKE '%' || $1 || '%'\n        ORDER BY name_normalized LIKE $1 || '%' DESC, item_level DESC, name_normalized, id\n        LIMIT $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "quality",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "quality"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "item_level",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "item_level"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "required_level",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "required_level"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "slot",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "slot"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "item_subclass",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "item_subclass"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "icon",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "icon"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "dadea5b2a46644c6508a011ed5ff8a4773cad794d04d6b0a5d541048a9c37d71"
+}

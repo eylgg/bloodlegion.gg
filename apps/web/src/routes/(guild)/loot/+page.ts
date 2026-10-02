@@ -4,7 +4,7 @@ import type { Boss, LootEntry } from '$lib/types';
 import { api, statusFrom } from '$lib/api';
 
 /** The filters the page passes through to `GET /api/loot`, kept in the URL so a view can be shared. */
-const FILTERS = ['zone', 'boss_id', 'class', 'quality'] as const;
+const FILTERS = ['week', 'zone', 'boss_id', 'class', 'quality'] as const;
 
 export const load: PageLoad = async ({ url, fetch }) => {
 	const query = new URLSearchParams();

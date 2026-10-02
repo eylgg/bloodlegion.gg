@@ -15,7 +15,8 @@
 		{ href: resolve('/items'), label: 'Items' },
 		{ href: resolve('/characters'), label: 'Characters' },
 		{ href: resolve('/questions'), label: 'Questions' },
-		...(data.officer ? [{ href: resolve('/notes'), label: 'Notes' }] : [])
+		...(data.officer ? [{ href: resolve('/notes'), label: 'Notes' }] : []),
+		...(data.user.is_superuser ? [{ href: resolve('/settings'), label: 'Settings' }] : [])
 	]);
 
 	const isActive = (href: string) =>
@@ -225,6 +226,7 @@
 	main :global(select),
 	main :global(textarea),
 	main :global(input[type='datetime-local']),
+	main :global(input[type='time']),
 	main :global(input[type='search']),
 	main :global(input[type='text']),
 	main :global(input[type='number']) {
@@ -236,6 +238,18 @@
 		background-color: var(--background);
 		border: 1px solid var(--grey-soft);
 		border-radius: var(--radius-md);
+	}
+
+	/* The native control draws its arrow against the border and indents the text on macOS; draw
+	   our own chevron, inset like the text. */
+	main :global(select) {
+		appearance: none;
+		padding-right: calc(var(--space-3) * 2 + 0.75rem);
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%239b9b9b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right var(--space-3) center;
+		background-size: 0.75rem;
+		cursor: pointer;
 	}
 
 	main :global(select:focus),

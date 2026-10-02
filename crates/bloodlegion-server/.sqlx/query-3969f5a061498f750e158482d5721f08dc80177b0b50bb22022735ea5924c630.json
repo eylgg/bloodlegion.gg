@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO game_items\n                    (id, name, quality, item_level, required_level, inventory_type, slot,\n                     item_class, item_subclass, is_equippable)\n                VALUES ($1, $2, $3, 66, 60, 'feet', 'Feet', 'Armor', 'Cloth', true)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3969f5a061498f750e158482d5721f08dc80177b0b50bb22022735ea5924c630"
+}

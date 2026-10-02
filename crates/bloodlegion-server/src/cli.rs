@@ -481,3 +481,32 @@ pub async fn providers_update(
     eprintln!("updated provider '{slug}'");
     Ok(())
 }
+
+/// `items sync`: syncs the item mirror now, reporting what it did.
+#[tokio::main]
+pub async fn items_sync(ids: Vec<i32>) -> Result<()> {
+    let state = State::new().await?;
+    let only = (!ids.is_empty()).then_some(ids.as_slice());
+    match crate::game_items::sync(&state, only).await? {
+        crate::game_items::Outcome::NoProvider => Err(anyhow::anyhow!(
+            "no '{}' provider is configured; the item sync uses its client",
+            crate::game_items::PROVIDER
+        )
+        .into()),
+        crate::game_items::Outcome::Busy => {
+            Err(anyhow::anyhow!("another sync is running; try again when it finishes").into())
+        }
+        crate::game_items::Outcome::Done(report) => {
+            eprintln!(
+                "listed {}, fetched {}, unchanged {}, unknown {}, icons {}, failed {}",
+                report.listed,
+                report.fetched,
+                report.unchanged,
+                report.missing,
+                report.icons,
+                report.failed
+            );
+            Ok(())
+        }
+    }
+}

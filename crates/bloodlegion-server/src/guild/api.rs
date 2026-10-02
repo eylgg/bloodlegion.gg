@@ -3,11 +3,11 @@ use axum::http::StatusCode;
 use axum::routing::{get, put};
 use axum::{Json, Router};
 
-use crate::extract::SameOrigin;
+use crate::extract::{Admin, SameOrigin};
 use crate::users::{User, UserId};
 use crate::{Result, State};
 
-use super::{GuildError, Member, Rank};
+use super::{GuildError, Member, Rank, Settings};
 
 /// `GET /api/guild/members`: every member with their rank and characters. Members only.
 async fn members(state: State, _user: User) -> Result<Json<Vec<Member>>> {
@@ -31,8 +31,24 @@ async fn set_rank(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// `GET /api/guild/settings`: the raid time zone and default start. Members only.
+async fn settings(state: State, _user: User) -> Result<Json<Settings>> {
+    Ok(Json(super::settings(&state.pool).await?))
+}
+
+/// `PUT /api/guild/settings`: superusers only.
+async fn set_settings(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+    Json(input): Json<Settings>,
+) -> Result<Json<Settings>, GuildError> {
+    Ok(Json(super::set_settings(&state.pool, &input).await?))
+}
+
 pub fn router() -> Router<State> {
     Router::new()
+        .route("/settings", get(settings).put(set_settings))
         .route("/members", get(members))
         .route("/members/{id}/rank", put(set_rank))
 }

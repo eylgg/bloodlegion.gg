@@ -164,17 +164,104 @@ export type Item = {
 	name: string;
 	quality: Quality;
 	game_item_id: number | null;
+	/** Its icon in the item mirror, when the mirror has it. */
+	icon: string | null;
 	/** How many times it has been won. */
 	drops: number;
+};
+
+/** An item in the mirror of the game's item database, from `GET /api/game-items`. */
+export type GameItemSummary = {
+	id: number;
+	name: string;
+	/** The game's quality, lowercased; poor through legendary in Classic. */
+	quality: string;
+	item_level: number;
+	required_level: number;
+	slot: string;
+	item_subclass: string;
+	icon: string | null;
+};
+
+/** One display line of the game's tooltip data. */
+type Display = { display_string: string; color?: { r: number; g: number; b: number } };
+
+/**
+ * The tooltip, as Blizzard's Game Data API gives it (`preview_item`): the game's own display
+ * strings. Only the fields the tooltip draws are typed.
+ */
+export type ItemPreview = {
+	name?: string;
+	binding?: { name: string };
+	unique_equipped?: string;
+	inventory_type?: { type: string; name: string };
+	item_subclass?: { name: string };
+	is_subclass_hidden?: boolean;
+	armor?: { display: Display };
+	shield_block?: { display: Display };
+	weapon?: {
+		damage?: { display_string: string };
+		attack_speed?: { display_string: string };
+		dps?: { display_string: string };
+	};
+	stats?: { display: Display; is_negated?: boolean }[];
+	spells?: { description?: string }[];
+	requirements?: Record<string, { display_string?: string } | undefined>;
+	durability?: { display_string: string };
+	set?: {
+		display_string: string;
+		items: { item: { id: number; name: string } }[];
+		effects: { display_string: string; required_count: number }[];
+	};
+	description?: string;
+	sell_price?: {
+		display_strings: { header: string; gold: string; silver: string; copper: string };
+	};
+};
+
+export type GameItem = GameItemSummary & {
+	preview: ItemPreview | null;
+	detailed_at: string | null;
+};
+
+/** The guild's settings: the zone raids are scheduled in, and when they usually start there. */
+export type GuildSettings = {
+	/** An IANA name, `America/New_York`. */
+	time_zone: string;
+	/** `20:00`. */
+	default_raid_time: string;
+};
+
+/** One raiding week: `[starts_at, ends_at)`. Week 1 runs from the release to the first reset. */
+export type Week = { number: number; starts_at: string; ends_at: string };
+
+/** When the raids open and how the weeks reset, from `GET /api/raids/calendar`. */
+export type Calendar = {
+	/** The release as its own zone's clock reads it, e.g. `2026-12-09T18:00:00`. */
+	release_local: string;
+	release_time_zone: string;
+	release_at: string;
+	reset_weekday: string;
+	/** `15:00`: the reset is fixed in UTC, so its local time moves with daylight saving. */
+	reset_time_utc: string;
+	current_week: Week | null;
+	/** Weeks 1 through the current one. */
+	weeks: Week[];
 };
 
 export type Raid = {
 	id: number;
 	zone: string;
 	title: string | null;
+	/** When it starts, as `time_zone`'s clock reads it (`2026-12-09T20:00`): what was scheduled. */
+	starts_local: string;
+	time_zone: string;
+	/** The same moment as an instant. */
 	starts_at: string;
 	attendee_count: number;
 	loot_count: number;
+	/** Null before the release. */
+	week: Week | null;
 };
 
 export type Attendee = {
@@ -193,6 +280,8 @@ export type LootEntry = {
 	raid_id: number;
 	zone: string;
 	raid_title: string | null;
+	raid_starts_local: string;
+	raid_time_zone: string;
 	raid_starts_at: string;
 	boss_id: number | null;
 	boss_name: string | null;
@@ -200,10 +289,12 @@ export type LootEntry = {
 	item_name: string;
 	item_quality: Quality;
 	game_item_id: number | null;
+	item_icon: string | null;
 	character_id: number | null;
 	first_name: string | null;
 	last_name: string | null;
 	class: string | null;
+	raid_week: number | null;
 };
 
 export type RaidDetail = { raid: Raid; attendees: Attendee[]; loot: LootEntry[] };
@@ -216,6 +307,7 @@ export type BossDetail = {
 		item_name: string;
 		item_quality: Quality;
 		game_item_id: number | null;
+		item_icon: string | null;
 		count: number;
 	}[];
 	loot: LootEntry[];

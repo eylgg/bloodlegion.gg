@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT g.last_modified,\n               EXISTS (SELECT 1 FROM game_item_icons i WHERE i.name = g.icon) AS \"icon_stored!\"\n        FROM game_items g\n        WHERE g.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "last_modified",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "last_modified"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "icon_stored!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      true,
+      null
+    ]
+  },
+  "hash": "a8632b593b05f4fba168c9a432a600a5413b86d25eba3413bd271e98bd035873"
+}

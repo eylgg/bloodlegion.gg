@@ -1,7 +1,9 @@
 use sqlx::{PgConnection, PgPool};
-use time::OffsetDateTime;
+use time::PrimitiveDateTime;
 
-use super::{Attendee, Boss, Drop, Item, LOOT_LIMIT, LootEntry, LootFilter, Raid};
+use super::{
+    Attendee, Boss, Drop, Item, LOOT_LIMIT, LootEntry, LootFilter, LootRow, Raid, RaidRow, calendar,
+};
 use crate::users::UserId;
 
 /// The outcome of a delete that refuses while something still refers to the row.
@@ -86,11 +88,12 @@ pub async fn boss_drops(pool: &PgPool, id: i64) -> sqlx::Result<Vec<Drop>> {
         Drop,
         r#"
         SELECT i.id AS item_id, i.name AS item_name, i.quality AS item_quality, i.game_item_id,
-               count(*) AS "count!"
+               g.icon AS "item_icon?", count(*) AS "count!"
         FROM loot l
         JOIN items i ON i.id = l.item_id
+        LEFT JOIN game_items g ON g.id = i.game_item_id
         WHERE l.boss_id = $1
-        GROUP BY i.id
+        GROUP BY i.id, g.icon
         ORDER BY count(*) DESC, i.name_normalized
         "#,
         id,
@@ -105,9 +108,10 @@ pub async fn list_items(pool: &PgPool) -> sqlx::Result<Vec<Item>> {
     sqlx::query_as!(
         Item,
         r#"
-        SELECT i.id, i.name, i.quality, i.game_item_id,
+        SELECT i.id, i.name, i.quality, i.game_item_id, g.icon AS "icon?",
                (SELECT count(*) FROM loot l WHERE l.item_id = i.id) AS "drops!"
         FROM items i
+        LEFT JOIN game_items g ON g.id = i.game_item_id
         ORDER BY i.name_normalized
         "#,
     )
@@ -119,9 +123,10 @@ pub async fn find_item(pool: &PgPool, id: i64) -> sqlx::Result<Option<Item>> {
     sqlx::query_as!(
         Item,
         r#"
-        SELECT i.id, i.name, i.quality, i.game_item_id,
+        SELECT i.id, i.name, i.quality, i.game_item_id, g.icon AS "icon?",
                (SELECT count(*) FROM loot l WHERE l.item_id = i.id) AS "drops!"
         FROM items i
+        LEFT JOIN game_items g ON g.id = i.game_item_id
         WHERE i.id = $1
         "#,
         id,
@@ -130,13 +135,45 @@ pub async fn find_item(pool: &PgPool, id: i64) -> sqlx::Result<Option<Item>> {
     .await
 }
 
-pub async fn find_item_id_by_name(
-    conn: &mut PgConnection,
-    name: &str,
-) -> sqlx::Result<Option<i64>> {
+/// The guild's items of that name: several when the game reuses it.
+pub async fn item_ids_by_name(conn: &mut PgConnection, name: &str) -> sqlx::Result<Vec<i64>> {
     sqlx::query_scalar!(
-        "SELECT id FROM items WHERE name_normalized = lower($1)",
+        "SELECT id FROM items WHERE name_normalized = lower($1) ORDER BY id",
         name
+    )
+    .fetch_all(&mut *conn)
+    .await
+}
+
+pub async fn item_id_by_game_item(
+    conn: &mut PgConnection,
+    game_item_id: i32,
+) -> sqlx::Result<Option<i64>> {
+    sqlx::query_scalar!("SELECT id FROM items WHERE game_item_id = $1", game_item_id)
+        .fetch_optional(&mut *conn)
+        .await
+}
+
+/// The item mirror's items of that name.
+pub async fn game_item_ids_by_name(conn: &mut PgConnection, name: &str) -> sqlx::Result<Vec<i32>> {
+    sqlx::query_scalar!(
+        "SELECT id FROM game_items WHERE name_normalized = lower($1) ORDER BY id",
+        name
+    )
+    .fetch_all(&mut *conn)
+    .await
+}
+
+pub struct Mirrored {
+    pub name: String,
+    pub quality: String,
+}
+
+pub async fn mirrored_item(conn: &mut PgConnection, id: i32) -> sqlx::Result<Option<Mirrored>> {
+    sqlx::query_as!(
+        Mirrored,
+        "SELECT name, quality FROM game_items WHERE id = $1",
+        id
     )
     .fetch_optional(&mut *conn)
     .await
@@ -206,9 +243,9 @@ pub async fn delete_item_without_loot(pool: &PgPool, id: i64) -> sqlx::Result<De
 
 pub async fn list_raids(pool: &PgPool) -> sqlx::Result<Vec<Raid>> {
     sqlx::query_as!(
-        Raid,
+        RaidRow,
         r#"
-        SELECT r.id, r.zone, r.title, r.starts_at,
+        SELECT r.id, r.zone, r.title, r.starts_local, r.time_zone, r.starts_at,
                (SELECT count(*) FROM raid_attendees a WHERE a.raid_id = r.id) AS "attendee_count!",
                (SELECT count(*) FROM loot l WHERE l.raid_id = r.id) AS "loot_count!"
         FROM raids r
@@ -217,13 +254,14 @@ pub async fn list_raids(pool: &PgPool) -> sqlx::Result<Vec<Raid>> {
     )
     .fetch_all(pool)
     .await
+    .map(|rows| rows.into_iter().map(Raid::from).collect())
 }
 
 pub async fn find_raid(pool: &PgPool, id: i64) -> sqlx::Result<Option<Raid>> {
     sqlx::query_as!(
-        Raid,
+        RaidRow,
         r#"
-        SELECT r.id, r.zone, r.title, r.starts_at,
+        SELECT r.id, r.zone, r.title, r.starts_local, r.time_zone, r.starts_at,
                (SELECT count(*) FROM raid_attendees a WHERE a.raid_id = r.id) AS "attendee_count!",
                (SELECT count(*) FROM loot l WHERE l.raid_id = r.id) AS "loot_count!"
         FROM raids r
@@ -233,19 +271,26 @@ pub async fn find_raid(pool: &PgPool, id: i64) -> sqlx::Result<Option<Raid>> {
     )
     .fetch_optional(pool)
     .await
+    .map(|row| row.map(Raid::from))
 }
 
 pub async fn insert_raid(
     pool: &PgPool,
     zone: &str,
     title: Option<&str>,
-    starts_at: OffsetDateTime,
+    starts_local: PrimitiveDateTime,
+    time_zone: &str,
 ) -> sqlx::Result<i64> {
     sqlx::query_scalar!(
-        "INSERT INTO raids (zone, title, starts_at) VALUES ($1, $2, $3) RETURNING id",
+        r#"
+        INSERT INTO raids (zone, title, starts_local, time_zone)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id
+        "#,
         zone,
         title,
-        starts_at,
+        starts_local,
+        time_zone,
     )
     .fetch_one(pool)
     .await
@@ -256,14 +301,14 @@ pub async fn update_raid(
     id: i64,
     zone: &str,
     title: Option<&str>,
-    starts_at: OffsetDateTime,
+    starts_local: PrimitiveDateTime,
 ) -> sqlx::Result<bool> {
     let result = sqlx::query!(
-        "UPDATE raids SET zone = $2, title = $3, starts_at = $4 WHERE id = $1",
+        "UPDATE raids SET zone = $2, title = $3, starts_local = $4 WHERE id = $1",
         id,
         zone,
         title,
-        starts_at,
+        starts_local,
     )
     .execute(pool)
     .await?;
@@ -291,8 +336,9 @@ pub async fn attendees(pool: &PgPool, raid_id: i64) -> sqlx::Result<Vec<Attendee
     sqlx::query_as!(
         Attendee,
         r#"
-        SELECT c.id AS character_id, c.user_id AS "user_id: UserId", u.username AS "username?",
-               c.first_name, c.last_name, c.class, c.is_main
+        SELECT c.id AS "character_id!", c.user_id AS "user_id: UserId",
+               u.username AS "username?", c.first_name AS "first_name!",
+               c.last_name AS "last_name!", c.class AS "class!", c.is_main AS "is_main!"
         FROM raid_attendees a
         JOIN characters c ON c.id = a.character_id
         LEFT JOIN users u ON u.id = c.user_id
@@ -361,17 +407,26 @@ pub async fn raids_attended(pool: &PgPool, character_id: i64) -> sqlx::Result<i6
 /// Loot matching every set field of `filter`, latest raid first.
 pub async fn loot(pool: &PgPool, filter: &LootFilter) -> sqlx::Result<Vec<LootEntry>> {
     let limit = filter.limit.unwrap_or(LOOT_LIMIT).clamp(1, LOOT_LIMIT);
+    // A week narrows to its span; a week that does not exist (below 1) to an empty one.
+    let span = filter.week.map(|number| {
+        calendar::week(number).map_or((calendar::release_at(), calendar::release_at()), |week| {
+            (week.starts_at, week.ends_at)
+        })
+    });
     sqlx::query_as!(
-        LootEntry,
+        LootRow,
         r#"
-        SELECT l.id, l.raid_id, r.zone, r.title AS raid_title, r.starts_at AS raid_starts_at,
-               l.boss_id, b.name AS "boss_name?", l.item_id, i.name AS item_name,
-               i.quality AS item_quality, i.game_item_id, l.character_id,
+        SELECT l.id AS "id!", l.raid_id AS "raid_id!", r.zone AS "zone!", r.title AS raid_title,
+               r.starts_local AS "raid_starts_local!", r.time_zone AS "raid_time_zone!",
+               r.starts_at AS "raid_starts_at!", l.boss_id, b.name AS "boss_name?",
+               l.item_id AS "item_id!", i.name AS "item_name!", i.quality AS "item_quality!",
+               i.game_item_id, g.icon AS "item_icon?", l.character_id,
                c.first_name AS "first_name?", c.last_name AS "last_name?", c.class AS "class?"
         FROM loot l
         JOIN raids r ON r.id = l.raid_id
         JOIN items i ON i.id = l.item_id
         LEFT JOIN bosses b ON b.id = l.boss_id
+        LEFT JOIN game_items g ON g.id = i.game_item_id
         LEFT JOIN characters c ON c.id = l.character_id
         WHERE ($1::bigint IS NULL OR l.raid_id = $1)
             AND ($2::bigint IS NULL OR l.boss_id = $2)
@@ -380,8 +435,10 @@ pub async fn loot(pool: &PgPool, filter: &LootFilter) -> sqlx::Result<Vec<LootEn
             AND ($5::text IS NULL OR r.zone = $5)
             AND ($6::text IS NULL OR c.class = $6)
             AND ($7::text IS NULL OR i.quality = $7)
+            AND ($8::timestamptz IS NULL OR r.starts_at >= $8)
+            AND ($9::timestamptz IS NULL OR r.starts_at < $9)
         ORDER BY r.starts_at DESC, l.id DESC
-        LIMIT $8
+        LIMIT $10
         "#,
         filter.raid_id,
         filter.boss_id,
@@ -390,24 +447,30 @@ pub async fn loot(pool: &PgPool, filter: &LootFilter) -> sqlx::Result<Vec<LootEn
         filter.zone.as_deref(),
         filter.class.as_deref(),
         filter.quality.as_deref(),
+        span.map(|(from, _)| from),
+        span.map(|(_, to)| to),
         limit,
     )
     .fetch_all(pool)
     .await
+    .map(|rows| rows.into_iter().map(LootEntry::from).collect())
 }
 
 pub async fn find_loot(pool: &PgPool, id: i64) -> sqlx::Result<Option<LootEntry>> {
     sqlx::query_as!(
-        LootEntry,
+        LootRow,
         r#"
-        SELECT l.id, l.raid_id, r.zone, r.title AS raid_title, r.starts_at AS raid_starts_at,
-               l.boss_id, b.name AS "boss_name?", l.item_id, i.name AS item_name,
-               i.quality AS item_quality, i.game_item_id, l.character_id,
+        SELECT l.id AS "id!", l.raid_id AS "raid_id!", r.zone AS "zone!", r.title AS raid_title,
+               r.starts_local AS "raid_starts_local!", r.time_zone AS "raid_time_zone!",
+               r.starts_at AS "raid_starts_at!", l.boss_id, b.name AS "boss_name?",
+               l.item_id AS "item_id!", i.name AS "item_name!", i.quality AS "item_quality!",
+               i.game_item_id, g.icon AS "item_icon?", l.character_id,
                c.first_name AS "first_name?", c.last_name AS "last_name?", c.class AS "class?"
         FROM loot l
         JOIN raids r ON r.id = l.raid_id
         JOIN items i ON i.id = l.item_id
         LEFT JOIN bosses b ON b.id = l.boss_id
+        LEFT JOIN game_items g ON g.id = i.game_item_id
         LEFT JOIN characters c ON c.id = l.character_id
         WHERE l.id = $1
         "#,
@@ -415,6 +478,7 @@ pub async fn find_loot(pool: &PgPool, id: i64) -> sqlx::Result<Option<LootEntry>
     )
     .fetch_optional(pool)
     .await
+    .map(|row| row.map(LootEntry::from))
 }
 
 pub async fn insert_loot(

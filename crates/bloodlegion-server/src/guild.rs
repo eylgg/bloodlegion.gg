@@ -81,6 +81,38 @@ pub enum GuildError {
         detail = "Only the guild leader can make or unmake officers, and nobody sets their own rank."
     )]
     RankChangeRefused,
+    #[error("unknown time zone")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Unknown Time Zone",
+        detail = "That is not a time zone name the server knows, such as America/New_York."
+    )]
+    UnknownTimeZone,
+}
+
+/// The guild's settings, which a superuser changes: the time zone raids are scheduled in, and when
+/// they usually start there.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Settings {
+    /// An IANA name, `America/New_York`.
+    pub time_zone: String,
+    /// `20:00`, in `time_zone`.
+    #[serde(with = "crate::local_time::clock")]
+    pub default_raid_time: time::Time,
+}
+
+pub async fn settings(pool: &PgPool) -> sqlx::Result<Settings> {
+    db::settings(pool).await
+}
+
+/// Replaces the settings. The zone must be one the database knows, since it turns raids' local
+/// times into instants. Raids already scheduled keep the zone they were scheduled in.
+pub async fn set_settings(pool: &PgPool, settings: &Settings) -> Result<Settings, GuildError> {
+    let time_zone = settings.time_zone.trim();
+    if !db::is_known_time_zone(pool, time_zone).await? {
+        return Err(Error::External(GuildError::UnknownTimeZone));
+    }
+    Ok(db::set_settings(pool, time_zone, settings.default_raid_time).await?)
 }
 
 /// A member of the guild (an account), with their characters, main first.
@@ -192,6 +224,34 @@ pub(crate) mod tests {
         tx.commit().await.unwrap();
         user.guild_rank = rank;
         user
+    }
+
+    #[sqlx::test]
+    async fn settings_take_known_time_zones_only(pool: PgPool) {
+        let defaults = settings(&pool).await.unwrap();
+        assert_eq!(defaults.time_zone, "America/New_York");
+        assert_eq!(defaults.default_raid_time, time::macros::time!(20:00));
+        assert_eq!(
+            serde_json::to_value(&defaults).unwrap(),
+            serde_json::json!({"time_zone": "America/New_York", "default_raid_time": "20:00"})
+        );
+
+        let berlin: Settings = serde_json::from_value(
+            serde_json::json!({"time_zone": " Europe/Berlin ", "default_raid_time": "19:30"}),
+        )
+        .unwrap();
+        let saved = set_settings(&pool, &berlin).await.unwrap();
+        assert_eq!(saved.time_zone, "Europe/Berlin");
+        assert_eq!(settings(&pool).await.unwrap(), saved);
+
+        let nowhere = Settings {
+            time_zone: "Mars/Olympus_Mons".into(),
+            ..saved
+        };
+        assert!(matches!(
+            set_settings(&pool, &nowhere).await,
+            Err(Error::External(GuildError::UnknownTimeZone))
+        ));
     }
 
     #[test]

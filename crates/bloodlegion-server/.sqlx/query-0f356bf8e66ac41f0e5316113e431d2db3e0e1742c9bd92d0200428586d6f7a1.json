@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id FROM items WHERE name_normalized = lower($1)",
+  "query": "SELECT id FROM items WHERE game_item_id = $1",
   "describe": {
     "columns": [
       {
@@ -17,12 +17,12 @@
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Int4"
       ]
     },
     "nullable": [
       false
     ]
   },
-  "hash": "6dd66a8d4bc906c31b934e8bd22a2c7c7bedcfe71668724894e9245d63441838"
+  "hash": "0f356bf8e66ac41f0e5316113e431d2db3e0e1742c9bd92d0200428586d6f7a1"
 }

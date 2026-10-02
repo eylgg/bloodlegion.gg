@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT i.id, i.name, i.quality, i.game_item_id,\n               (SELECT count(*) FROM loot l WHERE l.item_id = i.id) AS \"drops!\"\n        FROM items i\n        WHERE i.id = $1\n        ",
+  "query": "\n        SELECT i.id, i.name, i.quality, i.game_item_id, g.icon AS \"icon?\",\n               (SELECT count(*) FROM loot l WHERE l.item_id = i.id) AS \"drops!\"\n        FROM items i\n        LEFT JOIN game_items g ON g.id = i.game_item_id\n        WHERE i.id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -49,6 +49,17 @@
       },
       {
         "ordinal": 4,
+        "name": "icon?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "icon"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
         "name": "drops!",
         "type_info": "Int8",
         "origin": "Expression"
@@ -64,8 +75,9 @@
       false,
       false,
       true,
+      true,
       null
     ]
   },
-  "hash": "2345c211ec3dccc97858d15987cd56cbfa1969ab3e1ef3e5f50366321e73ce88"
+  "hash": "9e74febe132cb9551f6c5bd1d4ba68d1f0e38ae9aa8080b5552c1f3e7baa47c8"
 }
