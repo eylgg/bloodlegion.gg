@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE loot SET boss_id = $2, character_id = $3 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "166c0ee4d42dcf0e0f4825ecf6c3e9ed7917757ef346a55d61a3d22ed3462dfe"
+}

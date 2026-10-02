@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT raid_zone_size($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "raid_zone_size",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0d302a7d79143822653ade74781d83061b4a0af336be5f66c38b4ddf50e2315a"
+}

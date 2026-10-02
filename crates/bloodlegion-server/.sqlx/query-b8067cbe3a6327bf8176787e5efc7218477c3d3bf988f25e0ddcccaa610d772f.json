@@ -1,0 +1,124 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            users.id AS \"id: UserId\",\n            users.username,\n            users.is_superuser,\n            (users.disabled_at IS NOT NULL) AS \"disabled!\",\n            users.first_name,\n            users.last_name,\n            users.guild_rank AS \"guild_rank: Rank\",\n            users.created_at,\n            users.updated_at,\n            COALESCE(\n                jsonb_agg(\n                    jsonb_build_object(\n                        'email', ue.email,\n                        'is_verified', ue.verified_at IS NOT NULL,\n                        'is_primary', ue.is_primary,\n                        'is_federated', ue.is_federated\n                    ) ORDER BY ue.is_primary DESC, ue.email\n                ) FILTER (WHERE ue.id IS NOT NULL),\n                '[]'::jsonb\n            ) AS \"emails!: sqlx::types::Json<Vec<super::UserEmail>>\"\n        FROM users\n        LEFT JOIN user_emails ue ON ue.user_id = users.id\n        GROUP BY users.id\n        ORDER BY users.created_at\n        LIMIT 1000\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "is_superuser",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "is_superuser"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "disabled!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "last_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "guild_rank: Rank",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "guild_rank"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "emails!: sqlx::types::Json<Vec<super::UserEmail>>",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      true,
+      true,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "b8067cbe3a6327bf8176787e5efc7218477c3d3bf988f25e0ddcccaa610d772f"
+}

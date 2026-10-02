@@ -1,5 +1,6 @@
 use sqlx::{PgConnection, PgPool};
 
+use crate::guild::Rank;
 use crate::users::{CreateUserPayload, User, UserId};
 
 pub async fn find_user_by_id(pool: &PgPool, user_id: UserId) -> sqlx::Result<Option<User>> {
@@ -16,6 +17,7 @@ pub async fn find_user_by_id(pool: &PgPool, user_id: UserId) -> sqlx::Result<Opt
             COALESCE(user_emails.is_federated, false) AS "is_email_federated!",
             users.first_name,
             users.last_name,
+            users.guild_rank AS "guild_rank: Rank",
             users.created_at,
             users.updated_at
         FROM users
@@ -93,6 +95,7 @@ pub async fn list_users(pool: &PgPool) -> sqlx::Result<Vec<User>> {
             COALESCE(user_emails.is_federated, false) AS "is_email_federated!",
             users.first_name,
             users.last_name,
+            users.guild_rank AS "guild_rank: Rank",
             users.created_at,
             users.updated_at
         FROM users
@@ -134,7 +137,7 @@ pub async fn insert_user(
         r#"
         INSERT INTO users (username, first_name, last_name, is_superuser)
         VALUES ($1, $2, $3, $4)
-        RETURNING id AS "id: UserId", created_at, updated_at
+        RETURNING id AS "id: UserId", guild_rank AS "guild_rank: Rank", created_at, updated_at
         "#,
         payload.username,
         payload.first_name,
@@ -168,6 +171,7 @@ pub async fn insert_user(
         is_email_federated: false,
         first_name: payload.first_name.clone(),
         last_name: payload.last_name.clone(),
+        guild_rank: row.guild_rank,
         created_at: row.created_at,
         updated_at: row.updated_at,
     })
@@ -217,6 +221,7 @@ pub async fn list_user_listings(pool: &PgPool) -> sqlx::Result<Vec<super::UserLi
             (users.disabled_at IS NOT NULL) AS "disabled!",
             users.first_name,
             users.last_name,
+            users.guild_rank AS "guild_rank: Rank",
             users.created_at,
             users.updated_at,
             COALESCE(

@@ -130,6 +130,25 @@ pub async fn users_set_superuser(username: String, is_superuser: bool) -> Result
     Ok(())
 }
 
+/// `users rank`: sets a guild rank, without the officers' rules (the operator bootstraps the
+/// first leader this way).
+#[tokio::main(flavor = "current_thread")]
+pub async fn users_set_rank(username: String, rank: String) -> Result<()> {
+    let Some(rank) = crate::guild::Rank::parse(&rank) else {
+        return Err(anyhow::anyhow!(
+            "'{rank}' is not a rank: leader, officer, raider, trial, member, friend, or retired"
+        )
+        .into());
+    };
+    let pool = State::load_pool().await?;
+    let id = user_id(&pool, &username).await?;
+    crate::guild::force_rank(&pool, id, rank)
+        .await
+        .context("updating the guild rank")?;
+    eprintln!("'{username}' is now {}", rank.slug());
+    Ok(())
+}
+
 /// `users rename`.
 #[tokio::main(flavor = "current_thread")]
 pub async fn users_rename(username: String, new_username: String) -> Result<()> {
@@ -162,7 +181,8 @@ pub async fn users_set_disabled(username: String, disabled: bool) -> Result<()> 
     Ok(())
 }
 
-/// `users characters`: the token status, then the characters on the user's WoW account.
+/// `users characters`: for each Battle.net account the user linked, the token status, then the
+/// characters on it.
 #[tokio::main(flavor = "current_thread")]
 pub async fn users_characters(
     username: String,
@@ -175,53 +195,66 @@ pub async fn users_characters(
     let state = State::new().await?;
     let id = user_id(&state.pool, &username).await?;
     let slug = crate::Slug::try_from(provider.as_str()).context("invalid provider slug")?;
-    let Some(tokens) = crate::auth::oauth2::providers::tokens_for_user(&state, id, &slug).await?
-    else {
+    let accounts = crate::auth::oauth2::providers::tokens_for_user(&state, id, &slug).await?;
+    if accounts.is_empty() {
         return Err(anyhow::anyhow!(
             "'{username}' has no stored {slug} token; they need to sign in through {slug} again"
         )
         .into());
-    };
-    let now = time::OffsetDateTime::now_utc();
-    let expiry = match tokens.expires_at {
-        Some(at) if at <= now => format!("expired {at}"),
-        Some(at) => format!("expires {at}"),
-        None => "no expiry given".to_string(),
-    };
-    eprintln!(
-        "{slug} token from the sign-in at {}: {expiry}; refresh token: {}; scope: {}",
-        tokens.updated_at,
-        if tokens.has_refresh_token {
-            "yes"
-        } else {
-            "no"
-        },
-        tokens.scope,
-    );
-    let characters = crate::wow::account_characters(
-        &state.http_client,
-        &region,
-        &namespace,
-        &locale,
-        &tokens.access_token,
-    )
-    .await?;
-    println!(
-        "{:<14} {:<22} {:>5} {:<14} {:<20} FACTION",
-        "NAME", "REALM", "LEVEL", "CLASS", "RACE"
-    );
-    for character in &characters {
-        println!(
-            "{:<14} {:<22} {:>5} {:<14} {:<20} {}",
-            character.name,
-            character.realm,
-            character.level,
-            character.class,
-            character.race,
-            character.faction,
-        );
     }
-    eprintln!("{} characters", characters.len());
+    // One listing per linked account. A failing account (an expired token) is reported and
+    // skipped, so the others still list.
+    let now = time::OffsetDateTime::now_utc();
+    for tokens in &accounts {
+        let account = tokens.identity.as_deref().unwrap_or("(unnamed account)");
+        let expiry = match tokens.expires_at {
+            Some(at) if at <= now => format!("expired {at}"),
+            Some(at) => format!("expires {at}"),
+            None => "no expiry given".to_string(),
+        };
+        eprintln!(
+            "{account}: {slug} token from the sign-in at {}: {expiry}; refresh token: {}; \
+             scope: {}",
+            tokens.updated_at,
+            if tokens.has_refresh_token {
+                "yes"
+            } else {
+                "no"
+            },
+            tokens.scope,
+        );
+        let characters = match crate::wow::account_characters(
+            &state.http_client,
+            &region,
+            &namespace,
+            &locale,
+            &tokens.access_token,
+        )
+        .await
+        {
+            Ok(characters) => characters,
+            Err(error) => {
+                eprintln!("{account}: {error:#}");
+                continue;
+            }
+        };
+        println!(
+            "{:<14} {:<22} {:>5} {:<14} {:<20} FACTION",
+            "NAME", "REALM", "LEVEL", "CLASS", "RACE"
+        );
+        for character in &characters {
+            println!(
+                "{:<14} {:<22} {:>5} {:<14} {:<20} {}",
+                character.name,
+                character.realm,
+                character.level,
+                character.class,
+                character.race,
+                character.faction,
+            );
+        }
+        eprintln!("{account}: {} characters", characters.len());
+    }
     Ok(())
 }
 
@@ -422,5 +455,29 @@ pub async fn providers_remove(slug: String) -> Result<()> {
         return Err(anyhow::anyhow!("no OAuth2 provider has the slug '{slug}'").into());
     }
     eprintln!("removed provider '{slug}'");
+    Ok(())
+}
+
+/// `oauth2-providers update`: flips a provider's registration and disconnection flags.
+#[tokio::main(flavor = "current_thread")]
+pub async fn providers_update(
+    slug: String,
+    allow_registration: Option<bool>,
+    allow_disconnection: Option<bool>,
+) -> Result<()> {
+    let pool = State::load_pool().await?;
+    let slug = crate::Slug::try_from(slug.as_str()).context("invalid slug")?;
+    let updated = crate::auth::oauth2::providers::update_flags(
+        &pool,
+        &slug,
+        allow_registration,
+        allow_disconnection,
+    )
+    .await
+    .context("updating the provider")?;
+    if !updated {
+        return Err(anyhow::anyhow!("no OAuth2 provider has the slug '{slug}'").into());
+    }
+    eprintln!("updated provider '{slug}'");
     Ok(())
 }

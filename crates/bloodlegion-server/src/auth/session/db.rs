@@ -5,6 +5,7 @@ use sqlx::types::ipnet::IpNet;
 use time::OffsetDateTime;
 
 use crate::crypto::TokenHash;
+use crate::guild::Rank;
 use crate::users::{User, UserId};
 
 /// One active session row for the "your sessions" listing. `is_current` is
@@ -66,6 +67,7 @@ pub async fn find_user_by_session_token(
             COALESCE(user_emails.is_federated, false) AS "is_email_federated!",
             users.first_name,
             users.last_name,
+            users.guild_rank AS "guild_rank: Rank",
             users.created_at,
             users.updated_at
         FROM auth_sessions

@@ -172,6 +172,7 @@ pub fn router() -> Router<State> {
         .route("/sessions", get(sessions))
         .route("/logout", post(logout::handler))
         .route("/sign-out-others", post(sign_out_others))
+        .nest("/linked-accounts", oauth2::providers::links::router())
         .nest("/local", local::api::router())
         .nest("/oauth2", oauth2::api::router())
 }

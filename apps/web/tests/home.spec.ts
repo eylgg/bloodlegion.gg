@@ -41,3 +41,10 @@ test('launch sign-ups are for members: a visitor is sent to sign in first', asyn
 	await expect(page).toHaveURL('/?next=%2Flaunch');
 	await expect(page.getByRole('img', { name: 'Blood Legion' })).toBeVisible();
 });
+
+test('the guild pages are for members: a visitor is sent to sign in first', async ({ page }) => {
+	for (const path of ['/roster', '/raids', '/raids/1', '/loot', '/profile', '/characters/1']) {
+		await page.goto(path);
+		await expect(page).toHaveURL(`/?next=${encodeURIComponent(path)}`);
+	}
+});

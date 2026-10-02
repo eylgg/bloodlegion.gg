@@ -1,15 +1,19 @@
 mod api;
 mod auth;
+mod characters;
 mod cleaner;
 mod cli;
 mod crypto;
 mod error;
 mod extract;
 mod fallbacks;
+mod guild;
 mod launch;
 mod newtype;
 mod observability;
 mod problem;
+mod questions;
+mod raids;
 mod result;
 mod slug;
 mod state;
@@ -87,6 +91,9 @@ enum UsersCommand {
     Promote { username: String },
     /// Remove an account's superuser status.
     Demote { username: String },
+    /// Set an account's guild rank: leader, officer, raider, trial, member, friend, or retired.
+    /// Leaders and officers run raids and record loot.
+    Rank { username: String, rank: String },
     /// Suspend an account: its sessions stop resolving and it can no longer log in.
     Disable { username: String },
     /// Lift an account's suspension.
@@ -187,6 +194,15 @@ enum ProvidersCommand {
     },
     /// Remove a provider (and every credential linked through it).
     Remove { slug: String },
+    /// Change a provider's flags. `--allow-disconnection true` lets members unlink accounts at it
+    /// from their profile (never their last way to sign in).
+    Update {
+        slug: String,
+        #[arg(long)]
+        allow_registration: Option<bool>,
+        #[arg(long)]
+        allow_disconnection: Option<bool>,
+    },
 }
 
 /// Spawns a task that listens on a Postgres `NOTIFY` channel and runs `handler` for every
@@ -291,6 +307,7 @@ fn main() -> Result<()> {
             UsersCommand::List => cli::users_list(),
             UsersCommand::Promote { username } => cli::users_set_superuser(username, true),
             UsersCommand::Demote { username } => cli::users_set_superuser(username, false),
+            UsersCommand::Rank { username, rank } => cli::users_set_rank(username, rank),
             UsersCommand::Disable { username } => cli::users_set_disabled(username, true),
             UsersCommand::Enable { username } => cli::users_set_disabled(username, false),
             UsersCommand::Rename {
@@ -347,6 +364,11 @@ fn main() -> Result<()> {
                 allow_unclaimed_username_connection,
             })?),
             ProvidersCommand::Remove { slug } => cli::providers_remove(slug),
+            ProvidersCommand::Update {
+                slug,
+                allow_registration,
+                allow_disconnection,
+            } => cli::providers_update(slug, allow_registration, allow_disconnection),
         },
     }
 }

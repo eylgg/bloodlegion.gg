@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM auth_oauth2_provider_tokens WHERE provider_id = $1 AND subject = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f876517f3ef56af3de5daa06cf0c9f1f722025e689a5c382ef6446e5e1374f7f"
+}

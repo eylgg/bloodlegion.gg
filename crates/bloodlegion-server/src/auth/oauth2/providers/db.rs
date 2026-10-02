@@ -19,6 +19,7 @@ pub struct Provider {
     pub is_registration_allowed: bool,
     pub is_auto_connection_allowed: bool,
     pub is_email_verified: bool,
+    /// Unlinking reads it per credential (`credential_disconnection_allowed`), not from here.
     #[allow(dead_code)]
     pub is_disconnection_allowed: bool,
     /// Whether a first login may claim an unclaimed account (no linked identity) by the asserted
@@ -36,10 +37,7 @@ pub struct Provider {
 pub struct Request {
     pub id: i64,
     pub provider_id: ProviderId,
-    /// The account that started a connect/link flow; `None` for a plain login.
-    /// Dormant until an OIDC connect endpoint consumes it (the column exists so
-    /// the state is bound to a user, the way the SAML connect flow already is).
-    #[allow(dead_code)]
+    /// The account that started a link flow (`links`); `None` for a plain login.
     pub user_id: Option<UserId>,
     /// Present only for OIDC providers (it binds an id_token); `None` for plain
     /// OAuth2. The provider's `is_oidc` decides which, enforced by a DB trigger.
@@ -339,8 +337,10 @@ pub async fn upsert_tokens(
     Ok(())
 }
 
-/// The tokens stored for a user's connected identity at the provider named by `slug`.
+/// The tokens stored for one of a user's connected identities at the provider named by `slug`.
 pub struct StoredTokens {
+    /// The identity's raw userinfo, to say which account the tokens belong to (a BattleTag).
+    pub raw_userinfo: serde_json::Value,
     pub access_token: Ciphertext,
     pub refresh_token: Option<Ciphertext>,
     pub expires_at: Option<OffsetDateTime>,
@@ -348,15 +348,16 @@ pub struct StoredTokens {
     pub updated_at: OffsetDateTime,
 }
 
+/// One entry per linked identity that has tokens, oldest link first.
 pub async fn find_tokens_for_user(
     pool: &PgPool,
     user_id: UserId,
     slug: &Slug,
-) -> sqlx::Result<Option<StoredTokens>> {
+) -> sqlx::Result<Vec<StoredTokens>> {
     sqlx::query_as!(
         StoredTokens,
         r#"
-        SELECT t.access_token_ciphertext AS "access_token: Ciphertext",
+        SELECT c.raw_userinfo, t.access_token_ciphertext AS "access_token: Ciphertext",
                t.refresh_token_ciphertext AS "refresh_token: Ciphertext",
                t.expires_at, t.scope, t.updated_at
         FROM auth_oauth2_provider_credentials c
@@ -364,11 +365,12 @@ pub async fn find_tokens_for_user(
         JOIN auth_oauth2_provider_tokens t
             ON t.provider_id = c.provider_id AND t.subject = c.subject
         WHERE c.user_id = $1 AND p.slug = $2 AND c.disconnected_at IS NULL
+        ORDER BY c.created_at, c.id
         "#,
         user_id.0,
         slug.as_ref(),
     )
-    .fetch_optional(pool)
+    .fetch_all(pool)
     .await
 }
 
@@ -458,6 +460,146 @@ pub async fn insert_credential(
     .execute(&mut *conn)
     .await?;
     Ok(())
+}
+
+/// Clears a tombstone on the user's own credential, so an identity they once disconnected is live
+/// again when they link it anew. A no-op for a live credential.
+pub async fn reconnect_credential(
+    pool: &PgPool,
+    provider_id: ProviderId,
+    subject: &str,
+    user_id: UserId,
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        r#"
+        UPDATE auth_oauth2_provider_credentials
+        SET disconnected_at = NULL
+        WHERE provider_id = $1 AND subject = $2 AND user_id = $3 AND disconnected_at IS NOT NULL
+        "#,
+        provider_id.0,
+        subject,
+        user_id.0,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// One live credential of a user, with what the profile page shows of it.
+pub struct LinkedCredential {
+    pub id: i64,
+    pub provider_slug: Slug,
+    pub provider_name: String,
+    pub raw_userinfo: serde_json::Value,
+    pub is_disconnection_allowed: bool,
+    pub created_at: OffsetDateTime,
+}
+
+/// The user's live credentials at every OAuth2 provider, oldest first.
+pub async fn list_linked_credentials(
+    pool: &PgPool,
+    user_id: UserId,
+) -> sqlx::Result<Vec<LinkedCredential>> {
+    sqlx::query_as!(
+        LinkedCredential,
+        r#"
+        SELECT c.id, p.slug AS "provider_slug: Slug", p.name AS provider_name, c.raw_userinfo,
+               p.is_disconnection_allowed, c.created_at
+        FROM auth_oauth2_provider_credentials c
+        JOIN auth_providers p ON p.id = c.provider_id
+        WHERE c.user_id = $1 AND c.disconnected_at IS NULL
+        ORDER BY c.created_at, c.id
+        "#,
+        user_id.0,
+    )
+    .fetch_all(pool)
+    .await
+}
+
+/// The ways the user can still sign in besides the credential `except`: their other live
+/// credentials, and whether they have a local password. Locks the user's row first, so two
+/// unlinks at once serialize and cannot both pass the last-login-method check.
+pub struct OtherLoginMethods {
+    pub credentials: i64,
+    pub has_password: bool,
+}
+
+pub async fn lock_other_login_methods(
+    conn: &mut PgConnection,
+    user_id: UserId,
+    except: i64,
+) -> sqlx::Result<OtherLoginMethods> {
+    sqlx::query!(
+        "SELECT 1 AS locked FROM users WHERE id = $1 FOR UPDATE",
+        user_id.0
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    sqlx::query_as!(
+        OtherLoginMethods,
+        r#"
+        SELECT
+            (SELECT count(*) FROM auth_oauth2_provider_credentials
+             WHERE user_id = $1 AND id <> $2 AND disconnected_at IS NULL) AS "credentials!",
+            EXISTS (SELECT 1 FROM auth_local_credentials WHERE user_id = $1) AS "has_password!"
+        "#,
+        user_id.0,
+        except,
+    )
+    .fetch_one(&mut *conn)
+    .await
+}
+
+/// Whether the user's live credential `id` is at a provider that lets people disconnect it, or
+/// `None` when the user has no such credential.
+pub async fn credential_disconnection_allowed(
+    conn: &mut PgConnection,
+    user_id: UserId,
+    id: i64,
+) -> sqlx::Result<Option<bool>> {
+    sqlx::query_scalar!(
+        r#"
+        SELECT p.is_disconnection_allowed
+        FROM auth_oauth2_provider_credentials c
+        JOIN auth_providers p ON p.id = c.provider_id
+        WHERE c.id = $1 AND c.user_id = $2 AND c.disconnected_at IS NULL
+        "#,
+        id,
+        user_id.0,
+    )
+    .fetch_optional(&mut *conn)
+    .await
+}
+
+/// Deletes the user's credential `id` and the tokens stored for its identity. Returns whether a
+/// credential matched.
+pub async fn delete_credential(
+    conn: &mut PgConnection,
+    user_id: UserId,
+    id: i64,
+) -> sqlx::Result<bool> {
+    let deleted = sqlx::query!(
+        r#"
+        DELETE FROM auth_oauth2_provider_credentials
+        WHERE id = $1 AND user_id = $2
+        RETURNING provider_id, subject
+        "#,
+        id,
+        user_id.0,
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    let Some(deleted) = deleted else {
+        return Ok(false);
+    };
+    sqlx::query!(
+        "DELETE FROM auth_oauth2_provider_tokens WHERE provider_id = $1 AND subject = $2",
+        deleted.provider_id,
+        deleted.subject,
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(true)
 }
 
 /// Admin-facing view of a configured OAuth2 provider. The client secret is
@@ -787,7 +929,7 @@ mod tests {
             find_tokens_for_user(&pool, user.id, &google)
                 .await
                 .unwrap()
-                .is_none()
+                .is_empty()
         );
 
         // ...and found once the credential links the identity to the account.
@@ -805,6 +947,7 @@ mod tests {
         let found = find_tokens_for_user(&pool, user.id, &google)
             .await
             .unwrap()
+            .pop()
             .unwrap();
         assert_eq!(found.access_token.as_ref(), "access-1");
         assert!(found.refresh_token.is_none());
@@ -825,6 +968,7 @@ mod tests {
         let found = find_tokens_for_user(&pool, user.id, &google)
             .await
             .unwrap()
+            .pop()
             .unwrap();
         assert_eq!(found.access_token.as_ref(), "access-2");
         assert_eq!(
@@ -832,6 +976,36 @@ mod tests {
             Some("refresh-2")
         );
         assert!(found.expires_at.is_some());
+
+        // A second linked account at the provider has its own tokens, listed after the first.
+        upsert_tokens(
+            &pool,
+            provider_id,
+            "sub-2",
+            &Ciphertext::for_test("access-alt"),
+            None,
+            None,
+            "openid wow.profile",
+        )
+        .await
+        .unwrap();
+        insert_credential(
+            &mut conn,
+            provider_id,
+            "sub-2",
+            user.id,
+            &serde_json::json!({}),
+            &serde_json::json!({}),
+        )
+        .await
+        .unwrap();
+        let tokens: Vec<_> = find_tokens_for_user(&pool, user.id, &google)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|t| t.access_token.as_ref().to_string())
+            .collect();
+        assert_eq!(tokens, vec!["access-2", "access-alt"]);
     }
 
     #[sqlx::test]

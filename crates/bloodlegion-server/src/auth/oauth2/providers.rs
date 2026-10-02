@@ -2,6 +2,7 @@ mod admin;
 pub mod api;
 mod db;
 pub mod http;
+pub mod links;
 mod provision;
 pub mod register;
 
@@ -92,6 +93,13 @@ pub enum ProviderError {
         detail = format!("Signing in needs every permission the site asks for. Please sign in again and allow: {_0}.")
     )]
     ScopesNotGranted(String),
+    #[error("identity linked to another account")]
+    #[problem(
+        status = CONFLICT,
+        title = "Already Linked",
+        detail = "That account is already linked to another Blood Legion account."
+    )]
+    AlreadyLinked,
     #[error("registration disabled")]
     #[problem(
         status = FORBIDDEN,
@@ -146,6 +154,26 @@ pub(crate) async fn remove(pool: &PgPool, slug: &crate::Slug) -> sqlx::Result<bo
     db::delete_provider(pool, slug).await
 }
 
+/// Changes a provider's registration and disconnection flags (each left alone when `None`),
+/// returning whether a provider matched. The CLI's entry point.
+pub(crate) async fn update_flags(
+    pool: &PgPool,
+    slug: &crate::Slug,
+    is_registration_allowed: Option<bool>,
+    is_disconnection_allowed: Option<bool>,
+) -> sqlx::Result<bool> {
+    db::update_provider_flags(
+        pool,
+        slug,
+        is_registration_allowed,
+        None,
+        None,
+        is_disconnection_allowed,
+        None,
+    )
+    .await
+}
+
 impl ProviderError {
     /// A stable code for the front page to turn into a message, when a browser sign-in fails and
     /// is sent back there (`/?error=<code>`). Codes rather than text, so a crafted link cannot
@@ -158,6 +186,7 @@ impl ProviderError {
             Self::InvalidIdToken | Self::SubjectMissing => "verification_failed",
             Self::ScopesNotGranted(_) => "permissions_required",
             Self::EmailInUse => "email_in_use",
+            Self::AlreadyLinked => "already_linked",
             Self::RegistrationDisabled => "registration_closed",
             Self::CreateUser(_) => "account_failed",
             Self::Upstream(_) => "unavailable",
@@ -177,8 +206,11 @@ fn missing_scopes(requested: &str, granted: Option<&str>) -> Option<String> {
     (!missing.is_empty()).then(|| missing.join(" "))
 }
 
-/// A user's decrypted provider tokens, for calling the provider's APIs on their behalf.
+/// One of a user's linked identities' decrypted tokens, for calling the provider's APIs on their
+/// behalf.
 pub(crate) struct ProviderTokens {
+    /// Which account at the provider these are for (a BattleTag), when it said.
+    pub identity: Option<String>,
     pub access_token: String,
     pub has_refresh_token: bool,
     pub expires_at: Option<OffsetDateTime>,
@@ -186,28 +218,32 @@ pub(crate) struct ProviderTokens {
     pub updated_at: OffsetDateTime,
 }
 
-/// The tokens from the user's latest sign-in through the provider named by `slug`, or `None` when
-/// they have no connected identity there (or signed in before tokens were kept).
+/// The tokens from the latest sign-in (or link) of each identity the user has linked at the
+/// provider named by `slug`, oldest link first. Empty when they have none there, or linked before
+/// tokens were kept.
 pub(crate) async fn tokens_for_user(
     state: &State,
     user_id: UserId,
     slug: &crate::Slug,
-) -> anyhow::Result<Option<ProviderTokens>> {
-    let Some(stored) = db::find_tokens_for_user(&state.pool, user_id, slug)
+) -> anyhow::Result<Vec<ProviderTokens>> {
+    let stored = db::find_tokens_for_user(&state.pool, user_id, slug)
         .await
-        .context("loading the stored provider tokens")?
-    else {
-        return Ok(None);
-    };
-    Ok(Some(ProviderTokens {
-        access_token: state
-            .decrypt(&stored.access_token)
-            .context("decrypting the access token")?,
-        has_refresh_token: stored.refresh_token.is_some(),
-        expires_at: stored.expires_at,
-        scope: stored.scope,
-        updated_at: stored.updated_at,
-    }))
+        .context("loading the stored provider tokens")?;
+    stored
+        .into_iter()
+        .map(|stored| {
+            Ok(ProviderTokens {
+                identity: provision::identity_label(&stored.raw_userinfo),
+                access_token: state
+                    .decrypt(&stored.access_token)
+                    .context("decrypting the access token")?,
+                has_refresh_token: stored.refresh_token.is_some(),
+                expires_at: stored.expires_at,
+                scope: stored.scope,
+                updated_at: stored.updated_at,
+            })
+        })
+        .collect()
 }
 
 /// OAuth2 providers offered on the login page.

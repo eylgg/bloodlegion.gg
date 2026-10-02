@@ -7,16 +7,20 @@ use axum::{Json, Router};
 use axum_extra::extract::cookie::CookieJar;
 use serde::Deserialize;
 
-use crate::auth::{Params, session::start_session};
+use crate::auth::{Next, Params, session::start_session};
 use crate::extract::{Admin, SameOrigin};
+use crate::users::{User, UserId};
 use crate::{Result, Slug, State};
 
 use super::admin::{self, CreateError};
 use super::provision::{
     Provisioned, extract_subject, merge_userinfo, provision_user, verify_id_token,
 };
-use super::register;
 use super::{ProviderError, db, http, redirect_uri, resolve_metadata, upstream};
+use super::{links, register};
+
+/// Where a link flow ends, on success or failure: the profile page, which lists linked accounts.
+const PROFILE_PATH: &str = "/profile";
 
 /// The start-login query: the usual `next`, plus `prompt=consent` to force the provider's consent
 /// screen. A provider remembers what a person granted and re-grants exactly that silently, so
@@ -41,6 +45,11 @@ pub struct CallbackQuery {
 /// message. Both endpoints here are full-page navigations, so a JSON problem would strand the
 /// person on raw JSON. Internal failures are logged and reported as `unavailable`.
 fn to_front_page<T: IntoResponse>(result: Result<T, ProviderError>) -> Response {
+    on_error_to("/", result)
+}
+
+/// [`to_front_page`], landing on `path` instead (the profile page, for a link flow).
+fn on_error_to<T: IntoResponse>(path: &str, result: Result<T, ProviderError>) -> Response {
     let code = match result {
         Ok(response) => return response.into_response(),
         Err(crate::Error::External(error)) => {
@@ -56,18 +65,49 @@ fn to_front_page<T: IntoResponse>(result: Result<T, ProviderError>) -> Response 
             "unavailable"
         }
     };
-    Redirect::to(&format!("/?error={code}")).into_response()
+    Redirect::to(&format!("{path}?error={code}")).into_response()
 }
 
 /// `GET /api/auth/oauth2/providers/{slug}`: starts a sign-in (see [`to_front_page`]).
-async fn login(state: State, slug: Path<Slug>, params: Query<LoginQuery>) -> Response {
-    to_front_page(start_login(state, slug, params).await)
-}
-
-async fn start_login(
+async fn login(
     state: State,
     Path(slug): Path<Slug>,
     Query(LoginQuery { params, prompt }): Query<LoginQuery>,
+) -> Response {
+    let prompt = (prompt.as_deref() == Some("consent")).then_some("consent");
+    to_front_page(start_login(state, slug, None, params.next, prompt).await)
+}
+
+/// `GET /api/auth/oauth2/providers/{slug}/link`: starts linking another account at the provider
+/// to the signed-in member (see [`links`]); it ends on the profile page either way. Asks the
+/// provider to prompt for a sign-in, so the person can pick an account other than the one the
+/// browser is already signed in to there.
+async fn link(state: State, user: Option<User>, Path(slug): Path<Slug>) -> Response {
+    let Some(user) = user else {
+        return Redirect::to(&format!("/?next={}", urlencoding::encode(PROFILE_PATH)))
+            .into_response();
+    };
+    on_error_to(
+        PROFILE_PATH,
+        start_login(
+            state,
+            slug,
+            Some(user.id),
+            Next::fixed(PROFILE_PATH),
+            Some("login"),
+        )
+        .await,
+    )
+}
+
+/// Sends the browser to the provider's authorization endpoint. `user_id` makes it a link to that
+/// member rather than a sign-in; `prompt` is passed to the provider as is.
+async fn start_login(
+    state: State,
+    slug: Slug,
+    user_id: Option<UserId>,
+    next: Next,
+    prompt: Option<&str>,
 ) -> Result<Redirect, ProviderError> {
     let provider = db::find_provider_by_slug(&state.pool, &slug)
         .await
@@ -81,16 +121,14 @@ async fn start_login(
     // Only OIDC binds an id_token via a nonce; a plain OAuth2 provider has none.
     let nonce = provider.is_oidc.then(crate::crypto::generate_token::<32>);
 
-    // A plain login is not bound to an account; a future connect flow would pass
-    // the signed-in user's id here so the callback can link to it.
     db::insert_request(
         &state.pool,
         &auth_state,
         provider.id,
-        None,
+        user_id,
         nonce.as_deref(),
         &code_verifier,
-        &params.next,
+        &next,
     )
     .await
     .context("persisting the in-flight OAuth2 request")?;
@@ -108,8 +146,8 @@ async fn start_login(
     if let Some(nonce) = &nonce {
         url.query_pairs_mut().append_pair("nonce", nonce);
     }
-    if prompt.as_deref() == Some("consent") {
-        url.query_pairs_mut().append_pair("prompt", "consent");
+    if let Some(prompt) = prompt {
+        url.query_pairs_mut().append_pair("prompt", prompt);
     }
 
     Ok(Redirect::to(url.as_str()))
@@ -118,14 +156,17 @@ async fn start_login(
 /// `GET /auth/oauth2/callback`: the single callback every provider redirects to.
 /// The `state` parameter (bound to the stored request) identifies which provider
 /// this is, so the URL carries no slug.
-/// `GET /auth/oauth2/callback`: finishes a sign-in (see [`to_front_page`]).
+/// `GET /auth/oauth2/callback`: finishes a sign-in or a link (see [`to_front_page`]). A failure
+/// while signed in can only be a link (nobody signs in twice), so it lands on the profile page.
 pub async fn callback(
     state: State,
+    user: Option<User>,
     query: Query<CallbackQuery>,
     jar: CookieJar,
     client: crate::extract::ClientInfo,
 ) -> Response {
-    to_front_page(finish_login(state, query, jar, client).await)
+    let on_error = if user.is_some() { PROFILE_PATH } else { "/" };
+    on_error_to(on_error, finish_login(state, query, jar, client).await)
 }
 
 async fn finish_login(
@@ -290,6 +331,13 @@ async fn finish_login(
         .context("completing the in-flight OAuth2 request")?;
     if !completed {
         return Err(crate::Error::External(ProviderError::InvalidState));
+    }
+
+    // A link attaches the identity to the member who started it; their session stays as it is.
+    if let Some(user_id) = request.user_id {
+        let linked = links::link(&state.pool, &provider, user_id, &subject, &userinfo).await?;
+        let target = format!("{}?linked={}", &*request.next, linked.code());
+        return Ok((jar, Redirect::to(&target)));
     }
 
     let user_id = match provision_user(&state.pool, &provider, &subject, &userinfo).await? {
@@ -457,4 +505,5 @@ pub fn router() -> Router<State> {
             "/{slug}",
             get(login).delete(delete_provider).patch(update_provider),
         )
+        .route("/{slug}/link", get(link))
 }

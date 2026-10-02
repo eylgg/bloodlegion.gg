@@ -93,17 +93,32 @@ Bootstrap, from a fresh database:
    scope asserts no email and no username, only a BattleTag, so on a first sign-in the person
    chooses their own username (the page suggests one from the tag) and the account has no
    email. `wow.profile` additionally asks the person for access to their WoW account profile
-   (their characters); the site does not store that token yet.
+   (their characters); the site keeps each account's token from its latest sign-in.
 
 2. Sign in with the button under the logo on the front page, then make that account an admin and
-   turn password login off (the site has no password form, so it only matters for the API):
+   the guild leader, and turn password login off (the site has no password form, so it only
+   matters for the API):
 
    ```sh
    bloodlegion-server users promote <the username you chose>
+   bloodlegion-server users rank <the username you chose> leader
    bloodlegion-server passwords disable
    ```
 
    Disabling is refused while no other login source is enabled, so nobody gets locked out.
+
+3. Optionally, let members unlink Battle.net accounts from their profile (it never lets them
+   unlink their last way to sign in):
+
+   ```sh
+   bloodlegion-server oauth2-providers update battlenet --allow-disconnection true
+   ```
+
+A member may link several Battle.net accounts from their profile page (`/profile`), and sign in
+with any of them. Linking signs in at Battle.net again, asking it to prompt for an account; if
+Battle.net signs straight back into an account already linked, the page says so, and signing out
+at battle.net first lets the person pick another. An account linked to one member cannot be linked
+to another until it is unlinked.
 
 The rest:
 
@@ -111,12 +126,15 @@ The rest:
 bloodlegion-server users list
 bloodlegion-server users demote <username>
 bloodlegion-server users rename <username> <new username>
+bloodlegion-server users rank <username> <rank>  # leader, officer, raider, trial, member, friend, retired
+bloodlegion-server users characters <username>   # the WoW characters on each linked Battle.net account
 bloodlegion-server launch                # every member's WoW: Forever launch sign-ups
 bloodlegion-server users disable <username>     # suspend: sessions stop, login refused
 bloodlegion-server users enable <username>
 bloodlegion-server passwords status | enable
 bloodlegion-server oauth2-providers list
 bloodlegion-server oauth2-providers remove <slug>
+bloodlegion-server oauth2-providers update <slug> --allow-registration <bool> --allow-disconnection <bool>
 bloodlegion-server oauth2-providers add --help  # any OpenID Connect or plain OAuth2 provider
 bloodlegion-server rotate-jwk                   # rotate the OpenID Connect signing key
 ```
@@ -130,6 +148,29 @@ have none.
 
 Usernames are 2 to 32 characters, a letter then letters and digits. The capitalization the person
 chose is kept for display; sign-in and uniqueness are case-insensitive.
+
+## The guild
+
+The loot tracker from the old site (Project Blood Legion, a Django app for a Classic realm), reshaped
+for WoW: Forever. Every page needs a signed-in member; leaders and officers (and superusers) make
+the changes.
+
+- **Ranks**: leader, officer, raider, trial, member, friend, retired. New accounts are members.
+  Officers set ranks from the roster; only the leader makes or unmakes officers, and nobody sets
+  their own.
+- **Characters** have a first and a last name (2 to 24 letters each) and no realm: Forever has
+  rulesets instead, and the guild plays on one (PvP), so a full name is unique across the site.
+  Members add their own on their profile, with one main; officers may add anyone's, including a
+  character no account claims (a pug who won loot). A character's notes are written by its player
+  and read by officers (`/notes`).
+- **Raids** are one night in a zone, with the characters who came and the loot they won. The zones
+  and their sizes are the app's catalog (`raids::catalog`, mirrored by the database's
+  `raid_zone_size()`, which caps attendance): Barrow Deeps (10), Hyjal Summit (20), and Onyxia's
+  Lair (40).
+- **Bosses and items** are entered as the guild meets them, since Forever's raids are new. Only
+  Onyxia is seeded. Recording loot by item name creates the item on first sight. A boss's page shows
+  how often each item dropped.
+- **Questions**: officers ask yes-or-no questions; members answer and may change their minds.
 
 ## Images
 

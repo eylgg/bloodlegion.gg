@@ -196,3 +196,27 @@ impl FromRequestParts<State> for Admin {
             .ok_or(Error::External(AuthRejection::Forbidden))
     }
 }
+
+/// Extracts the signed-in user and requires them to be an officer: a guild leader or officer, or
+/// a superuser (see [`User::is_officer`]). Rejects like [`Admin`]: `401` without a session, `403`
+/// for anyone else.
+pub struct Officer(pub User);
+
+impl Deref for Officer {
+    type Target = User;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl FromRequestParts<State> for Officer {
+    type Rejection = Error<AuthRejection>;
+
+    async fn from_request_parts(parts: &mut Parts, state: &State) -> Result<Self, Self::Rejection> {
+        let user = <User as FromRequestParts<State>>::from_request_parts(parts, state).await?;
+        user.is_officer()
+            .then_some(Officer(user))
+            .ok_or(Error::External(AuthRejection::Forbidden))
+    }
+}

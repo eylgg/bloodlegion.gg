@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE characters SET is_main = false\n        WHERE user_id = $1 AND is_main AND id IS DISTINCT FROM $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "690d51f38944d43ce4cd58fb2ad844f85d251892cb0527aa51ba4b3de42c3846"
+}

@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT a.user_id AS \"user_id: UserId\", u.username, a.choice, a.updated_at\n        FROM question_answers a\n        JOIN users u ON u.id = a.user_id\n        WHERE a.question_id = $1\n        ORDER BY a.choice DESC, u.username_normalized\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "question_answers",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "choice",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "question_answers",
+            "name": "choice"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "question_answers",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2baa2b6bd329d3f24fa0000089d9699bd42b9855ff86060464c7b570c797d213"
+}

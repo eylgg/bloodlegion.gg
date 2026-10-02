@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE auth_oauth2_provider_credentials\n        SET disconnected_at = NULL\n        WHERE provider_id = $1 AND subject = $2 AND user_id = $3 AND disconnected_at IS NOT NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "daef6984161e136e27fa41b7fc14898b038e9f9ed26242b1c45f50dcb19e5e3b"
+}

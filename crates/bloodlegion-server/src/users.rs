@@ -8,6 +8,7 @@ mod username;
 use sqlx::{PgConnection, PgPool};
 use time::{OffsetDateTime, serde::iso8601};
 
+use crate::guild::Rank;
 use crate::{Error, Problem, Result};
 
 pub use api::router;
@@ -73,10 +74,20 @@ pub struct User {
     pub is_email_federated: bool,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
+    /// Their rank in the guild; with `is_superuser`, what decides who runs raids.
+    pub guild_rank: Rank,
     #[serde(with = "iso8601")]
     pub created_at: OffsetDateTime,
     #[serde(with = "iso8601")]
     pub updated_at: OffsetDateTime,
+}
+
+impl User {
+    /// Whether they may run the guild's records: schedule raids, record loot and attendance, and
+    /// manage bosses, items, questions, and ranks.
+    pub fn is_officer(&self) -> bool {
+        self.is_superuser || self.guild_rank.is_officer()
+    }
 }
 
 /// One of a user's email addresses, for the admin listing. `Deserialize` so it can be read back

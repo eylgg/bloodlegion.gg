@@ -53,6 +53,9 @@ pub async fn find_federated_identity(
         FROM auth_oauth2_provider_credentials c
         JOIN auth_providers p ON p.id = c.provider_id
         WHERE c.user_id = $1 AND c.provider_id = $2 AND c.disconnected_at IS NULL
+        -- A member may link several accounts at one provider; the first one linked speaks for them.
+        ORDER BY c.created_at, c.id
+        LIMIT 1
         "#,
         user_id.0,
         provider_id.0,

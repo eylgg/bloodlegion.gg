@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS (SELECT 1 FROM raid_attendees WHERE character_id = $1)\n            OR EXISTS (SELECT 1 FROM loot WHERE character_id = $1) AS \"exists!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e03f85c2c3ebd721fc470e2b0006f012e3838de6f15d805bac64e8b3d361fd9a"
+}

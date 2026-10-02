@@ -69,6 +69,13 @@ impl Next {
     fn sanitize(value: &str) -> Self {
         Next::new(value).unwrap_or_default()
     }
+
+    /// A target the server chooses itself (a flow that always ends on one page), so there is
+    /// nothing untrusted to validate. Still checked, so a typo panics in tests, not in a browser.
+    pub fn fixed(path: &'static str) -> Self {
+        assert!(is_valid_redirect(path), "{path:?} is not a safe redirect");
+        Next(path.to_string())
+    }
 }
 
 #[cfg(test)]

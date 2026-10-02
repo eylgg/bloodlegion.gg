@@ -68,7 +68,9 @@
 
 <Logo>
 	{#if data.user}
-		<Button href={resolve('/launch')} variant="primary" full>WoW: Forever launch sign-ups</Button>
+		<Button href={resolve('/raids')} variant="primary" full>Raids and loot</Button>
+		<Button href={resolve('/roster')} variant="secondary" full>Roster</Button>
+		<Button href={resolve('/launch')} variant="secondary" full>WoW: Forever launch sign-ups</Button>
 	{/if}
 	{#if !data.user && loginError}
 		<Alert variant="error">{loginError}</Alert>
@@ -94,7 +96,7 @@
 {#if data.user}
 	<!-- Who is signed in, and the way out. -->
 	<footer class="account">
-		<span>{data.user.username}</span>
+		<a href={resolve('/profile')}>{data.user.username}</a>
 		<span class="sep" aria-hidden="true">·</span>
 		<button type="button" onclick={signOut} disabled={signingOut}>Sign out</button>
 	</footer>
@@ -116,6 +118,7 @@
 		color: var(--grey-soft);
 	}
 
+	a,
 	button {
 		color: inherit;
 		background: none;
@@ -127,6 +130,7 @@
 		text-underline-offset: 0.2em;
 	}
 
+	a:hover,
 	button:hover {
 		color: var(--grey-text-active);
 	}
