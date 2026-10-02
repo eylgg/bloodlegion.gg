@@ -8,6 +8,7 @@
 	import Alert from '$lib/components/Alert.svelte';
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import LootTable from '$lib/components/guild/LootTable.svelte';
+	import CharacterSpecs from '$lib/components/guild/CharacterSpecs.svelte';
 	import type { GuildCharacter, Note } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -69,8 +70,12 @@
 		</p>
 		<h1>{character.first_name} {character.last_name}</h1>
 		<p class="muted">
-			{character.username ? `Played by ${character.username}` : 'Not a member'} ·
-			{data.detail.raids_attended}
+			<CharacterSpecs
+				cls={character.class}
+				primary={character.primary_spec}
+				secondary={character.secondary_spec}
+			/>
+			{character.username ? `Played by ${character.username} · ` : ''}{data.detail.raids_attended}
 			{data.detail.raids_attended === 1 ? 'raid' : 'raids'} · {data.detail.loot.length}
 			{data.detail.loot.length === 1 ? 'item' : 'items'}
 		</p>

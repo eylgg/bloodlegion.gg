@@ -5,9 +5,9 @@
 	import { QUALITIES, QUALITY_LABEL, formatInZone, fullName, zoneName } from '$lib/guild';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
-	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import LootTable from '$lib/components/guild/LootTable.svelte';
 	import GameItemPicker from '$lib/components/guild/GameItemPicker.svelte';
+	import RaidBuilder from '$lib/components/guild/RaidBuilder.svelte';
 	import RaidForm from '../RaidForm.svelte';
 	import type { Attendee, GameItemSummary, LootEntry, Quality, Raid } from '$lib/types';
 	import type { PageProps } from './$types';
@@ -26,16 +26,6 @@
 	const size = $derived(zone?.size ?? 0);
 	const zoneBosses = $derived(data.bosses.filter((b) => b.zone === raid.zone));
 	const classColor = (slug: string) => data.classes.find((c) => c.slug === slug)?.color;
-
-	// Attendance by class, in the catalog's order.
-	const byClass = $derived(
-		data.classes
-			.map((wowClass) => ({
-				wowClass,
-				attendees: attendees.filter((a) => a.class === wowClass.slug)
-			}))
-			.filter((group) => group.attendees.length > 0)
-	);
 
 	async function removeRaid() {
 		if (!confirm('Delete this raid, with its attendance and loot?')) return;
@@ -208,7 +198,7 @@
 
 <section>
 	<div class="section-head">
-		<h2>Characters</h2>
+		<h2>Groups</h2>
 		{#if data.officer && !adding}
 			<Button
 				size="small"
@@ -255,7 +245,9 @@
 							/>
 							{fullName(character)}
 							<span class="muted small"
-								>{character.username ?? 'pug'}{character.is_main ? '' : ' · alt'}</span
+								>{[character.username, character.user_id !== null && !character.is_main && 'alt']
+									.filter(Boolean)
+									.join(' · ')}</span
 							>
 						</label>
 					</li>
@@ -269,34 +261,15 @@
 	{#if attendees.length === 0}
 		<p class="muted">Nobody recorded yet.</p>
 	{:else}
-		<div class="classes">
-			{#each byClass as group (group.wowClass.slug)}
-				<div class="class-group" style:--class-color={group.wowClass.color}>
-					<h3>{group.wowClass.name} <span class="muted">{group.attendees.length}</span></h3>
-					<ul>
-						{#each group.attendees as attendee (attendee.character_id)}
-							<li>
-								<CharacterLink
-									id={attendee.character_id}
-									firstName={attendee.first_name}
-									lastName={attendee.last_name}
-									cls={attendee.class}
-									icon={false}
-								/>
-								{#if data.officer}
-									<button
-										type="button"
-										class="remove"
-										aria-label="Remove {attendee.first_name} {attendee.last_name}"
-										onclick={() => removeAttendee(attendee)}>×</button
-									>
-								{/if}
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/each}
-		</div>
+		<RaidBuilder
+			raidId={raid.id}
+			{size}
+			{attendees}
+			onchange={(next) => (attendees = next)}
+			effects={data.effects}
+			editable={data.officer}
+			onremove={removeAttendee}
+		/>
 	{/if}
 </section>
 
@@ -420,56 +393,5 @@
 		gap: var(--space-2);
 		font-weight: 600;
 		cursor: pointer;
-	}
-
-	.classes {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
-		gap: var(--space-3);
-	}
-
-	.class-group {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		padding: var(--space-3);
-		background-color: var(--grey-bg);
-		border: 1px solid var(--grey-surface);
-		border-top: 2px solid var(--class-color);
-		border-radius: var(--radius-lg);
-	}
-
-	.class-group h3 {
-		color: var(--class-color);
-		font-size: var(--text-md);
-	}
-
-	.class-group ul {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.class-group li {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.remove {
-		padding: 0 var(--space-1);
-		color: var(--grey-text);
-		font-size: var(--text-lg);
-		line-height: 1;
-		background: none;
-		border: 0;
-		cursor: pointer;
-	}
-
-	.remove:hover {
-		color: var(--red-text);
 	}
 </style>

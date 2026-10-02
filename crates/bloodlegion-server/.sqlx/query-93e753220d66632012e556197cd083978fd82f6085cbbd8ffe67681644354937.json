@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.is_main AS \"is_main!\", c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE c.id = $1\n        ",
+  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.is_main AS \"is_main!\", c.primary_spec, c.primary_talents AS \"primary_talents!\",\n               c.secondary_spec, c.secondary_talents AS \"secondary_talents!\",\n               c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        ORDER BY c.name_normalized\n        ",
   "describe": {
     "columns": [
       {
@@ -82,6 +82,50 @@
       },
       {
         "ordinal": 7,
+        "name": "primary_spec",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "primary_spec"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "primary_talents!",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "primary_talents"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "secondary_spec",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "secondary_spec"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "secondary_talents!",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "secondary_talents"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
         "name": "created_at!",
         "type_info": "Timestamptz",
         "origin": {
@@ -92,7 +136,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 12,
         "name": "updated_at!",
         "type_info": "Timestamptz",
         "origin": {
@@ -104,21 +148,23 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Int8"
-      ]
+      "Left": []
     },
     "nullable": [
+      false,
       true,
+      false,
+      false,
+      false,
+      false,
+      false,
       true,
       false,
       true,
-      true,
-      true,
-      true,
-      true,
-      true
+      false,
+      false,
+      false
     ]
   },
-  "hash": "17f447d6a1df1f51a683bc7473f6aa455f77de5c0cfced2f6386f270f0d8d919"
+  "hash": "93e753220d66632012e556197cd083978fd82f6085cbbd8ffe67681644354937"
 }

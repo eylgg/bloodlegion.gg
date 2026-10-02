@@ -338,7 +338,10 @@ pub async fn attendees(pool: &PgPool, raid_id: i64) -> sqlx::Result<Vec<Attendee
         r#"
         SELECT c.id AS "character_id!", c.user_id AS "user_id: UserId",
                u.username AS "username?", c.first_name AS "first_name!",
-               c.last_name AS "last_name!", c.class AS "class!", c.is_main AS "is_main!"
+               c.last_name AS "last_name!", c.class AS "class!", c.is_main AS "is_main!",
+               c.primary_spec, c.primary_talents AS "primary_talents!", c.secondary_spec,
+               c.secondary_talents AS "secondary_talents!", a.group_number, a.slot,
+               a.uses_secondary AS "uses_secondary!"
         FROM raid_attendees a
         JOIN characters c ON c.id = a.character_id
         LEFT JOIN users u ON u.id = c.user_id
@@ -349,6 +352,43 @@ pub async fn attendees(pool: &PgPool, raid_id: i64) -> sqlx::Result<Vec<Attendee
     )
     .fetch_all(pool)
     .await
+}
+
+/// Benches everyone on the raid, before a new layout places them again (two people swapping slots
+/// would otherwise collide on the unique slot).
+pub async fn bench_all(conn: &mut PgConnection, raid_id: i64) -> sqlx::Result<()> {
+    sqlx::query!(
+        "UPDATE raid_attendees SET group_number = NULL, slot = NULL WHERE raid_id = $1",
+        raid_id,
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+/// Places one attendee; `false` when the character is not on the raid.
+pub async fn place(
+    conn: &mut PgConnection,
+    raid_id: i64,
+    character_id: i64,
+    group_number: Option<i16>,
+    slot: Option<i16>,
+    uses_secondary: bool,
+) -> sqlx::Result<bool> {
+    let result = sqlx::query!(
+        r#"
+        UPDATE raid_attendees SET group_number = $3, slot = $4, uses_secondary = $5
+        WHERE raid_id = $1 AND character_id = $2
+        "#,
+        raid_id,
+        character_id,
+        group_number,
+        slot,
+        uses_secondary,
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(result.rows_affected() > 0)
 }
 
 /// Adds a character to the raid; a no-op when they are already on it.

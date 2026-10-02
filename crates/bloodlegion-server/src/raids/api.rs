@@ -12,12 +12,19 @@ use crate::{Result, State};
 
 use super::{
     Attendee, Boss, BossDetail, BossInput, Item, ItemDetail, ItemInput, LootEntry, LootFilter,
-    LootInput, LootUpdate, Raid, RaidDetail, RaidError, RaidInput, calendar, catalog,
+    LootInput, LootUpdate, Placement, Raid, RaidDetail, RaidError, RaidInput, calendar, catalog,
+    effects,
 };
 
 /// `GET /api/raids/zones`: the raid zones and their sizes. Public, like the class catalog.
 async fn zones() -> Json<&'static [catalog::Zone]> {
     Json(catalog::ZONES)
+}
+
+/// `GET /api/raids/effects`: what each class, spec, and talent brings a raid, for the raid
+/// builder. Public, like the class catalog.
+async fn effects() -> Json<&'static [effects::Effect]> {
+    Json(effects::EFFECTS)
 }
 
 /// `GET /api/raids/calendar`: when the raids open, the weekly reset, and the weeks so far. Public.
@@ -85,6 +92,25 @@ async fn add_attendees(
 ) -> Result<Json<Vec<Attendee>>, RaidError> {
     Ok(Json(
         super::add_attendees(&state.pool, id, &input.character_ids).await?,
+    ))
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct LayoutInput {
+    placements: Vec<Placement>,
+}
+
+/// `PUT /api/raids/{id}/layout`: the whole layout at once (attendees left out are benched);
+/// answers with everyone on the raid.
+async fn set_layout(
+    state: State,
+    _: SameOrigin,
+    _officer: Officer,
+    Path(id): Path<i64>,
+    Json(input): Json<LayoutInput>,
+) -> Result<Json<Vec<Attendee>>, RaidError> {
+    Ok(Json(
+        super::set_layout(&state.pool, id, &input.placements).await?,
     ))
 }
 
@@ -242,6 +268,8 @@ pub fn router() -> Router<State> {
         .route("/raids", get(list_raids).post(create_raid))
         .route("/raids/zones", get(zones))
         .route("/raids/calendar", get(calendar))
+        .route("/raids/effects", get(effects))
+        .route("/raids/{id}/layout", axum::routing::put(set_layout))
         .route(
             "/raids/{id}",
             get(raid_detail).put(update_raid).delete(delete_raid),

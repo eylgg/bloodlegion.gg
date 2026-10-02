@@ -8,7 +8,7 @@ use crate::raids::LootEntry;
 use crate::users::User;
 use crate::{Error, Result, State};
 
-use super::{Character, CharacterError, CharacterInput, Note, NoteListing};
+use super::{Character, CharacterError, CharacterInput, Note, NoteListing, SpecsInput};
 
 /// `GET /api/characters`: every character, by name. Members only.
 async fn list(state: State, _user: User) -> Result<Json<Vec<Character>>> {
@@ -88,6 +88,19 @@ async fn delete(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// `PUT /api/characters/{id}/specs`: the character's two specs and their talents.
+async fn set_specs(
+    state: State,
+    _: SameOrigin,
+    user: User,
+    Path(id): Path<i64>,
+    Json(input): Json<SpecsInput>,
+) -> Result<Json<Character>, CharacterError> {
+    Ok(Json(
+        super::set_specs(&state.pool, &user, id, &input).await?,
+    ))
+}
+
 #[derive(Debug, serde::Deserialize)]
 struct NoteInput {
     body: String,
@@ -118,4 +131,5 @@ pub fn router() -> Router<State> {
         .route("/notes", get(notes))
         .route("/{id}", get(detail).put(update).delete(delete))
         .route("/{id}/note", put(set_note))
+        .route("/{id}/specs", put(set_specs))
 }

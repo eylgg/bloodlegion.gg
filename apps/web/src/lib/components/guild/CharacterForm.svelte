@@ -4,7 +4,14 @@
 	import { classIcon } from '$lib/wow/icons';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
-	import type { GuildCharacter, GuildCharacterInput, WowClass } from '$lib/types';
+	import SpecPicker from './SpecPicker.svelte';
+	import type {
+		GuildCharacter,
+		GuildCharacterInput,
+		SpecChoice,
+		SpecsInput,
+		WowClass
+	} from '$lib/types';
 
 	/**
 	 * Adds or edits a character. `owners` turns on the officers' owner picker: any member, or
@@ -41,6 +48,27 @@
 	let owner = $state(
 		character ? String(character.user_id ?? '') : String(page.data.user?.id ?? '')
 	);
+	// The two specs; a new class starts both over.
+	const specOf = (spec: string | null | undefined, talents: string[] | undefined) =>
+		spec ? { spec, talents: [...(talents ?? [])] } : null;
+	// svelte-ignore state_referenced_locally
+	let primary = $state<SpecChoice | null>(
+		specOf(character?.primary_spec, character?.primary_talents)
+	);
+	// svelte-ignore state_referenced_locally
+	let secondary = $state<SpecChoice | null>(
+		specOf(character?.secondary_spec, character?.secondary_talents)
+	);
+	const selectedClass = $derived(classes.find((c) => c.slug === classSlug));
+
+	function pickClass(slug: string) {
+		if (slug !== classSlug) {
+			primary = null;
+			secondary = null;
+		}
+		classSlug = slug;
+	}
+
 	let saving = $state(false);
 	let error = $state('');
 
@@ -63,7 +91,8 @@
 			const saved = character
 				? await api.put<GuildCharacter>(`/api/characters/${character.id}`, body)
 				: await api.post<GuildCharacter>('/api/characters', body);
-			onsaved(saved);
+			const specs: SpecsInput = { primary, secondary };
+			onsaved(await api.put<GuildCharacter>(`/api/characters/${saved.id}/specs`, specs));
 		} catch (err) {
 			error = errorMessage(err, 'Saving failed. Please try again.');
 		} finally {
@@ -99,7 +128,7 @@
 					class:selected={wowClass.slug === classSlug}
 					style:--class-color={wowClass.color}
 					aria-pressed={wowClass.slug === classSlug}
-					onclick={() => (classSlug = wowClass.slug)}
+					onclick={() => pickClass(wowClass.slug)}
 				>
 					<img src={classIcon(wowClass.slug)} alt="" width="24" height="24" />
 					<span>{wowClass.name}</span>
@@ -108,11 +137,16 @@
 		</div>
 	</fieldset>
 
+	{#if selectedClass}
+		<SpecPicker wowClass={selectedClass} legend="Main spec" bind:value={primary} />
+		<SpecPicker wowClass={selectedClass} legend="Second spec (dual spec)" bind:value={secondary} />
+	{/if}
+
 	{#if owners}
 		<label class="field">
 			Played by
 			<select bind:value={owner}>
-				<option value="">Nobody (not a member)</option>
+				<option value="">No one (not linked to a member)</option>
 				{#each owners as member (member.id)}
 					<option value={String(member.id)}>{member.username}</option>
 				{/each}

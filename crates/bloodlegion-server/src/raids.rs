@@ -9,6 +9,7 @@ pub mod api;
 pub mod calendar;
 pub mod catalog;
 mod db;
+pub mod effects;
 
 use sqlx::PgPool;
 use time::{OffsetDateTime, PrimitiveDateTime, serde::iso8601};
@@ -58,6 +59,13 @@ pub enum RaidError {
         detail = "Loot from this raid's bosses is recorded, so its zone cannot change."
     )]
     ZoneHasLoot,
+    #[error("invalid placement")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Invalid Placement",
+        detail = "Each character goes in a group the raid has, one per slot, or on the bench."
+    )]
+    InvalidPlacement,
     #[error("unknown character")]
     #[problem(
         status = UNPROCESSABLE_ENTITY,
@@ -147,6 +155,10 @@ fn external<T>(error: RaidError) -> Result<T, RaidError> {
 fn classify(error: sqlx::Error) -> Error<RaidError> {
     crate::error::classify_db_error(error, |constraint| match constraint {
         "raid_attendees_within_size_check" => Some(RaidError::RaidFull),
+        "raid_attendees_group_in_zone_check"
+        | "raid_attendees_slot_check"
+        | "raid_attendees_placed_check"
+        | "raid_attendees_raid_id_group_number_slot_key" => Some(RaidError::InvalidPlacement),
         "raids_within_size_check" => Some(RaidError::ZoneTooSmall),
         "raids_zone_loot_consistent_check" => Some(RaidError::ZoneHasLoot),
         "raid_attendees_character_id_fkey" | "loot_character_id_fkey" => {
@@ -485,6 +497,29 @@ pub struct Attendee {
     pub last_name: String,
     pub class: String,
     pub is_main: bool,
+    /// The character's specs and their talents.
+    pub primary_spec: Option<String>,
+    pub primary_talents: Vec<String>,
+    pub secondary_spec: Option<String>,
+    pub secondary_talents: Vec<String>,
+    /// Where they stand: a group and a slot in it, or neither (the bench).
+    pub group_number: Option<i16>,
+    pub slot: Option<i16>,
+    /// Whether they play their secondary spec that night.
+    pub uses_secondary: bool,
+}
+
+/// One attendee's place in a layout.
+#[derive(Debug, serde::Deserialize)]
+pub struct Placement {
+    pub character_id: i64,
+    /// Both or neither: neither is the bench.
+    #[serde(default)]
+    pub group_number: Option<i16>,
+    #[serde(default)]
+    pub slot: Option<i16>,
+    #[serde(default)]
+    pub uses_secondary: bool,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -537,6 +572,40 @@ pub async fn add_attendees(
         db::insert_attendee(&mut tx, raid_id, *character_id)
             .await
             .map_err(classify)?;
+    }
+    tx.commit().await?;
+    Ok(db::attendees(pool, raid_id).await?)
+}
+
+/// Replaces the raid's layout: where each attendee stands and which spec they play. Attendees left
+/// out are benched. All or nothing.
+pub async fn set_layout(
+    pool: &PgPool,
+    raid_id: i64,
+    placements: &[Placement],
+) -> Result<Vec<Attendee>, RaidError> {
+    let mut tx = pool.begin().await?;
+    if !db::lock_raid(&mut tx, raid_id).await? {
+        return external(RaidError::RaidNotFound);
+    }
+    db::bench_all(&mut tx, raid_id).await?;
+    for placement in placements {
+        if placement.group_number.is_some() != placement.slot.is_some() {
+            return external(RaidError::InvalidPlacement);
+        }
+        let placed = db::place(
+            &mut tx,
+            raid_id,
+            placement.character_id,
+            placement.group_number,
+            placement.slot,
+            placement.uses_secondary,
+        )
+        .await
+        .map_err(classify)?;
+        if !placed {
+            return external(RaidError::UnknownCharacter);
+        }
     }
     tx.commit().await?;
     Ok(db::attendees(pool, raid_id).await?)
@@ -1161,6 +1230,100 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(new.game_item_id, None);
+    }
+
+    #[sqlx::test]
+    async fn officers_lay_out_groups_within_the_zone(pool: PgPool) {
+        let ids = characters(&pool, 3).await;
+        let deeps = create_raid(&pool, &raid("barrow-deeps")).await.unwrap();
+        add_attendees(&pool, deeps.id, &ids).await.unwrap();
+        let at = |character_id, group: i16, slot: i16, uses_secondary| Placement {
+            character_id,
+            group_number: Some(group),
+            slot: Some(slot),
+            uses_secondary,
+        };
+
+        // Two in group 1, the third left out (benched).
+        let laid = set_layout(
+            &pool,
+            deeps.id,
+            &[at(ids[0], 1, 1, false), at(ids[1], 1, 2, true)],
+        )
+        .await
+        .unwrap();
+        let place = |id| {
+            let a = laid.iter().find(|a| a.character_id == id).unwrap();
+            (a.group_number, a.slot, a.uses_secondary)
+        };
+        assert_eq!(place(ids[0]), (Some(1), Some(1), false));
+        assert_eq!(place(ids[1]), (Some(1), Some(2), true));
+        assert_eq!(place(ids[2]), (None, None, false));
+
+        // Swapping two slots in one layout is fine.
+        set_layout(
+            &pool,
+            deeps.id,
+            &[at(ids[0], 1, 2, false), at(ids[1], 1, 1, false)],
+        )
+        .await
+        .unwrap();
+
+        // The Barrow Deeps have two groups of five; one slot holds one character.
+        let invalid = |result: Result<Vec<Attendee>, RaidError>| {
+            matches!(result, Err(Error::External(RaidError::InvalidPlacement)))
+        };
+        assert!(invalid(
+            set_layout(&pool, deeps.id, &[at(ids[0], 3, 1, false)]).await
+        ));
+        assert!(invalid(
+            set_layout(&pool, deeps.id, &[at(ids[0], 1, 6, false)]).await
+        ));
+        assert!(invalid(
+            set_layout(
+                &pool,
+                deeps.id,
+                &[at(ids[0], 2, 1, false), at(ids[1], 2, 1, false)]
+            )
+            .await
+        ));
+        // A refused layout changes nothing.
+        let kept = raid_detail(&pool, deeps.id).await.unwrap().attendees;
+        assert!(
+            kept.iter()
+                .any(|a| a.character_id == ids[1] && a.slot == Some(1))
+        );
+
+        // Moving to a bigger zone keeps the groups; group 2 survives a move back.
+        let hyjal = RaidInput {
+            zone: "hyjal-summit".into(),
+            ..raid("hyjal-summit")
+        };
+        update_raid(&pool, deeps.id, &hyjal).await.unwrap();
+        set_layout(
+            &pool,
+            deeps.id,
+            &[at(ids[0], 4, 1, false), at(ids[1], 2, 1, false)],
+        )
+        .await
+        .unwrap();
+        update_raid(&pool, deeps.id, &raid("barrow-deeps"))
+            .await
+            .unwrap();
+        let after = raid_detail(&pool, deeps.id).await.unwrap().attendees;
+        let group = |id| {
+            after
+                .iter()
+                .find(|a| a.character_id == id)
+                .unwrap()
+                .group_number
+        };
+        assert_eq!(
+            group(ids[0]),
+            None,
+            "group 4 is gone in a ten-player raid: benched"
+        );
+        assert_eq!(group(ids[1]), Some(2));
     }
 
     #[test]

@@ -172,6 +172,15 @@ the changes.
   scheduled in.
 - **Settings** (`/settings`, superusers): the guild's time zone (default `America/New_York`) and
   the time raids usually start (default 20:00), which a new raid is scheduled in and defaults to.
+- **The raid builder**, on each raid's page: the attendees in groups of five (two groups for the
+  Barrow Deeps, four for Hyjal Summit, eight for Onyxia's Lair) and a bench. Officers move people
+  (dragging, or clicking one then where they go) and switch the spec someone plays that night;
+  everyone sees the layout. Alongside, what the groups bring: raid-wide and group-only buffs (the
+  latter per group), debuffs, utility (combat resses, dispels, interrupts), and the roles.
+- **Specs and talents**: characters have two specs (dual spec), each with the notable talents it
+  takes, the ones that change what a character brings (`launch::catalog`). What each class, spec,
+  and talent brings is `raids::effects`: Classic's to start, to correct as Forever's become known.
+  Characters not linked to a member show no player.
 - **Weeks** number the lockouts (`raids::calendar`). The raids open December 9, 2026 at 6 PM New
   York time, kept as that wall-clock time and zone (the timezone database is bundled into the
   binary). Lockouts reset every Tuesday at 15:00 UTC, so in local time the reset moves by an hour

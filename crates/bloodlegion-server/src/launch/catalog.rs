@@ -26,6 +26,16 @@ pub struct Spec {
     pub roles: &'static [Role],
 }
 
+/// A talent worth knowing a character has: one that changes what they bring a raid (a buff, a
+/// debuff, a cooldown). `tree` is the spec slug of the talent tree it sits in; any build can take
+/// it, but a character of that spec usually has it.
+#[derive(Debug, Serialize)]
+pub struct Talent {
+    pub slug: &'static str,
+    pub name: &'static str,
+    pub tree: &'static str,
+}
+
 #[derive(Debug, Serialize)]
 pub struct Class {
     pub slug: &'static str,
@@ -33,9 +43,15 @@ pub struct Class {
     /// `#rrggbb`, from `RAID_CLASS_COLORS`.
     pub color: &'static str,
     pub specs: &'static [Spec],
+    /// The notable talents, from Classic until Forever's are known.
+    pub talents: &'static [Talent],
 }
 
 use Role::{Healer, Melee, Ranged, Tank};
+
+const fn talent(slug: &'static str, name: &'static str, tree: &'static str) -> Talent {
+    Talent { slug, name, tree }
+}
 
 const fn spec(slug: &'static str, name: &'static str, roles: &'static [Role]) -> Spec {
     Spec { slug, name, roles }
@@ -51,6 +67,17 @@ pub const CLASSES: &[Class] = &[
             spec("feral", "Feral Combat", &[Tank, Melee]),
             spec("restoration", "Restoration", &[Healer]),
         ],
+        talents: &[
+            talent(
+                "improved-mark-of-the-wild",
+                "Improved Mark of the Wild",
+                "restoration",
+            ),
+            talent("leader-of-the-pack", "Leader of the Pack", "feral"),
+            talent("moonkin-form", "Moonkin Form", "balance"),
+            talent("swiftmend", "Swiftmend", "restoration"),
+            talent("natures-swiftness", "Nature's Swiftness", "restoration"),
+        ],
     },
     Class {
         slug: "hunter",
@@ -60,6 +87,15 @@ pub const CLASSES: &[Class] = &[
             spec("beast-mastery", "Beast Mastery", &[Ranged]),
             spec("marksmanship", "Marksmanship", &[Ranged]),
             spec("survival", "Survival", &[Ranged]),
+        ],
+        talents: &[
+            talent("trueshot-aura", "Trueshot Aura", "marksmanship"),
+            talent(
+                "improved-hunters-mark",
+                "Improved Hunter's Mark",
+                "marksmanship",
+            ),
+            talent("bestial-wrath", "Bestial Wrath", "beast-mastery"),
         ],
     },
     Class {
@@ -71,6 +107,11 @@ pub const CLASSES: &[Class] = &[
             spec("fire", "Fire", &[Ranged]),
             spec("frost", "Frost", &[Ranged]),
         ],
+        talents: &[
+            talent("improved-scorch", "Improved Scorch", "fire"),
+            talent("winters-chill", "Winter's Chill", "frost"),
+            talent("arcane-power", "Arcane Power", "arcane"),
+        ],
     },
     Class {
         slug: "paladin",
@@ -80,6 +121,39 @@ pub const CLASSES: &[Class] = &[
             spec("holy", "Holy", &[Healer]),
             spec("protection", "Protection", &[Tank]),
             spec("retribution", "Retribution", &[Melee]),
+        ],
+        talents: &[
+            talent("blessing-of-kings", "Blessing of Kings", "protection"),
+            talent(
+                "blessing-of-sanctuary",
+                "Blessing of Sanctuary",
+                "protection",
+            ),
+            talent(
+                "improved-blessing-of-might",
+                "Improved Blessing of Might",
+                "retribution",
+            ),
+            talent(
+                "improved-blessing-of-wisdom",
+                "Improved Blessing of Wisdom",
+                "holy",
+            ),
+            talent(
+                "improved-devotion-aura",
+                "Improved Devotion Aura",
+                "protection",
+            ),
+            talent(
+                "improved-concentration-aura",
+                "Improved Concentration Aura",
+                "holy",
+            ),
+            talent(
+                "improved-retribution-aura",
+                "Improved Retribution Aura",
+                "retribution",
+            ),
         ],
     },
     Class {
@@ -91,6 +165,17 @@ pub const CLASSES: &[Class] = &[
             spec("holy", "Holy", &[Healer]),
             spec("shadow", "Shadow", &[Ranged]),
         ],
+        talents: &[
+            talent(
+                "improved-power-word-fortitude",
+                "Improved Power Word: Fortitude",
+                "discipline",
+            ),
+            talent("divine-spirit", "Divine Spirit", "discipline"),
+            talent("power-infusion", "Power Infusion", "discipline"),
+            talent("shadow-weaving", "Shadow Weaving", "shadow"),
+            talent("vampiric-embrace", "Vampiric Embrace", "shadow"),
+        ],
     },
     Class {
         slug: "rogue",
@@ -100,6 +185,14 @@ pub const CLASSES: &[Class] = &[
             spec("assassination", "Assassination", &[Melee]),
             spec("combat", "Combat", &[Melee]),
             spec("subtlety", "Subtlety", &[Melee]),
+        ],
+        talents: &[
+            talent(
+                "improved-expose-armor",
+                "Improved Expose Armor",
+                "assassination",
+            ),
+            talent("blade-flurry", "Blade Flurry", "combat"),
         ],
     },
     Class {
@@ -111,6 +204,12 @@ pub const CLASSES: &[Class] = &[
             spec("enhancement", "Enhancement", &[Melee]),
             spec("restoration", "Restoration", &[Healer]),
         ],
+        talents: &[
+            talent("enhancing-totems", "Enhancing Totems", "enhancement"),
+            talent("stormstrike", "Stormstrike", "enhancement"),
+            talent("mana-tide-totem", "Mana Tide Totem", "restoration"),
+            talent("natures-swiftness", "Nature's Swiftness", "restoration"),
+        ],
     },
     Class {
         slug: "warlock",
@@ -121,6 +220,15 @@ pub const CLASSES: &[Class] = &[
             spec("demonology", "Demonology", &[Ranged]),
             spec("destruction", "Destruction", &[Ranged]),
         ],
+        talents: &[
+            talent("improved-imp", "Improved Imp", "demonology"),
+            talent(
+                "improved-shadow-bolt",
+                "Improved Shadow Bolt",
+                "destruction",
+            ),
+            talent("soul-link", "Soul Link", "demonology"),
+        ],
     },
     Class {
         slug: "warrior",
@@ -130,6 +238,15 @@ pub const CLASSES: &[Class] = &[
             spec("arms", "Arms", &[Melee]),
             spec("fury", "Fury", &[Melee]),
             spec("protection", "Protection", &[Tank]),
+        ],
+        talents: &[
+            talent("improved-battle-shout", "Improved Battle Shout", "fury"),
+            talent(
+                "improved-demoralizing-shout",
+                "Improved Demoralizing Shout",
+                "fury",
+            ),
+            talent("last-stand", "Last Stand", "protection"),
         ],
     },
 ];
@@ -152,6 +269,25 @@ mod tests {
             assert_eq!(slugs.len(), 3, "{} has duplicate specs", class.slug);
             assert!(class.color.len() == 7 && class.color.starts_with('#'));
             assert!(class.specs.iter().all(|s| !s.roles.is_empty()));
+        }
+        for class in CLASSES {
+            let mut talents: Vec<_> = class.talents.iter().map(|t| t.slug).collect();
+            talents.sort();
+            talents.dedup();
+            assert_eq!(
+                talents.len(),
+                class.talents.len(),
+                "{} repeats a talent",
+                class.slug
+            );
+            for talent in class.talents {
+                assert!(
+                    class.specs.iter().any(|s| s.slug == talent.tree),
+                    "{} talent {} is in no tree of the class",
+                    class.slug,
+                    talent.slug
+                );
+            }
         }
         assert!(find("shaman").is_some());
         assert!(find("monk").is_none());

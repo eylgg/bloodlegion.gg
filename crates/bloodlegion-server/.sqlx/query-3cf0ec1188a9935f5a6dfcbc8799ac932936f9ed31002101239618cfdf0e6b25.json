@@ -1,0 +1,184 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.id AS \"character_id!\", c.user_id AS \"user_id: UserId\",\n               u.username AS \"username?\", c.first_name AS \"first_name!\",\n               c.last_name AS \"last_name!\", c.class AS \"class!\", c.is_main AS \"is_main!\",\n               c.primary_spec, c.primary_talents AS \"primary_talents!\", c.secondary_spec,\n               c.secondary_talents AS \"secondary_talents!\", a.group_number, a.slot,\n               a.uses_secondary AS \"uses_secondary!\"\n        FROM raid_attendees a\n        JOIN characters c ON c.id = a.character_id\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE a.raid_id = $1\n        ORDER BY c.class, c.name_normalized\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "character_id!",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "username?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "first_name!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "last_name!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "class!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "class"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "is_main!",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "is_main"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "primary_spec",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "primary_spec"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "primary_talents!",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "primary_talents"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "secondary_spec",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "secondary_spec"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "secondary_talents!",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "secondary_talents"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "group_number",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "raid_attendees",
+            "name": "group_number"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "slot",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "raid_attendees",
+            "name": "slot"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "uses_secondary!",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "raid_attendees",
+            "name": "uses_secondary"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "3cf0ec1188a9935f5a6dfcbc8799ac932936f9ed31002101239618cfdf0e6b25"
+}

@@ -57,8 +57,18 @@ export type Role = 'tank' | 'healer' | 'melee' | 'ranged';
 
 export type Spec = { slug: string; name: string; roles: Role[] };
 
+/** A talent that changes what a character brings a raid; `tree` is the spec slug it sits in. */
+export type Talent = { slug: string; name: string; tree: string };
+
 /** A WoW: Forever class, from `GET /api/launch/classes`; `color` is the official class color. */
-export type WowClass = { slug: string; name: string; color: string; specs: Spec[] };
+export type WowClass = {
+	slug: string;
+	name: string;
+	color: string;
+	specs: Spec[];
+	/** The notable talents, Classic's until Forever's are known. */
+	talents: Talent[];
+};
 
 /** A character reserved for launch: a sign-up, not a real character. */
 export type Character = {
@@ -110,9 +120,19 @@ export type GuildCharacter = {
 	last_name: string;
 	class: string;
 	is_main: boolean;
+	/** Its two specs (dual spec), each with the notable talents it takes. */
+	primary_spec: string | null;
+	primary_talents: string[];
+	secondary_spec: string | null;
+	secondary_talents: string[];
 	created_at: string;
 	updated_at: string;
 };
+
+export type SpecChoice = { spec: string; talents: string[] };
+
+/** `PUT /api/characters/{id}/specs`; a missing spec is cleared. */
+export type SpecsInput = { primary: SpecChoice | null; secondary: SpecChoice | null };
 
 export type GuildCharacterInput = {
 	first_name: string;
@@ -279,6 +299,41 @@ export type Attendee = {
 	last_name: string;
 	class: string;
 	is_main: boolean;
+	primary_spec: string | null;
+	primary_talents: string[];
+	secondary_spec: string | null;
+	secondary_talents: string[];
+	/** Where they stand: a group and a slot in it, or neither (the bench). */
+	group_number: number | null;
+	slot: number | null;
+	/** Whether they play their secondary spec that night. */
+	uses_secondary: boolean;
+};
+
+/** One attendee's place, as `PUT /api/raids/{id}/layout` takes it. */
+export type Placement = {
+	character_id: number;
+	group_number: number | null;
+	slot: number | null;
+	uses_secondary: boolean;
+};
+
+/** Who provides an effect: a class, while playing a spec or with a talent if named. */
+export type EffectProvider = { class: string; spec: string | null; talent: string | null };
+
+/** A buff, debuff, or utility a raid can bring, from `GET /api/raids/effects`. */
+export type Effect = {
+	slug: string;
+	name: string;
+	kind: 'buff' | 'debuff' | 'utility';
+	/** The whole raid, or only the provider's own group. */
+	scope: 'raid' | 'party';
+	category: string;
+	providers: EffectProvider[];
+	improved_by: EffectProvider[];
+	/** Effects sharing a key compete for the same casters (blessings, auras, curses). */
+	exclusive: string | null;
+	note: string | null;
 };
 
 /** One item won. No boss for trash; no character when nobody took it (disenchanted, banked). */

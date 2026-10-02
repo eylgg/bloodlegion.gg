@@ -9,7 +9,9 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.is_main AS "is_main!", c.created_at AS "created_at!",
+               c.is_main AS "is_main!", c.primary_spec, c.primary_talents AS "primary_talents!",
+               c.secondary_spec, c.secondary_talents AS "secondary_talents!",
+               c.created_at AS "created_at!",
                c.updated_at AS "updated_at!"
         FROM characters c
         LEFT JOIN users u ON u.id = c.user_id
@@ -26,7 +28,9 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.is_main AS "is_main!", c.created_at AS "created_at!",
+               c.is_main AS "is_main!", c.primary_spec, c.primary_talents AS "primary_talents!",
+               c.secondary_spec, c.secondary_talents AS "secondary_talents!",
+               c.created_at AS "created_at!",
                c.updated_at AS "updated_at!"
         FROM characters c
         LEFT JOIN users u ON u.id = c.user_id
@@ -113,7 +117,12 @@ pub async fn update(
     sqlx::query!(
         r#"
         UPDATE characters
-        SET user_id = $2, first_name = $3, last_name = $4, class = $5, is_main = $6
+        SET user_id = $2, first_name = $3, last_name = $4, class = $5, is_main = $6,
+            -- A new class has other specs and talents; on the right, `class` is the old one.
+            primary_spec = CASE WHEN class = $5 THEN primary_spec END,
+            primary_talents = CASE WHEN class = $5 THEN primary_talents ELSE '{}' END,
+            secondary_spec = CASE WHEN class = $5 THEN secondary_spec END,
+            secondary_talents = CASE WHEN class = $5 THEN secondary_talents ELSE '{}' END
         WHERE id = $1
         "#,
         id,
@@ -124,6 +133,31 @@ pub async fn update(
         is_main,
     )
     .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+pub async fn set_specs(
+    pool: &PgPool,
+    id: i64,
+    primary: Option<&str>,
+    primary_talents: &[String],
+    secondary: Option<&str>,
+    secondary_talents: &[String],
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        r#"
+        UPDATE characters
+        SET primary_spec = $2, primary_talents = $3, secondary_spec = $4, secondary_talents = $5
+        WHERE id = $1
+        "#,
+        id,
+        primary,
+        primary_talents,
+        secondary,
+        secondary_talents,
+    )
+    .execute(pool)
     .await?;
     Ok(())
 }

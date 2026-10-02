@@ -3,6 +3,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
+	import CharacterSpecs from '$lib/components/guild/CharacterSpecs.svelte';
 	import type { GuildCharacter } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -81,7 +82,13 @@
 					icon={false}
 				/>
 				<span class="muted small">
-					{character.username ?? 'Not a member'}{character.is_main ? ' · main' : ''}
+					<CharacterSpecs
+						cls={character.class}
+						primary={character.primary_spec}
+						secondary={character.secondary_spec}
+						size={16}
+					/>
+					{[character.username, character.is_main && 'main'].filter(Boolean).join(' · ')}
 				</span>
 			</div>
 		</li>

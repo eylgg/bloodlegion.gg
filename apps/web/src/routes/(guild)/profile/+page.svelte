@@ -6,6 +6,7 @@
 	import Alert from '$lib/components/Alert.svelte';
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
+	import CharacterSpecs from '$lib/components/guild/CharacterSpecs.svelte';
 	import type { GuildCharacter, LinkedAccount } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -186,6 +187,11 @@
 					firstName={character.first_name}
 					lastName={character.last_name}
 					cls={character.class}
+				/>
+				<CharacterSpecs
+					cls={character.class}
+					primary={character.primary_spec}
+					secondary={character.secondary_spec}
 				/>
 				{#if character.is_main}<span class="main-badge">Main</span>{/if}
 				<div class="actions">

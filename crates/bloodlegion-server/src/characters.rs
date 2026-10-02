@@ -25,6 +25,12 @@ pub struct Character {
     pub last_name: String,
     pub class: String,
     pub is_main: bool,
+    /// Its two specs (Forever has dual spec), each with the notable talents it takes; see
+    /// `launch::catalog` for both.
+    pub primary_spec: Option<String>,
+    pub primary_talents: Vec<String>,
+    pub secondary_spec: Option<String>,
+    pub secondary_talents: Vec<String>,
     #[serde(with = "iso8601")]
     pub created_at: OffsetDateTime,
     #[serde(with = "iso8601")]
@@ -43,6 +49,23 @@ pub struct CharacterInput {
     /// `null` for an unclaimed character.
     #[serde(default, deserialize_with = "crate::api::double_option")]
     pub user_id: Option<Option<UserId>>,
+}
+
+/// One of a character's specs as submitted: the spec's slug and the notable talents it takes.
+#[derive(Debug, serde::Deserialize)]
+pub struct SpecInput {
+    pub spec: String,
+    #[serde(default)]
+    pub talents: Vec<String>,
+}
+
+/// Both specs; a missing one is cleared.
+#[derive(Debug, serde::Deserialize)]
+pub struct SpecsInput {
+    #[serde(default)]
+    pub primary: Option<SpecInput>,
+    #[serde(default)]
+    pub secondary: Option<SpecInput>,
 }
 
 #[derive(Debug, thiserror::Error, Problem)]
@@ -100,6 +123,13 @@ pub enum CharacterError {
         detail = "Notes are at most 10,000 characters."
     )]
     NoteTooLong,
+    #[error("invalid spec")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Invalid Spec",
+        detail = "Pick specs and talents of the character's own class."
+    )]
+    InvalidSpec,
 }
 
 fn external<T>(error: CharacterError) -> Result<T, CharacterError> {
@@ -238,6 +268,63 @@ pub async fn update(
     Ok(db::find(pool, id)
         .await?
         .expect("the character was just updated"))
+}
+
+/// A validated spec: its slug, and its talents in the catalog's order.
+fn valid_spec(
+    class: &'static crate::launch::catalog::Class,
+    input: Option<&SpecInput>,
+) -> Result<(Option<&'static str>, Vec<String>), CharacterError> {
+    let Some(input) = input else {
+        return Ok((None, Vec::new()));
+    };
+    let Some(spec) = class.specs.iter().find(|s| s.slug == input.spec.trim()) else {
+        return external(CharacterError::InvalidSpec);
+    };
+    if !input
+        .talents
+        .iter()
+        .all(|t| class.talents.iter().any(|known| known.slug == t))
+    {
+        return external(CharacterError::InvalidSpec);
+    }
+    let talents = class
+        .talents
+        .iter()
+        .filter(|t| input.talents.iter().any(|chosen| chosen == t.slug))
+        .map(|t| t.slug.to_string())
+        .collect();
+    Ok((Some(spec.slug), talents))
+}
+
+/// Sets a character's two specs and their talents: by its player, or by an officer.
+pub async fn set_specs(
+    pool: &PgPool,
+    actor: &User,
+    id: i64,
+    input: &SpecsInput,
+) -> Result<Character, CharacterError> {
+    let Some(character) = db::find(pool, id).await? else {
+        return external(CharacterError::NotFound);
+    };
+    if character.user_id != Some(actor.id) && !actor.is_officer() {
+        return external(CharacterError::Forbidden);
+    }
+    let Some(class) = crate::launch::catalog::find(&character.class) else {
+        return external(CharacterError::UnknownClass);
+    };
+    let (primary, primary_talents) = valid_spec(class, input.primary.as_ref())?;
+    let (secondary, secondary_talents) = valid_spec(class, input.secondary.as_ref())?;
+    db::set_specs(
+        pool,
+        id,
+        primary,
+        &primary_talents,
+        secondary,
+        &secondary_talents,
+    )
+    .await?;
+    Ok(db::find(pool, id).await?.expect("the character exists"))
 }
 
 /// Removes a character that has never raided or won loot.
@@ -435,6 +522,110 @@ pub(crate) mod tests {
             create(&pool, &officer, &nobody).await,
             Err(Error::External(CharacterError::UnknownMember))
         ));
+    }
+
+    #[sqlx::test]
+    async fn characters_have_two_specs_with_their_talents(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let other = member(&pool, "Other", Rank::Raider).await;
+        let paladin = create(&pool, &ey, &input("Arthas", "Menethil", "paladin", false))
+            .await
+            .unwrap();
+        let spec = |spec: &str, talents: &[&str]| SpecInput {
+            spec: spec.into(),
+            talents: talents.iter().map(|t| t.to_string()).collect(),
+        };
+        let specs = SpecsInput {
+            // Kings is in the protection tree, but a holy paladin can take it.
+            primary: Some(spec(
+                "holy",
+                &["improved-blessing-of-wisdom", "blessing-of-kings"],
+            )),
+            secondary: Some(spec("retribution", &["improved-blessing-of-might"])),
+        };
+        let saved = set_specs(&pool, &ey, paladin.id, &specs).await.unwrap();
+        assert_eq!(saved.primary_spec.as_deref(), Some("holy"));
+        // Catalog order, not click order.
+        assert_eq!(
+            saved.primary_talents,
+            ["blessing-of-kings", "improved-blessing-of-wisdom"]
+        );
+        assert_eq!(saved.secondary_spec.as_deref(), Some("retribution"));
+
+        // Another class's spec or talent is refused, as is someone else's character.
+        let wrong = SpecsInput {
+            primary: Some(spec("shadow", &[])),
+            secondary: None,
+        };
+        assert!(matches!(
+            set_specs(&pool, &ey, paladin.id, &wrong).await,
+            Err(Error::External(CharacterError::InvalidSpec))
+        ));
+        let wrong = SpecsInput {
+            primary: Some(spec("holy", &["shadow-weaving"])),
+            secondary: None,
+        };
+        assert!(matches!(
+            set_specs(&pool, &ey, paladin.id, &wrong).await,
+            Err(Error::External(CharacterError::InvalidSpec))
+        ));
+        assert!(matches!(
+            set_specs(&pool, &other, paladin.id, &specs).await,
+            Err(Error::External(CharacterError::Forbidden))
+        ));
+
+        // Editing the character's name keeps its specs; clearing them leaves none.
+        let renamed = update(
+            &pool,
+            &ey,
+            paladin.id,
+            &input("Arthas", "Light", "paladin", true),
+        )
+        .await
+        .unwrap();
+        assert_eq!(renamed.secondary_spec.as_deref(), Some("retribution"));
+        // A new class drops the old one's specs.
+        let warrior = update(
+            &pool,
+            &ey,
+            paladin.id,
+            &input("Arthas", "Light", "warrior", true),
+        )
+        .await
+        .unwrap();
+        assert!(warrior.primary_spec.is_none() && warrior.secondary_talents.is_empty());
+        set_specs(
+            &pool,
+            &ey,
+            paladin.id,
+            &SpecsInput {
+                primary: None,
+                secondary: None,
+            },
+        )
+        .await
+        .unwrap();
+        update(
+            &pool,
+            &ey,
+            paladin.id,
+            &input("Arthas", "Light", "paladin", true),
+        )
+        .await
+        .unwrap();
+        set_specs(&pool, &ey, paladin.id, &specs).await.unwrap();
+        let cleared = set_specs(
+            &pool,
+            &ey,
+            paladin.id,
+            &SpecsInput {
+                primary: None,
+                secondary: None,
+            },
+        )
+        .await
+        .unwrap();
+        assert!(cleared.primary_spec.is_none() && cleared.primary_talents.is_empty());
     }
 
     #[sqlx::test]
