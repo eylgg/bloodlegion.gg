@@ -126,3 +126,9 @@ const spanFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'nu
 export function formatWeekSpan(week: { starts_at: string; ends_at: string }): string {
 	return spanFormat.formatRange(new Date(week.starts_at), new Date(week.ends_at));
 }
+
+/**
+ * Raids that start within this many hours of each other overlap, so a player is in one of them.
+ * Mirrors the backend's `raids::RAID_LENGTH`, which enforces it.
+ */
+export const RAID_LENGTH_HOURS = 3;

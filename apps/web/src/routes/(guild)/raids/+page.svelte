@@ -58,9 +58,12 @@
 		</p>
 		<h1>Raids</h1>
 	</div>
-	{#if data.officer && !scheduling}
-		<Button variant="primary" onclick={() => (scheduling = true)}>Schedule a raid</Button>
-	{/if}
+	<div class="head-actions">
+		<Button variant="secondary" href={resolve('/raids/plan')}>Plan the week</Button>
+		{#if data.officer && !scheduling}
+			<Button variant="primary" onclick={() => (scheduling = true)}>Schedule a raid</Button>
+		{/if}
+	</div>
 </div>
 
 <div class="calendar panel">
@@ -147,6 +150,11 @@
 </section>
 
 <style>
+	.head-actions {
+		display: flex;
+		gap: var(--space-2);
+	}
+
 	.calendar {
 		gap: var(--space-2);
 		padding: var(--space-4) var(--space-6);

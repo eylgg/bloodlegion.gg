@@ -66,6 +66,20 @@ pub enum RaidError {
         detail = "Each character goes in a group the raid has, one per slot, or on the bench."
     )]
     InvalidPlacement,
+    #[error("player busy: {0}")]
+    #[problem(
+        status = CONFLICT,
+        title = "Already Raiding",
+        detail = _0.clone()
+    )]
+    PlayerBusy(String),
+    #[error("locked out: {0}")]
+    #[problem(
+        status = CONFLICT,
+        title = "Saved This Week",
+        detail = _0.clone()
+    )]
+    LockedOut(String),
     #[error("unknown character")]
     #[problem(
         status = UNPROCESSABLE_ENTITY,
@@ -565,14 +579,92 @@ pub async fn add_attendees(
     character_ids: &[i64],
 ) -> Result<Vec<Attendee>, RaidError> {
     let mut tx = pool.begin().await?;
-    if !db::lock_raid(&mut tx, raid_id).await? {
+    let Some(raid) = db::lock_raid_info(&mut tx, raid_id).await? else {
         return external(RaidError::RaidNotFound);
-    }
+    };
     for character_id in character_ids {
-        db::insert_attendee(&mut tx, raid_id, *character_id)
-            .await
-            .map_err(classify)?;
+        join(&mut tx, raid_id, &raid, *character_id).await?;
     }
+    tx.commit().await?;
+    Ok(db::attendees(pool, raid_id).await?)
+}
+
+/// Raids that start within this long of each other overlap: a player is in one of them.
+pub const RAID_LENGTH: time::Duration = time::Duration::hours(3);
+
+/// Puts a character on the raid, unless their player is on another raid at the same time (any of
+/// their characters) or the character is saved to the zone this week. A no-op when already on it.
+async fn join(
+    conn: &mut sqlx::PgConnection,
+    raid_id: i64,
+    raid: &db::LockedRaid,
+    character_id: i64,
+) -> Result<(), RaidError> {
+    if db::is_attending(conn, raid_id, character_id).await? {
+        return Ok(());
+    }
+    let busy = db::player_busy(
+        conn,
+        raid_id,
+        character_id,
+        raid.starts_at - RAID_LENGTH + time::Duration::SECOND,
+        raid.starts_at + RAID_LENGTH,
+    )
+    .await?;
+    if let Some(busy) = busy {
+        let zone = catalog::find(&busy.zone).map_or(busy.zone.as_str(), |z| z.name);
+        return external(RaidError::PlayerBusy(format!(
+            "{} is already in {zone}, which overlaps this raid.",
+            busy.who
+        )));
+    }
+    if let Some(week) = calendar::week_of(raid.starts_at)
+        && db::locked_out(
+            conn,
+            raid_id,
+            character_id,
+            &raid.zone,
+            week.starts_at,
+            week.ends_at,
+        )
+        .await?
+    {
+        let zone = catalog::find(&raid.zone).map_or(raid.zone.as_str(), |z| z.name);
+        return external(RaidError::LockedOut(format!(
+            "That character is already saved to {zone} in week {}.",
+            week.number
+        )));
+    }
+    db::insert_attendee(conn, raid_id, character_id)
+        .await
+        .map_err(classify)
+}
+
+/// Puts a character on the raid (see [`join`]) at a place: a group and slot, or the bench.
+/// Answers with everyone on the raid.
+pub async fn place_attendee(
+    pool: &PgPool,
+    raid_id: i64,
+    placement: &Placement,
+) -> Result<Vec<Attendee>, RaidError> {
+    if placement.group_number.is_some() != placement.slot.is_some() {
+        return external(RaidError::InvalidPlacement);
+    }
+    let mut tx = pool.begin().await?;
+    let Some(raid) = db::lock_raid_info(&mut tx, raid_id).await? else {
+        return external(RaidError::RaidNotFound);
+    };
+    join(&mut tx, raid_id, &raid, placement.character_id).await?;
+    db::place(
+        &mut tx,
+        raid_id,
+        placement.character_id,
+        placement.group_number,
+        placement.slot,
+        placement.uses_secondary,
+    )
+    .await
+    .map_err(classify)?;
     tx.commit().await?;
     Ok(db::attendees(pool, raid_id).await?)
 }
@@ -929,7 +1021,16 @@ mod tests {
         );
 
         // Hyjal Summit holds twenty.
-        let hyjal = create_raid(&pool, &raid("hyjal-summit")).await.unwrap();
+        // Another night: the same people cannot be in two raids at once.
+        let hyjal = create_raid(
+            &pool,
+            &RaidInput {
+                starts_local: time::macros::datetime!(2026-12-12 20:00),
+                ..raid("hyjal-summit")
+            },
+        )
+        .await
+        .unwrap();
         add_attendees(&pool, hyjal.id, &ids[..20]).await.unwrap();
         assert!(matches!(
             add_attendees(&pool, hyjal.id, &ids[20..]).await,
@@ -937,12 +1038,27 @@ mod tests {
         ));
         // ...so it cannot move to the Barrow Deeps; Onyxia's Lair is fine.
         assert!(matches!(
-            update_raid(&pool, hyjal.id, &raid("barrow-deeps")).await,
+            update_raid(
+                &pool,
+                hyjal.id,
+                &RaidInput {
+                    starts_local: hyjal.starts_local,
+                    ..raid("barrow-deeps")
+                }
+            )
+            .await,
             Err(Error::External(RaidError::ZoneTooSmall))
         ));
-        let moved = update_raid(&pool, hyjal.id, &raid("onyxias-lair"))
-            .await
-            .unwrap();
+        let moved = update_raid(
+            &pool,
+            hyjal.id,
+            &RaidInput {
+                starts_local: hyjal.starts_local,
+                ..raid("onyxias-lair")
+            },
+        )
+        .await
+        .unwrap();
         assert_eq!(
             (moved.zone.as_str(), moved.attendee_count),
             ("onyxias-lair", 20)
@@ -1324,6 +1440,106 @@ mod tests {
             "group 4 is gone in a ten-player raid: benched"
         );
         assert_eq!(group(ids[1]), Some(2));
+    }
+
+    #[sqlx::test]
+    async fn a_player_raids_once_at_a_time_and_a_character_once_a_week(pool: PgPool) {
+        use time::macros::datetime;
+        let officer = member(&pool, "Officer", Rank::Officer).await;
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let mut alt = character("Arlen", "Ashvale", "warrior", false);
+        alt.user_id = Some(Some(ey.id));
+        let main = crate::characters::create(&pool, &officer, &alt)
+            .await
+            .unwrap();
+        let mut second = character("Sela", "Ashvale", "priest", false);
+        second.user_id = Some(Some(ey.id));
+        let alt = crate::characters::create(&pool, &officer, &second)
+            .await
+            .unwrap();
+
+        let at = |zone: &str, starts_local| RaidInput {
+            zone: zone.into(),
+            title: None,
+            starts_local,
+        };
+        // Two raids at 8 PM on release week's Thursday, one at 11:30 PM (out of the window),
+        // and Onyxia again the next week.
+        let ony = create_raid(&pool, &at("onyxias-lair", datetime!(2026-12-10 20:00)))
+            .await
+            .unwrap();
+        let hyjal = create_raid(&pool, &at("hyjal-summit", datetime!(2026-12-10 20:00)))
+            .await
+            .unwrap();
+        let late = create_raid(&pool, &at("barrow-deeps", datetime!(2026-12-10 23:30)))
+            .await
+            .unwrap();
+        let ony_again = create_raid(&pool, &at("onyxias-lair", datetime!(2026-12-12 20:00)))
+            .await
+            .unwrap();
+        let next_week = create_raid(&pool, &at("onyxias-lair", datetime!(2026-12-17 20:00)))
+            .await
+            .unwrap();
+
+        add_attendees(&pool, ony.id, &[main.id]).await.unwrap();
+        // Ey's other character cannot be in Hyjal at the same time.
+        let busy = add_attendees(&pool, hyjal.id, &[alt.id]).await;
+        match busy {
+            Err(Error::External(RaidError::PlayerBusy(message))) => {
+                assert_eq!(
+                    message,
+                    "Ey is already in Onyxia's Lair, which overlaps this raid."
+                )
+            }
+            other => panic!("expected PlayerBusy, got {other:?}"),
+        }
+        // Three and a half hours later is another raid.
+        add_attendees(&pool, late.id, &[alt.id]).await.unwrap();
+        // The same character is saved to Onyxia's Lair for the week; a different one is not.
+        assert!(matches!(
+            add_attendees(&pool, ony_again.id, &[main.id]).await,
+            Err(Error::External(RaidError::LockedOut(_)))
+        ));
+        add_attendees(&pool, ony_again.id, &[alt.id]).await.unwrap();
+        // The next week is a new lockout.
+        add_attendees(&pool, next_week.id, &[main.id])
+            .await
+            .unwrap();
+
+        // Placing straight into a slot joins the raid there; a taken slot is refused.
+        let placed = place_attendee(
+            &pool,
+            hyjal.id,
+            &Placement {
+                character_id: alt.id,
+                group_number: Some(1),
+                slot: Some(1),
+                uses_secondary: false,
+            },
+        )
+        .await;
+        assert!(matches!(
+            placed,
+            Err(Error::External(RaidError::PlayerBusy(_)))
+        ));
+        delete_attendee_for_test(&pool, ony.id, main.id).await;
+        let placed = place_attendee(
+            &pool,
+            hyjal.id,
+            &Placement {
+                character_id: alt.id,
+                group_number: Some(1),
+                slot: Some(1),
+                uses_secondary: false,
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(placed[0].group_number, Some(1));
+    }
+
+    async fn delete_attendee_for_test(pool: &PgPool, raid_id: i64, character_id: i64) {
+        remove_attendee(pool, raid_id, character_id).await.unwrap();
     }
 
     #[test]

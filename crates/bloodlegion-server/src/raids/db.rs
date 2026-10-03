@@ -1,5 +1,5 @@
 use sqlx::{PgConnection, PgPool};
-use time::PrimitiveDateTime;
+use time::{OffsetDateTime, PrimitiveDateTime};
 
 use super::{
     Attendee, Boss, Drop, Item, LOOT_LIMIT, LootEntry, LootFilter, LootRow, Raid, RaidRow, calendar,
@@ -391,15 +391,29 @@ pub async fn place(
     Ok(result.rows_affected() > 0)
 }
 
-/// Adds a character to the raid; a no-op when they are already on it.
-pub async fn insert_attendee(
+/// The raid's zone and start, locking its row for the changes that follow; `None` when there is
+/// no such raid.
+pub struct LockedRaid {
+    pub zone: String,
+    pub starts_at: OffsetDateTime,
+}
+
+pub async fn lock_raid_info(conn: &mut PgConnection, id: i64) -> sqlx::Result<Option<LockedRaid>> {
+    sqlx::query_as!(
+        LockedRaid,
+        "SELECT zone, starts_at FROM raids WHERE id = $1 FOR UPDATE",
+        id
+    )
+    .fetch_optional(&mut *conn)
+    .await
+}
+
+pub async fn is_attending(
     conn: &mut PgConnection,
     raid_id: i64,
     character_id: i64,
-) -> sqlx::Result<()> {
-    // Checked first, rather than left to ON CONFLICT: the size trigger fires before the conflict
-    // is detected, so re-adding someone to a full raid would be refused as overflowing it.
-    let present = sqlx::query_scalar!(
+) -> sqlx::Result<bool> {
+    sqlx::query_scalar!(
         r#"
         SELECT EXISTS (
             SELECT 1 FROM raid_attendees WHERE raid_id = $1 AND character_id = $2
@@ -409,16 +423,89 @@ pub async fn insert_attendee(
         character_id,
     )
     .fetch_one(&mut *conn)
+    .await
+}
+
+/// Another raid starting in `[from, to)` that the character's player (any of their characters;
+/// the character alone when no member plays it) is already on.
+pub struct Busy {
+    pub zone: String,
+    pub who: String,
+}
+
+pub async fn player_busy(
+    conn: &mut PgConnection,
+    raid_id: i64,
+    character_id: i64,
+    from: OffsetDateTime,
+    to: OffsetDateTime,
+) -> sqlx::Result<Option<Busy>> {
+    sqlx::query_as!(
+        Busy,
+        r#"
+        SELECT r.zone, COALESCE(u.username, c.first_name || ' ' || c.last_name) AS "who!"
+        FROM raid_attendees a
+        JOIN raids r ON r.id = a.raid_id
+        JOIN characters c ON c.id = a.character_id
+        LEFT JOIN users u ON u.id = c.user_id
+        WHERE r.id <> $1
+            AND (
+                a.character_id = $2
+                OR c.user_id = (SELECT user_id FROM characters WHERE id = $2)
+            )
+            AND r.starts_at >= $3
+            AND r.starts_at < $4
+        LIMIT 1
+        "#,
+        raid_id,
+        character_id,
+        from,
+        to,
+    )
+    .fetch_optional(&mut *conn)
+    .await
+}
+
+/// Whether the character is on another raid of `zone` starting in `[from, to)`: saved to it.
+pub async fn locked_out(
+    conn: &mut PgConnection,
+    raid_id: i64,
+    character_id: i64,
+    zone: &str,
+    from: OffsetDateTime,
+    to: OffsetDateTime,
+) -> sqlx::Result<bool> {
+    sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM raid_attendees a
+            JOIN raids r ON r.id = a.raid_id
+            WHERE a.character_id = $2 AND r.id <> $1 AND r.zone = $3
+                AND r.starts_at >= $4 AND r.starts_at < $5
+        ) AS "exists!"
+        "#,
+        raid_id,
+        character_id,
+        zone,
+        from,
+        to,
+    )
+    .fetch_one(&mut *conn)
+    .await
+}
+
+pub async fn insert_attendee(
+    conn: &mut PgConnection,
+    raid_id: i64,
+    character_id: i64,
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        "INSERT INTO raid_attendees (raid_id, character_id) VALUES ($1, $2)",
+        raid_id,
+        character_id,
+    )
+    .execute(&mut *conn)
     .await?;
-    if !present {
-        sqlx::query!(
-            "INSERT INTO raid_attendees (raid_id, character_id) VALUES ($1, $2)",
-            raid_id,
-            character_id,
-        )
-        .execute(&mut *conn)
-        .await?;
-    }
     Ok(())
 }
 

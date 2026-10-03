@@ -177,6 +177,11 @@ the changes.
   (dragging, or clicking one then where they go) and switch the spec someone plays that night;
   everyone sees the layout. Alongside, what the groups bring: raid-wide and group-only buffs (the
   latter per group), debuffs, utility (combat resses, dispels, interrupts), and the roles.
+- **The raid planner** (`/raids/plan`): a raid week's raids side by side, with the roster by
+  player to fill them from (drag, or click then click). A player (an account, whichever of their
+  characters) is in one raid at a time: raids starting within three hours of each other overlap
+  (`raids::RAID_LENGTH`). A character is saved to a zone for the raid week. The server refuses
+  either; the planner offers to move the player out of the other raid instead.
 - **Specs and talents**: characters have two specs (dual spec), each with the notable talents it
   takes, the ones that change what a character brings (`launch::catalog`). What each class, spec,
   and talent brings is `raids::effects`: Classic's to start, to correct as Forever's become known.

@@ -114,6 +114,36 @@ async fn set_layout(
     ))
 }
 
+/// `PUT /api/raids/{id}/attendees/{character_id}`: puts a character on the raid at a place (a
+/// group and slot, or the bench), adding them if they are not on it; answers with everyone on it.
+async fn place_attendee(
+    state: State,
+    _: SameOrigin,
+    _officer: Officer,
+    Path((id, character_id)): Path<(i64, i64)>,
+    Json(input): Json<PlaceInput>,
+) -> Result<Json<Vec<Attendee>>, RaidError> {
+    let placement = Placement {
+        character_id,
+        group_number: input.group_number,
+        slot: input.slot,
+        uses_secondary: input.uses_secondary,
+    };
+    Ok(Json(
+        super::place_attendee(&state.pool, id, &placement).await?,
+    ))
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct PlaceInput {
+    #[serde(default)]
+    group_number: Option<i16>,
+    #[serde(default)]
+    slot: Option<i16>,
+    #[serde(default)]
+    uses_secondary: bool,
+}
+
 async fn remove_attendee(
     state: State,
     _: SameOrigin,
@@ -277,7 +307,7 @@ pub fn router() -> Router<State> {
         .route("/raids/{id}/attendees", axum::routing::post(add_attendees))
         .route(
             "/raids/{id}/attendees/{character_id}",
-            delete(remove_attendee),
+            delete(remove_attendee).put(place_attendee),
         )
         .route("/raids/{id}/loot", axum::routing::post(record_loot))
         .route("/loot", get(list_loot))

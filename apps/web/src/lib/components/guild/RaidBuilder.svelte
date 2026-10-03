@@ -21,7 +21,10 @@
 		onchange,
 		effects,
 		editable,
-		onremove
+		onremove,
+		compact = false,
+		incoming = null,
+		onincoming
 	}: {
 		raidId: number;
 		/** The zone's size: five per group. */
@@ -33,6 +36,12 @@
 		editable: boolean;
 		/** Takes someone off the raid altogether (from the bench). */
 		onremove?: (attendee: Attendee) => void;
+		/** A condensed coverage summary, for raids side by side. */
+		compact?: boolean;
+		/** A character picked outside this raid (the planner's roster), to put down here. */
+		incoming?: number | null;
+		/** Someone not on this raid dropped or put down here: the planner adds them. */
+		onincoming?: (characterId: number, target: { group: number; slot: number } | null) => void;
 	} = $props();
 
 	const classes = $derived((page.data.classes as WowClass[] | undefined) ?? []);
@@ -156,17 +165,32 @@
 		}
 	}
 
-	/** A click on an empty slot or the bench: put the selected person there. */
+	/** A click on an empty slot or the bench: put the selected (or incoming) person there. */
 	function drop(target: Target) {
-		if (!editable || selected === null) return;
-		move(selected, target);
-		selected = null;
+		if (!editable) return;
+		if (selected !== null) {
+			move(selected, target);
+			selected = null;
+		} else if (incoming !== null) {
+			onincoming?.(incoming, target);
+		}
 	}
 
+	const onRaid = (id: number) => attendees.some((a) => a.character_id === id);
+
+	/** A drop: someone from this raid moves; anyone else (another raid, the roster) joins. */
 	function ondrop(event: DragEvent, target: Target) {
 		event.preventDefault();
-		if (dragging !== null) move(dragging, target);
+		const id = Number(event.dataTransfer?.getData('text/plain'));
 		dragging = null;
+		if (!Number.isInteger(id) || id <= 0) return;
+		if (onRaid(id)) move(id, target);
+		else onincoming?.(id, target);
+	}
+
+	function ondragstart(event: DragEvent, attendee: Attendee) {
+		dragging = attendee.character_id;
+		event.dataTransfer?.setData('text/plain', String(attendee.character_id));
 	}
 
 	const playing = (a: Attendee) =>
@@ -183,7 +207,7 @@
 		tabindex={editable ? 0 : -1}
 		aria-disabled={!editable}
 		aria-pressed={selected === attendee.character_id}
-		ondragstart={() => (dragging = attendee.character_id)}
+		ondragstart={(e) => ondragstart(e, attendee)}
 		ondragend={() => (dragging = null)}
 		onclick={() => choose(attendee)}
 		onkeydown={(e) =>
@@ -220,10 +244,10 @@
 	</div>
 {/snippet}
 
-<div class="builder">
+<div class="builder" class:compact>
 	<div class="layout">
 		{#if error}<Alert variant="error">{error}</Alert>{/if}
-		{#if editable}
+		{#if editable && !compact}
 			<p class="muted small">
 				Drag people into groups, or click someone then click where they go. Moving onto someone
 				swaps the two. Click spec icons to switch someone's spec for this raid.
@@ -240,7 +264,8 @@
 							{@const occupant = at(group, slot)}
 							<li
 								class="slot"
-								class:target={editable && (selected !== null || dragging !== null)}
+								class:target={editable &&
+									(selected !== null || dragging !== null || incoming !== null)}
 								ondragover={(e) => editable && e.preventDefault()}
 								ondrop={(e) => ondrop(e, { group, slot })}
 							>
@@ -268,7 +293,7 @@
 		>
 			<h4>
 				Bench <span class="muted">{bench.length}</span>
-				{#if editable && selected !== null}
+				{#if editable && (selected !== null || incoming !== null)}
 					<button type="button" class="link" onclick={() => drop(null)}>Move here</button>
 				{/if}
 			</h4>
@@ -306,6 +331,26 @@
 		</div>
 		{#if placedCount === 0}
 			<p class="muted small">Put people in groups to see what the raid brings.</p>
+		{:else if compact}
+			{@const gaps = covered.filter((c) => status(c) !== 'covered')}
+			<p class="small gaps">
+				{#if gaps.length === 0}
+					Everything covered.
+				{:else}
+					<span class="muted">Missing:</span>
+					{#each gaps as c, i (c.effect.slug)}
+						<span
+							class={status(c)}
+							title={c.groups.missing.length
+								? `Missing in group ${c.groups.missing.join(', ')}`
+								: 'Nobody brings this'}
+							>{c.effect.name}{c.groups.missing.length
+								? ` (${c.groups.missing.join(', ')})`
+								: ''}</span
+						>{i < gaps.length - 1 ? ', ' : ''}
+					{/each}
+				{/if}
+			</p>
 		{:else}
 			{#each shared.filter((s) => s.casters > 0 || s.key === 'armor') as s (s.key)}
 				{#if SHARED_LABEL[s.key] && s.wanted > 0}
@@ -357,6 +402,27 @@
 		.builder {
 			grid-template-columns: 1fr;
 		}
+	}
+
+	/* Side by side with other raids: the summary goes under the groups, and less is said. */
+	.builder.compact {
+		grid-template-columns: 1fr;
+	}
+
+	.compact .coverage {
+		position: static;
+	}
+
+	.compact .groups {
+		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+	}
+
+	.gaps .missing {
+		color: var(--grey-text);
+	}
+
+	.gaps .partial {
+		color: #ffd100;
 	}
 
 	.layout {

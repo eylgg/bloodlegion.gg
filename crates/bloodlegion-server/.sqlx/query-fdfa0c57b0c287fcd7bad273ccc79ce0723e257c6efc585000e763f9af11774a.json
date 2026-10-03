@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT zone, starts_at FROM raids WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "zone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "raids",
+            "name": "zone"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "raids",
+            "name": "starts_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "fdfa0c57b0c287fcd7bad273ccc79ce0723e257c6efc585000e763f9af11774a"
+}
