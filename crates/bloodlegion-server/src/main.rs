@@ -78,6 +78,11 @@ enum Command {
     },
     /// Every member's WoW: Forever launch sign-ups.
     Launch,
+    /// Characters.
+    Characters {
+        #[command(subcommand)]
+        command: CharactersCommand,
+    },
     /// The mirror of the game's item database.
     Items {
         #[command(subcommand)]
@@ -130,6 +135,16 @@ enum UsersCommand {
         #[arg(long, default_value = "en_US")]
         locale: String,
     },
+}
+
+#[derive(Debug, Subcommand)]
+enum CharactersCommand {
+    /// Make test characters linked to no member: four of each class ("Shaman One" through
+    /// "Shaman Four"), their two specs covering all three of the class's, with talents. Skips
+    /// names already taken.
+    Seed,
+    /// Remove the test characters `seed` makes, except any that raided or won loot.
+    Unseed,
 }
 
 #[derive(Debug, Subcommand)]
@@ -343,6 +358,10 @@ fn main() -> Result<()> {
             } => cli::users_characters(username, provider, region, namespace, locale),
         },
         Some(Command::Launch) => cli::launch(),
+        Some(Command::Characters { command }) => match command {
+            CharactersCommand::Seed => cli::characters_seed(),
+            CharactersCommand::Unseed => cli::characters_unseed(),
+        },
         Some(Command::Items { command }) => match command {
             ItemsCommand::Sync { ids } => cli::items_sync(ids),
         },

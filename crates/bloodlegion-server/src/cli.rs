@@ -511,3 +511,25 @@ pub async fn items_sync(ids: Vec<i32>) -> Result<()> {
         }
     }
 }
+
+/// `characters seed`: makes the test characters.
+#[tokio::main(flavor = "current_thread")]
+pub async fn characters_seed() -> Result<()> {
+    let pool = State::load_pool().await?;
+    let created = crate::characters::seed(&pool)
+        .await
+        .context("making the test characters")?;
+    eprintln!("made {created} test characters (four of each class; names already taken skipped)");
+    Ok(())
+}
+
+/// `characters unseed`: removes the test characters that have no history.
+#[tokio::main(flavor = "current_thread")]
+pub async fn characters_unseed() -> Result<()> {
+    let pool = State::load_pool().await?;
+    let (removed, kept) = crate::characters::unseed(&pool)
+        .await
+        .context("removing the test characters")?;
+    eprintln!("removed {removed} test characters; kept {kept} that raided or won loot");
+    Ok(())
+}

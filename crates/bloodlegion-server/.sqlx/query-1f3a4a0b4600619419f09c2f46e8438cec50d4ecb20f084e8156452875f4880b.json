@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM characters c\n        WHERE c.user_id IS NULL\n            AND c.name_normalized = ANY($1)\n            AND NOT EXISTS (SELECT 1 FROM raid_attendees a WHERE a.character_id = c.id)\n            AND NOT EXISTS (SELECT 1 FROM loot l WHERE l.character_id = c.id)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1f3a4a0b4600619419f09c2f46e8438cec50d4ecb20f084e8156452875f4880b"
+}

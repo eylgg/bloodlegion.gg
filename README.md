@@ -129,6 +129,8 @@ bloodlegion-server users rename <username> <new username>
 bloodlegion-server users rank <username> <rank>  # leader, officer, raider, trial, member, friend, retired
 bloodlegion-server users characters <username>   # the WoW characters on each linked Battle.net account
 bloodlegion-server items sync [--id <item id>]... # sync the item mirror now (the server syncs daily)
+bloodlegion-server characters seed              # test characters: four per class, linked to no one
+bloodlegion-server characters unseed            # remove them (keeps any that raided or won loot)
 bloodlegion-server launch                # every member's WoW: Forever launch sign-ups
 bloodlegion-server users disable <username>     # suspend: sessions stop, login refused
 bloodlegion-server users enable <username>

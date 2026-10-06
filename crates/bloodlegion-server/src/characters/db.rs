@@ -235,3 +235,63 @@ pub async fn list_raiding_notes(pool: &PgPool) -> sqlx::Result<Vec<NoteListing>>
     .fetch_all(pool)
     .await
 }
+
+/// Inserts one of `seed`'s characters, unless the name is taken; returns 1 when it was made.
+pub async fn insert_seed(
+    pool: &PgPool,
+    first_name: &str,
+    last_name: &str,
+    class: &str,
+    (primary, primary_talents): (&str, &[String]),
+    (secondary, secondary_talents): (&str, &[String]),
+) -> sqlx::Result<u64> {
+    let result = sqlx::query!(
+        r#"
+        INSERT INTO characters
+            (first_name, last_name, class, primary_spec, primary_talents, secondary_spec,
+             secondary_talents)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (name_normalized) DO NOTHING
+        "#,
+        first_name,
+        last_name,
+        class,
+        primary,
+        primary_talents,
+        secondary,
+        secondary_talents,
+    )
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}
+
+/// Deletes the unlinked characters of those (lowercase, full) names that never raided or won
+/// loot; returns how many went and how many stayed for their history.
+pub async fn delete_seeded(pool: &PgPool, names: &[String]) -> sqlx::Result<(u64, u64)> {
+    let mut tx = pool.begin().await?;
+    let deleted = sqlx::query!(
+        r#"
+        DELETE FROM characters c
+        WHERE c.user_id IS NULL
+            AND c.name_normalized = ANY($1)
+            AND NOT EXISTS (SELECT 1 FROM raid_attendees a WHERE a.character_id = c.id)
+            AND NOT EXISTS (SELECT 1 FROM loot l WHERE l.character_id = c.id)
+        "#,
+        names,
+    )
+    .execute(&mut *tx)
+    .await?
+    .rows_affected();
+    let kept = sqlx::query_scalar!(
+        r#"
+        SELECT count(*) AS "count!" FROM characters
+        WHERE user_id IS NULL AND name_normalized = ANY($1)
+        "#,
+        names,
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok((deleted, kept as u64))
+}

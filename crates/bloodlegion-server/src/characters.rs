@@ -399,6 +399,56 @@ pub struct NoteListing {
     pub updated_at: OffsetDateTime,
 }
 
+/// The last names of the test characters [`seed`] makes, four per class.
+const SEED_NAMES: [&str; 4] = ["One", "Two", "Three", "Four"];
+
+/// Test characters, linked to no member: four of each class, named after it ("Shaman One"
+/// through "Shaman Four"), whose main and second specs rotate through the class's three so every
+/// spec is played, each with the talents of its own tree. Names already taken are skipped.
+/// Returns how many were made.
+pub async fn seed(pool: &PgPool) -> sqlx::Result<u64> {
+    let mut created = 0;
+    for class in crate::launch::catalog::CLASSES {
+        let talents = |spec: &str| -> Vec<String> {
+            class
+                .talents
+                .iter()
+                .filter(|t| t.tree == spec)
+                .map(|t| t.slug.to_string())
+                .collect()
+        };
+        for (i, last_name) in SEED_NAMES.iter().enumerate() {
+            let primary = class.specs[i % class.specs.len()].slug;
+            let secondary = class.specs[(i + 1) % class.specs.len()].slug;
+            created += db::insert_seed(
+                pool,
+                class.name,
+                last_name,
+                class.slug,
+                (primary, &talents(primary)),
+                (secondary, &talents(secondary)),
+            )
+            .await?;
+        }
+    }
+    Ok(created)
+}
+
+/// Removes [`seed`]'s characters, except any that raided or won loot (they are history now).
+/// Returns how many went and how many stayed.
+pub async fn unseed(pool: &PgPool) -> sqlx::Result<(u64, u64)> {
+    let names: Vec<String> = crate::launch::catalog::CLASSES
+        .iter()
+        .flat_map(|class| {
+            SEED_NAMES
+                .iter()
+                .map(move |last| format!("{} {last}", class.name))
+        })
+        .map(|name| name.to_lowercase())
+        .collect();
+    db::delete_seeded(pool, &names).await
+}
+
 /// Every note on a character of the raiding roster (leaders through trials), latest first.
 pub async fn raiding_notes(pool: &PgPool) -> sqlx::Result<Vec<NoteListing>> {
     db::list_raiding_notes(pool).await
@@ -626,6 +676,57 @@ pub(crate) mod tests {
         .await
         .unwrap();
         assert!(cleared.primary_spec.is_none() && cleared.primary_talents.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn seeds_four_unlinked_characters_of_each_class(pool: PgPool) {
+        assert_eq!(seed(&pool).await.unwrap(), 36);
+        // Again: every name is taken, so nothing more.
+        assert_eq!(seed(&pool).await.unwrap(), 0);
+
+        let all = list(&pool).await.unwrap();
+        assert!(all.iter().all(|c| c.user_id.is_none() && !c.is_main));
+        let shamans: Vec<_> = all.iter().filter(|c| c.class == "shaman").collect();
+        let names: Vec<_> = shamans.iter().map(|c| c.last_name.as_str()).collect();
+        assert_eq!(names, ["Four", "One", "Three", "Two"]);
+        // Every spec is someone's main, with its tree's talents; the second spec is the next one.
+        let one = shamans.iter().find(|c| c.last_name == "One").unwrap();
+        assert_eq!(one.first_name, "Shaman");
+        assert_eq!(one.primary_spec.as_deref(), Some("elemental"));
+        assert_eq!(one.secondary_spec.as_deref(), Some("enhancement"));
+        assert_eq!(one.secondary_talents, ["enhancing-totems", "stormstrike"]);
+        let mains: std::collections::HashSet<_> = shamans
+            .iter()
+            .filter_map(|c| c.primary_spec.as_deref())
+            .collect();
+        assert_eq!(mains.len(), 3);
+
+        // Unseeding removes them, except one with history; a member's own character stays.
+        let officer = member(&pool, "Officer", Rank::Officer).await;
+        create(&pool, &officer, &input("Shaman", "Five", "shaman", false))
+            .await
+            .unwrap();
+        let raid = crate::raids::create_raid(
+            &pool,
+            &crate::raids::RaidInput {
+                zone: "onyxias-lair".into(),
+                title: None,
+                starts_local: time::macros::datetime!(2026-12-10 20:00),
+            },
+        )
+        .await
+        .unwrap();
+        crate::raids::add_attendees(&pool, raid.id, &[one.id])
+            .await
+            .unwrap();
+        assert_eq!(unseed(&pool).await.unwrap(), (35, 1));
+        let left: Vec<_> = list(&pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|c| format!("{} {}", c.first_name, c.last_name))
+            .collect();
+        assert_eq!(left, ["Shaman Five", "Shaman One"]);
     }
 
     #[sqlx::test]
