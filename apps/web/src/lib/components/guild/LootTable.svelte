@@ -48,7 +48,7 @@
 						{#if raid}
 							<td class="raid">
 								<a href={resolve('/(guild)/raids/[id]', { id: String(entry.raid_id) })}>
-									{zoneName(zones, entry.zone)}{entry.raid_title ? ` · ${entry.raid_title}` : ''}
+									{zoneName(zones, entry.zone)}
 								</a>
 								<span class="date">
 									{formatDateInZone(entry.raid_starts_at, entry.raid_time_zone)}{entry.raid_week

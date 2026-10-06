@@ -28,13 +28,6 @@ pub enum RaidError {
         detail = "That is not a WoW: Forever raid."
     )]
     UnknownZone,
-    #[error("invalid title")]
-    #[problem(
-        status = UNPROCESSABLE_ENTITY,
-        title = "Invalid Title",
-        detail = "A raid's title is at most 64 characters."
-    )]
-    InvalidTitle,
     #[error("raid not found")]
     #[problem(status = NOT_FOUND, title = "Not Found", detail = "No such raid.")]
     RaidNotFound,
@@ -63,7 +56,7 @@ pub enum RaidError {
     #[problem(
         status = UNPROCESSABLE_ENTITY,
         title = "Invalid Placement",
-        detail = "Each character goes in a group the raid has, one per slot, or on the bench."
+        detail = "Each character goes in a group the raid has, one per slot."
     )]
     InvalidPlacement,
     #[error("player busy: {0}")]
@@ -80,6 +73,13 @@ pub enum RaidError {
         detail = _0.clone()
     )]
     LockedOut(String),
+    #[error("unknown spec")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Unknown Spec",
+        detail = "That character does not play that spec."
+    )]
+    UnknownSpec,
     #[error("unknown character")]
     #[problem(
         status = UNPROCESSABLE_ENTITY,
@@ -169,6 +169,7 @@ fn external<T>(error: RaidError) -> Result<T, RaidError> {
 fn classify(error: sqlx::Error) -> Error<RaidError> {
     crate::error::classify_db_error(error, |constraint| match constraint {
         "raid_attendees_within_size_check" => Some(RaidError::RaidFull),
+        "raid_attendees_character_id_spec_fkey" => Some(RaidError::UnknownSpec),
         "raid_attendees_group_in_zone_check"
         | "raid_attendees_slot_check"
         | "raid_attendees_placed_check"
@@ -399,7 +400,6 @@ pub async fn item_detail(pool: &PgPool, id: i64) -> Result<ItemDetail, RaidError
 pub struct RaidRow {
     pub id: i64,
     pub zone: String,
-    pub title: Option<String>,
     /// When it starts, as a clock in `time_zone` reads it: what was scheduled.
     #[serde(with = "crate::local_time::minute")]
     pub starts_local: PrimitiveDateTime,
@@ -439,21 +439,10 @@ impl std::ops::Deref for Raid {
 #[derive(Debug, serde::Deserialize)]
 pub struct RaidInput {
     pub zone: String,
-    #[serde(default)]
-    pub title: Option<String>,
     /// As the guild's clock reads it; the raid is in the guild's time zone of the moment it is
     /// scheduled, and keeps that zone.
     #[serde(with = "crate::local_time::minute")]
     pub starts_local: PrimitiveDateTime,
-}
-
-/// The title, trimmed, with an empty one meaning none.
-fn title(input: &RaidInput) -> Result<Option<&str>, RaidError> {
-    match input.title.as_deref().map(str::trim) {
-        None | Some("") => Ok(None),
-        Some(title) if title.chars().count() <= 64 => Ok(Some(title)),
-        Some(_) => external(RaidError::InvalidTitle),
-    }
 }
 
 /// Every raid, latest first.
@@ -464,24 +453,17 @@ pub async fn raids(pool: &PgPool) -> sqlx::Result<Vec<Raid>> {
 pub async fn create_raid(pool: &PgPool, input: &RaidInput) -> Result<Raid, RaidError> {
     let zone = zone(&input.zone)?;
     let time_zone = crate::guild::settings(pool).await?.time_zone;
-    let id = db::insert_raid(
-        pool,
-        zone.slug,
-        title(input)?,
-        input.starts_local,
-        &time_zone,
-    )
-    .await?;
+    let id = db::insert_raid(pool, zone.slug, input.starts_local, &time_zone).await?;
     Ok(db::find_raid(pool, id)
         .await?
         .expect("the raid was just created"))
 }
 
-/// Changes a raid's zone, title, or time (on the clock of the time zone it was scheduled in). A new
+/// Changes a raid's zone or time (on the clock of the time zone it was scheduled in). A new
 /// zone must hold everyone who came, and a raid with boss loot keeps its zone.
 pub async fn update_raid(pool: &PgPool, id: i64, input: &RaidInput) -> Result<Raid, RaidError> {
     let zone = zone(&input.zone)?;
-    if !db::update_raid(pool, id, zone.slug, title(input)?, input.starts_local)
+    if !db::update_raid(pool, id, zone.slug, input.starts_local)
         .await
         .map_err(classify)?
     {
@@ -511,29 +493,24 @@ pub struct Attendee {
     pub last_name: String,
     pub class: String,
     pub is_main: bool,
-    /// The character's specs and their talents.
-    pub primary_spec: Option<String>,
-    pub primary_talents: Vec<String>,
-    pub secondary_spec: Option<String>,
-    pub secondary_talents: Vec<String>,
-    /// Where they stand: a group and a slot in it, or neither (the bench).
-    pub group_number: Option<i16>,
-    pub slot: Option<i16>,
-    /// Whether they play their secondary spec that night.
-    pub uses_secondary: bool,
+    /// The specs the character plays, its main first.
+    pub specs: sqlx::types::Json<Vec<crate::characters::CharacterSpec>>,
+    /// Where they stand: a group, and a slot in it.
+    pub group_number: i16,
+    pub slot: i16,
+    /// The spec they play that night; `None` for their main (or their only one).
+    pub spec: Option<String>,
 }
 
 /// One attendee's place in a layout.
 #[derive(Debug, serde::Deserialize)]
 pub struct Placement {
     pub character_id: i64,
-    /// Both or neither: neither is the bench.
+    pub group_number: i16,
+    pub slot: i16,
+    /// One of the character's specs, or `None` for their main.
     #[serde(default)]
-    pub group_number: Option<i16>,
-    #[serde(default)]
-    pub slot: Option<i16>,
-    #[serde(default)]
-    pub uses_secondary: bool,
+    pub spec: Option<String>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -571,8 +548,8 @@ pub async fn raid_detail(pool: &PgPool, id: i64) -> Result<RaidDetail, RaidError
     })
 }
 
-/// Adds characters to a raid; ones already there are skipped. All or nothing: a raid that would
-/// overflow its zone takes none of them.
+/// Adds characters to a raid, each in the first free place; ones already there are skipped. All
+/// or nothing: a raid that would overflow its zone takes none of them.
 pub async fn add_attendees(
     pool: &PgPool,
     raid_id: i64,
@@ -583,25 +560,28 @@ pub async fn add_attendees(
         return external(RaidError::RaidNotFound);
     };
     for character_id in character_ids {
-        join(&mut tx, raid_id, &raid, *character_id).await?;
+        join(&mut tx, raid_id, &raid, *character_id, None).await?;
     }
-    tx.commit().await?;
+    tx.commit().await.map_err(classify)?;
     Ok(db::attendees(pool, raid_id).await?)
 }
 
 /// Raids that start within this long of each other overlap: a player is in one of them.
 pub const RAID_LENGTH: time::Duration = time::Duration::hours(3);
 
-/// Puts a character on the raid, unless their player is on another raid at the same time (any of
-/// their characters) or the character is saved to the zone this week. A no-op when already on it.
+/// Puts a character on the raid at `place` (a group and slot; the first free one when `None`),
+/// unless their player is on another raid at the same time (any of their characters) or the
+/// character is saved to the zone this week. Returns whether they joined: `false` when already on
+/// it.
 async fn join(
     conn: &mut sqlx::PgConnection,
     raid_id: i64,
     raid: &db::LockedRaid,
     character_id: i64,
-) -> Result<(), RaidError> {
+    place: Option<(i16, i16)>,
+) -> Result<bool, RaidError> {
     if db::is_attending(conn, raid_id, character_id).await? {
-        return Ok(());
+        return Ok(false);
     }
     let busy = db::player_busy(
         conn,
@@ -635,42 +615,48 @@ async fn join(
             week.number
         )));
     }
-    db::insert_attendee(conn, raid_id, character_id)
+    let place = match place {
+        Some(place) => place,
+        None => match db::free_slot(conn, raid_id).await? {
+            Some(place) => place,
+            None => return external(RaidError::RaidFull),
+        },
+    };
+    db::insert_attendee(conn, raid_id, character_id, place)
         .await
-        .map_err(classify)
+        .map_err(classify)?;
+    Ok(true)
 }
 
-/// Puts a character on the raid (see [`join`]) at a place: a group and slot, or the bench.
-/// Answers with everyone on the raid.
+/// Puts a character on the raid (see [`join`]) at a group and slot, or moves them there when
+/// already on it. Answers with everyone on the raid.
 pub async fn place_attendee(
     pool: &PgPool,
     raid_id: i64,
     placement: &Placement,
 ) -> Result<Vec<Attendee>, RaidError> {
-    if placement.group_number.is_some() != placement.slot.is_some() {
-        return external(RaidError::InvalidPlacement);
-    }
     let mut tx = pool.begin().await?;
     let Some(raid) = db::lock_raid_info(&mut tx, raid_id).await? else {
         return external(RaidError::RaidNotFound);
     };
-    join(&mut tx, raid_id, &raid, placement.character_id).await?;
+    let place = (placement.group_number, placement.slot);
+    join(&mut tx, raid_id, &raid, placement.character_id, Some(place)).await?;
     db::place(
         &mut tx,
         raid_id,
         placement.character_id,
         placement.group_number,
         placement.slot,
-        placement.uses_secondary,
+        placement.spec.as_deref(),
     )
     .await
     .map_err(classify)?;
-    tx.commit().await?;
+    tx.commit().await.map_err(classify)?;
     Ok(db::attendees(pool, raid_id).await?)
 }
 
-/// Replaces the raid's layout: where each attendee stands and which spec they play. Attendees left
-/// out are benched. All or nothing.
+/// Rearranges the raid: where each attendee named stands and which spec they play. Anyone left
+/// out stays where they are; two people may swap. All or nothing.
 pub async fn set_layout(
     pool: &PgPool,
     raid_id: i64,
@@ -680,18 +666,14 @@ pub async fn set_layout(
     if !db::lock_raid(&mut tx, raid_id).await? {
         return external(RaidError::RaidNotFound);
     }
-    db::bench_all(&mut tx, raid_id).await?;
     for placement in placements {
-        if placement.group_number.is_some() != placement.slot.is_some() {
-            return external(RaidError::InvalidPlacement);
-        }
         let placed = db::place(
             &mut tx,
             raid_id,
             placement.character_id,
             placement.group_number,
             placement.slot,
-            placement.uses_secondary,
+            placement.spec.as_deref(),
         )
         .await
         .map_err(classify)?;
@@ -699,7 +681,7 @@ pub async fn set_layout(
             return external(RaidError::UnknownCharacter);
         }
     }
-    tx.commit().await?;
+    tx.commit().await.map_err(classify)?;
     Ok(db::attendees(pool, raid_id).await?)
 }
 
@@ -730,7 +712,6 @@ pub struct LootRow {
     pub id: i64,
     pub raid_id: i64,
     pub zone: String,
-    pub raid_title: Option<String>,
     #[serde(with = "crate::local_time::minute")]
     pub raid_starts_local: PrimitiveDateTime,
     pub raid_time_zone: String,
@@ -948,7 +929,6 @@ mod tests {
     fn raid(zone: &str) -> RaidInput {
         RaidInput {
             zone: zone.into(),
-            title: None,
             starts_local: time::macros::datetime!(2026-12-10 20:00),
         }
     }
@@ -1200,7 +1180,6 @@ mod tests {
         use time::macros::datetime;
         let at = |starts_local| RaidInput {
             zone: "onyxias-lair".into(),
-            title: None,
             starts_local,
         };
         // Before the release (a test run), on release night, and the night after the first reset:
@@ -1352,94 +1331,107 @@ mod tests {
     async fn officers_lay_out_groups_within_the_zone(pool: PgPool) {
         let ids = characters(&pool, 3).await;
         let deeps = create_raid(&pool, &raid("barrow-deeps")).await.unwrap();
-        add_attendees(&pool, deeps.id, &ids).await.unwrap();
-        let at = |character_id, group: i16, slot: i16, uses_secondary| Placement {
+        // Joining puts each in the first free place: no bench.
+        let joined = add_attendees(&pool, deeps.id, &ids).await.unwrap();
+        let place_of = |attendees: &[Attendee], id| {
+            let a = attendees.iter().find(|a| a.character_id == id).unwrap();
+            (a.group_number, a.slot, a.spec.clone())
+        };
+        assert_eq!(place_of(&joined, ids[0]), (1, 1, None));
+        assert_eq!(place_of(&joined, ids[2]), (1, 3, None));
+
+        // The second warrior plays arms and fury, fury its main.
+        let leader = member(&pool, "Leader", Rank::Leader).await;
+        let spec = |slug: &str| crate::characters::SpecInput {
+            spec: slug.into(),
+            talents: Vec::new(),
+        };
+        crate::characters::set_specs(
+            &pool,
+            &leader,
+            ids[1],
+            &crate::characters::SpecsInput {
+                specs: vec![spec("arms"), spec("fury")],
+                main: Some("fury".into()),
+            },
+        )
+        .await
+        .unwrap();
+        let at = |character_id, group: i16, slot: i16, spec: Option<&str>| Placement {
             character_id,
-            group_number: Some(group),
-            slot: Some(slot),
-            uses_secondary,
+            group_number: group,
+            slot,
+            spec: spec.map(str::to_string),
         };
 
-        // Two in group 1, the third left out (benched).
+        // Two swap places in one layout; the second plays arms; the third, left out, stays.
         let laid = set_layout(
             &pool,
             deeps.id,
-            &[at(ids[0], 1, 1, false), at(ids[1], 1, 2, true)],
+            &[at(ids[0], 1, 2, None), at(ids[1], 1, 1, Some("arms"))],
         )
         .await
         .unwrap();
-        let place = |id| {
-            let a = laid.iter().find(|a| a.character_id == id).unwrap();
-            (a.group_number, a.slot, a.uses_secondary)
-        };
-        assert_eq!(place(ids[0]), (Some(1), Some(1), false));
-        assert_eq!(place(ids[1]), (Some(1), Some(2), true));
-        assert_eq!(place(ids[2]), (None, None, false));
+        assert_eq!(place_of(&laid, ids[0]), (1, 2, None));
+        assert_eq!(place_of(&laid, ids[1]), (1, 1, Some("arms".to_string())));
+        assert_eq!(place_of(&laid, ids[2]), (1, 3, None));
 
-        // Swapping two slots in one layout is fine.
-        set_layout(
+        // A spec the character does not play is refused.
+        assert!(matches!(
+            set_layout(&pool, deeps.id, &[at(ids[1], 1, 1, Some("protection"))]).await,
+            Err(Error::External(RaidError::UnknownSpec))
+        ));
+        // Dropping the spec from the character puts them back on their main for the raid.
+        crate::characters::set_specs(
             &pool,
-            deeps.id,
-            &[at(ids[0], 1, 2, false), at(ids[1], 1, 1, false)],
+            &leader,
+            ids[1],
+            &crate::characters::SpecsInput {
+                specs: vec![spec("fury")],
+                main: Some("fury".into()),
+            },
         )
         .await
         .unwrap();
+        let back = raid_detail(&pool, deeps.id).await.unwrap().attendees;
+        assert_eq!(place_of(&back, ids[1]), (1, 1, None));
 
         // The Barrow Deeps have two groups of five; one slot holds one character.
         let invalid = |result: Result<Vec<Attendee>, RaidError>| {
             matches!(result, Err(Error::External(RaidError::InvalidPlacement)))
         };
         assert!(invalid(
-            set_layout(&pool, deeps.id, &[at(ids[0], 3, 1, false)]).await
+            set_layout(&pool, deeps.id, &[at(ids[0], 3, 1, None)]).await
         ));
         assert!(invalid(
-            set_layout(&pool, deeps.id, &[at(ids[0], 1, 6, false)]).await
+            set_layout(&pool, deeps.id, &[at(ids[0], 1, 6, None)]).await
         ));
         assert!(invalid(
-            set_layout(
-                &pool,
-                deeps.id,
-                &[at(ids[0], 2, 1, false), at(ids[1], 2, 1, false)]
-            )
-            .await
+            set_layout(&pool, deeps.id, &[at(ids[0], 1, 3, None)]).await
         ));
         // A refused layout changes nothing.
         let kept = raid_detail(&pool, deeps.id).await.unwrap().attendees;
-        assert!(
-            kept.iter()
-                .any(|a| a.character_id == ids[1] && a.slot == Some(1))
-        );
+        assert_eq!(place_of(&kept, ids[0]), (1, 2, None));
 
-        // Moving to a bigger zone keeps the groups; group 2 survives a move back.
-        let hyjal = RaidInput {
-            zone: "hyjal-summit".into(),
-            ..raid("hyjal-summit")
+        // Moving to a bigger zone keeps the groups; moving back repacks group 4 into group 1 or 2.
+        let starts = deeps.starts_local;
+        let in_zone = |zone: &str| RaidInput {
+            zone: zone.into(),
+            starts_local: starts,
         };
-        update_raid(&pool, deeps.id, &hyjal).await.unwrap();
-        set_layout(
-            &pool,
-            deeps.id,
-            &[at(ids[0], 4, 1, false), at(ids[1], 2, 1, false)],
-        )
-        .await
-        .unwrap();
-        update_raid(&pool, deeps.id, &raid("barrow-deeps"))
+        update_raid(&pool, deeps.id, &in_zone("hyjal-summit"))
+            .await
+            .unwrap();
+        set_layout(&pool, deeps.id, &[at(ids[0], 4, 5, None)])
+            .await
+            .unwrap();
+        update_raid(&pool, deeps.id, &in_zone("barrow-deeps"))
             .await
             .unwrap();
         let after = raid_detail(&pool, deeps.id).await.unwrap().attendees;
-        let group = |id| {
-            after
-                .iter()
-                .find(|a| a.character_id == id)
-                .unwrap()
-                .group_number
-        };
-        assert_eq!(
-            group(ids[0]),
-            None,
-            "group 4 is gone in a ten-player raid: benched"
-        );
-        assert_eq!(group(ids[1]), Some(2));
+        let (group, _, _) = place_of(&after, ids[0]);
+        assert!(group <= 2, "group 4 is gone in a ten-player raid");
+        assert_eq!(after.len(), 3);
     }
 
     #[sqlx::test]
@@ -1460,7 +1452,6 @@ mod tests {
 
         let at = |zone: &str, starts_local| RaidInput {
             zone: zone.into(),
-            title: None,
             starts_local,
         };
         // Two raids at 8 PM on release week's Thursday, one at 11:30 PM (out of the window),
@@ -1512,9 +1503,9 @@ mod tests {
             hyjal.id,
             &Placement {
                 character_id: alt.id,
-                group_number: Some(1),
-                slot: Some(1),
-                uses_secondary: false,
+                group_number: 1,
+                slot: 1,
+                spec: None,
             },
         )
         .await;
@@ -1528,14 +1519,14 @@ mod tests {
             hyjal.id,
             &Placement {
                 character_id: alt.id,
-                group_number: Some(1),
-                slot: Some(1),
-                uses_secondary: false,
+                group_number: 1,
+                slot: 1,
+                spec: None,
             },
         )
         .await
         .unwrap();
-        assert_eq!(placed[0].group_number, Some(1));
+        assert_eq!(placed[0].group_number, 1);
     }
 
     async fn delete_attendee_for_test(pool: &PgPool, raid_id: i64, character_id: i64) {

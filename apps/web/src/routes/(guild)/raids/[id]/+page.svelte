@@ -8,8 +8,10 @@
 	import LootTable from '$lib/components/guild/LootTable.svelte';
 	import GameItemPicker from '$lib/components/guild/GameItemPicker.svelte';
 	import RaidBuilder from '$lib/components/guild/RaidBuilder.svelte';
+	import Roster from '$lib/components/guild/Roster.svelte';
+	import { putOn, takeOff, type Target } from '$lib/wow/planning';
 	import RaidForm from '../RaidForm.svelte';
-	import type { Attendee, GameItemSummary, LootEntry, Quality, Raid } from '$lib/types';
+	import type { Attendee, GameItemSummary, LootEntry, Quality, Raid, RaidDetail } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -25,7 +27,6 @@
 	const zone = $derived(data.zones.find((z) => z.slug === raid.zone));
 	const size = $derived(zone?.size ?? 0);
 	const zoneBosses = $derived(data.bosses.filter((b) => b.zone === raid.zone));
-	const classColor = (slug: string) => data.classes.find((c) => c.slug === slug)?.color;
 
 	async function removeRaid() {
 		if (!confirm('Delete this raid, with its attendance and loot?')) return;
@@ -37,53 +38,52 @@
 		}
 	}
 
-	/* --- attendance --- */
+	/* --- groups --- */
 
-	let adding = $state(false);
-	let search = $state('');
-	let picked = $state<number[]>([]);
+	// The roster's pick, to put down in a free slot.
+	let selected = $state<number | null>(null);
+	const detail = $derived<RaidDetail>({ raid, attendees, loot });
+	const places = (characterId: number) => {
+		const a = attendees.find((a) => a.character_id === characterId);
+		return a
+			? [{ raidId: raid.id, name: zoneName(data.zones, raid.zone), group: a.group_number }]
+			: [];
+	};
 
-	const attending = $derived(new Set(attendees.map((a) => a.character_id)));
-	const candidates = $derived(
-		data.characters
-			.filter((c) => !attending.has(c.id))
-			.filter((c) =>
-				`${fullName(c)} ${c.username ?? ''}`.toLowerCase().includes(search.trim().toLowerCase())
-			)
-			.sort(
-				(a, b) => Number(b.is_main) - Number(a.is_main) || fullName(a).localeCompare(fullName(b))
-			)
-	);
-	const seatsLeft = $derived(size - attendees.length);
-
-	function toggle(id: number) {
-		picked = picked.includes(id) ? picked.filter((p) => p !== id) : [...picked, id];
-	}
-
-	async function addAttendees() {
+	async function add(characterId: number, target: Target) {
+		const character = data.characters.find((c) => c.id === characterId);
+		if (!character) return;
 		error = '';
 		try {
-			attendees = await api.post<Attendee[]>(`/api/raids/${raid.id}/attendees`, {
-				character_ids: picked
-			});
-			raid = { ...raid, attendee_count: attendees.length };
-			picked = [];
-			search = '';
-			adding = false;
+			const next = await putOn(
+				[detail],
+				detail,
+				character,
+				target,
+				size,
+				(message) => confirm(message),
+				() => zoneName(data.zones, raid.zone)
+			);
+			if (next) setAttendees(next[0].attendees);
 		} catch (err) {
-			error = errorMessage(err, 'Adding failed. Please try again.');
+			error = err instanceof Error ? errorMessage(err, err.message) : 'Adding them failed.';
+		} finally {
+			selected = null;
 		}
 	}
 
-	async function removeAttendee(attendee: Attendee) {
+	async function remove(characterId: number) {
 		error = '';
 		try {
-			await api.del(`/api/raids/${raid.id}/attendees/${attendee.character_id}`);
-			attendees = attendees.filter((a) => a.character_id !== attendee.character_id);
-			raid = { ...raid, attendee_count: attendees.length };
+			setAttendees((await takeOff([detail], raid.id, characterId))[0].attendees);
 		} catch (err) {
-			error = errorMessage(err, 'Removing failed. Please try again.');
+			error = errorMessage(err, 'Taking them off failed. Please try again.');
 		}
+	}
+
+	function setAttendees(next: Attendee[]) {
+		attendees = next;
+		raid = { ...raid, attendee_count: next.length };
 	}
 
 	/* --- loot --- */
@@ -105,6 +105,7 @@
 	const knownItem = $derived(
 		data.items.find((i) => i.name.toLowerCase() === itemName.trim().toLowerCase())
 	);
+	const attending = $derived(new Set(attendees.map((a) => a.character_id)));
 	const others = $derived(
 		data.characters
 			.filter((c) => !attending.has(c.id))
@@ -169,7 +170,7 @@
 		<p class="kicker">
 			{raid.week ? `Week ${raid.week.number} · ` : ''}{formatInZone(raid.starts_at, raid.time_zone)}
 		</p>
-		<h1>{zoneName(data.zones, raid.zone)}{raid.title ? ` · ${raid.title}` : ''}</h1>
+		<h1>{zoneName(data.zones, raid.zone)}</h1>
 		<p class="muted">
 			{attendees.length}/{size} characters · {loot.length}
 			{loot.length === 1 ? 'item' : 'items'}
@@ -197,80 +198,29 @@
 {/if}
 
 <section>
-	<div class="section-head">
-		<h2>Groups</h2>
-		{#if data.officer && !adding}
-			<Button
-				size="small"
-				variant="secondary"
-				disabled={seatsLeft <= 0}
-				onclick={() => (adding = true)}
-			>
-				{seatsLeft <= 0 ? 'Full' : 'Add characters'}
-			</Button>
+	<h2>Groups</h2>
+	<div class="groups-layout" class:with-roster={data.officer}>
+		{#if data.officer}
+			<Roster
+				characters={data.characters}
+				{places}
+				editable
+				bind:selected
+				onreturn={(_, characterId) => remove(characterId)}
+			/>
 		{/if}
-	</div>
-
-	{#if adding}
-		<div class="panel">
-			<div class="row">
-				<label class="field">
-					Find characters
-					<input type="search" bind:value={search} placeholder="Name or player" />
-				</label>
-				<div class="fit add-actions">
-					<span class="muted" class:over={picked.length > seatsLeft}>
-						{picked.length} picked · {seatsLeft} seats left
-					</span>
-					<Button variant="secondary" onclick={() => ((adding = false), (picked = []))}
-						>Cancel</Button
-					>
-					<Button
-						variant="primary"
-						disabled={picked.length === 0 || picked.length > seatsLeft}
-						onclick={addAttendees}
-					>
-						Add {picked.length || ''}
-					</Button>
-				</div>
-			</div>
-			<ul class="candidates">
-				{#each candidates as character (character.id)}
-					<li>
-						<label style:color={classColor(character.class)}>
-							<input
-								type="checkbox"
-								checked={picked.includes(character.id)}
-								onchange={() => toggle(character.id)}
-							/>
-							{fullName(character)}
-							<span class="muted small"
-								>{[character.username, character.user_id !== null && !character.is_main && 'alt']
-									.filter(Boolean)
-									.join(' · ')}</span
-							>
-						</label>
-					</li>
-				{:else}
-					<li class="muted">Nobody else to add.</li>
-				{/each}
-			</ul>
-		</div>
-	{/if}
-
-	{#if attendees.length === 0}
-		<p class="muted">Nobody recorded yet.</p>
-	{:else}
 		<RaidBuilder
 			raidId={raid.id}
 			{size}
 			{attendees}
-			onchange={(next) => (attendees = next)}
+			onchange={setAttendees}
 			effects={data.effects}
 			editable={data.officer}
-			onremove={removeAttendee}
+			onremove={(attendee) => remove(attendee.character_id)}
+			incoming={selected}
+			onincoming={add}
 		/>
-	{/if}
+	</div>
 </section>
 
 <section>
@@ -349,20 +299,20 @@
 </section>
 
 <style>
+	.groups-layout.with-roster {
+		display: grid;
+		grid-template-columns: 16rem minmax(0, 1fr);
+		gap: var(--space-4);
+		align-items: start;
+	}
+
+	@media (max-width: 52rem) {
+		.groups-layout.with-roster {
+			grid-template-columns: 1fr;
+		}
+	}
+
 	.actions,
-	.add-actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.section-head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
-	}
-
 	h3 {
 		margin: 0;
 		font-size: var(--text-lg);
@@ -370,28 +320,5 @@
 
 	.small {
 		font-size: var(--text-sm);
-	}
-
-	.over {
-		color: var(--red-text);
-	}
-
-	.candidates {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-		gap: var(--space-1) var(--space-3);
-		max-height: 20rem;
-		overflow-y: auto;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.candidates label {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-weight: 600;
-		cursor: pointer;
 	}
 </style>

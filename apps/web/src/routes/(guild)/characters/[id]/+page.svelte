@@ -70,11 +70,7 @@
 		</p>
 		<h1>{character.first_name} {character.last_name}</h1>
 		<p class="muted">
-			<CharacterSpecs
-				cls={character.class}
-				primary={character.primary_spec}
-				secondary={character.secondary_spec}
-			/>
+			<CharacterSpecs cls={character.class} specs={character.specs} />
 			{character.username ? `Played by ${character.username} · ` : ''}{data.detail.raids_attended}
 			{data.detail.raids_attended === 1 ? 'raid' : 'raids'} · {data.detail.loot.length}
 			{data.detail.loot.length === 1 ? 'item' : 'items'}

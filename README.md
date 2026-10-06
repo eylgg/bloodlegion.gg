@@ -174,18 +174,24 @@ the changes.
   scheduled in.
 - **Settings** (`/settings`, superusers): the guild's time zone (default `America/New_York`) and
   the time raids usually start (default 20:00), which a new raid is scheduled in and defaults to.
-- **The raid builder**, on each raid's page: the attendees in groups of five (two groups for the
-  Barrow Deeps, four for Hyjal Summit, eight for Onyxia's Lair) and a bench. Officers move people
-  (dragging, or clicking one then where they go) and switch the spec someone plays that night;
-  everyone sees the layout. Alongside, what the groups bring: raid-wide and group-only buffs (the
-  latter per group), debuffs, utility (combat resses, dispels, interrupts), and the roles.
-- **The raid planner** (`/raids/plan`): a raid week's raids side by side, with the roster by
-  player to fill them from (drag, or click then click). A player (an account, whichever of their
-  characters) is in one raid at a time: raids starting within three hours of each other overlap
-  (`raids::RAID_LENGTH`). A character is saved to a zone for the raid week. The server refuses
-  either; the planner offers to move the player out of the other raid instead.
-- **Specs and talents**: characters have two specs (dual spec), each with the notable talents it
-  takes, the ones that change what a character brings (`launch::catalog`). What each class, spec,
+- **The raid builder**, on each raid's page: the raid's groups of five (two for the Barrow Deeps,
+  four for Hyjal Summit, eight for Onyxia's Lair), with the roster beside them. Everyone on a raid
+  stands in a group; there is no bench. Officers drag people in from the roster (or click one, then
+  a free slot), move them between slots (onto someone swaps the two), switch the spec someone plays
+  that night, and drag them back to the roster (or ×) to take them off; everyone sees the layout.
+  Each group lists the group-only buffs it has; alongside, what the raid brings: buffs, debuffs,
+  utility (combat resses, dispels, interrupts), and the roles.
+- **The raid planner** (`/raids/plan`): a raid week's raids side by side, the roster beside them,
+  sorted by player (username) and then the characters no member plays. Raids have no names: a
+  zone's raids in a week are numbered ("Onyxia's Lair 2"), and "Add a group" adds another of the
+  same zone at the same time. A player (an account, whichever of their characters) is in one raid
+  at a time: raids starting within three hours of each other overlap (`raids::RAID_LENGTH`). A
+  character is saved to a zone for the raid week. The server refuses either; the planner offers to
+  move the player out of the other raid instead.
+- **Specs and talents**: a character plays any of its class's specs, each with the notable talents
+  it takes there, the ones that change what a character brings (`launch::catalog`); at most one is
+  its main (or none). In a raid each plays one of them: the one picked that night, else the main,
+  else the only one. What each class, spec,
   and talent brings is `raids::effects`: Classic's to start, to correct as Forever's become known.
   Characters not linked to a member show no player.
 - **Weeks** number the lockouts (`raids::calendar`). The raids open December 9, 2026 at 6 PM New

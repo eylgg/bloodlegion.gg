@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { contention, coverage, member, roles } from './composition';
+import { contention, coverage, member, playedSpec, roles } from './composition';
 import type { Attendee, Effect, WowClass } from '$lib/types';
 
 function attendee(
 	id: number,
 	cls: string,
-	group: number | null,
+	group: number,
 	spec: string,
 	talents: string[] = []
 ): Attendee {
@@ -17,13 +17,10 @@ function attendee(
 		last_name: 'Test',
 		class: cls,
 		is_main: true,
-		primary_spec: spec,
-		primary_talents: talents,
-		secondary_spec: null,
-		secondary_talents: [],
+		specs: [{ spec, talents, is_main: true }],
 		group_number: group,
-		slot: group === null ? null : 1,
-		uses_secondary: false
+		slot: 1,
+		spec: null
 	};
 }
 
@@ -62,13 +59,11 @@ describe('raid composition', () => {
 		attendee(1, 'mage', 1, 'frost'),
 		attendee(2, 'warrior', 1, 'fury', ['improved-battle-shout']),
 		attendee(3, 'priest', 2, 'holy'),
-		attendee(4, 'paladin', 2, 'holy', ['blessing-of-kings']),
-		// On the bench: brings nothing.
-		attendee(5, 'priest', null, 'shadow', ['shadow-weaving'])
+		attendee(4, 'paladin', 2, 'holy', ['blessing-of-kings'])
 	].map(member);
 	const covered = Object.fromEntries(coverage(effects, members).map((c) => [c.effect.slug, c]));
 
-	it('counts only the people placed in groups', () => {
+	it('needs someone who brings it', () => {
 		expect(covered['arcane-intellect'].providers).toHaveLength(1);
 		expect(covered['shadow-weaving'].providers).toHaveLength(0);
 	});
@@ -83,15 +78,22 @@ describe('raid composition', () => {
 		expect(contention(effects, members)).toEqual([{ key: 'blessing', casters: 1, wanted: 2 }]);
 	});
 
-	it('plays the secondary spec when told to', () => {
-		const dual = {
+	it('plays the spec chosen for the night, else the main, else the only one', () => {
+		const priest = {
 			...attendee(6, 'priest', 1, 'holy'),
-			secondary_spec: 'shadow',
-			secondary_talents: ['shadow-weaving'],
-			uses_secondary: true
+			specs: [
+				{ spec: 'holy', talents: [], is_main: true },
+				{ spec: 'shadow', talents: ['shadow-weaving'], is_main: false }
+			]
 		};
-		const [found] = coverage([effects[2]], [member(dual)]);
-		expect(found.providers).toHaveLength(1);
+		expect(coverage([effects[2]], [member(priest)])[0].providers).toHaveLength(0);
+		const shadow = { ...priest, spec: 'shadow' };
+		expect(coverage([effects[2]], [member(shadow)])[0].providers).toHaveLength(1);
+		expect(playedSpec(priest.specs, null)?.spec).toBe('holy');
+		// No main among several: undecided.
+		const noMain = priest.specs.map((s) => ({ ...s, is_main: false }));
+		expect(playedSpec(noMain, null)).toBeNull();
+		expect(playedSpec([noMain[1]], null)?.spec).toBe('shadow');
 	});
 
 	it('counts roles from the spec played', () => {

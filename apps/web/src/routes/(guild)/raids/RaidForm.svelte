@@ -6,12 +6,19 @@
 	import Alert from '$lib/components/Alert.svelte';
 	import type { GuildSettings, Raid, Zone } from '$lib/types';
 
-	/** Schedules a raid, or edits one: its zone, an optional title, and when it starts. */
+	/** Schedules a raid, or edits one: its zone and when it starts. */
 	let {
 		raid = null,
+		zone: initialZone = '',
 		onsaved,
 		oncancel
-	}: { raid?: Raid | null; onsaved: (raid: Raid) => void; oncancel: () => void } = $props();
+	}: {
+		raid?: Raid | null;
+		/** A new raid's zone to start with. */
+		zone?: string;
+		onsaved: (raid: Raid) => void;
+		oncancel: () => void;
+	} = $props();
 
 	const zones = $derived((page.data.zones as Zone[] | undefined) ?? []);
 	const settings = $derived(page.data.settings as GuildSettings);
@@ -20,9 +27,7 @@
 	const timeZone = $derived(raid?.time_zone ?? settings.time_zone);
 
 	// svelte-ignore state_referenced_locally
-	let zone = $state(raid?.zone ?? '');
-	// svelte-ignore state_referenced_locally
-	let title = $state(raid?.title ?? '');
+	let zone = $state(raid?.zone ?? initialZone);
 	// svelte-ignore state_referenced_locally
 	let startsLocal = $state(
 		raid?.starts_local ?? todayAt(settings.default_raid_time, settings.time_zone)
@@ -38,7 +43,7 @@
 		}
 		saving = true;
 		error = '';
-		const body = { zone, title: title.trim() || null, starts_local: startsLocal };
+		const body = { zone, starts_local: startsLocal };
 		try {
 			onsaved(
 				raid
@@ -69,10 +74,6 @@
 		<label class="field">
 			Starts ({zoneCity(timeZone)} time)
 			<input type="datetime-local" bind:value={startsLocal} required />
-		</label>
-		<label class="field">
-			Title (optional)
-			<input type="text" bind:value={title} maxlength="64" placeholder="Group 2" />
 		</label>
 	</div>
 	<div class="form-actions">

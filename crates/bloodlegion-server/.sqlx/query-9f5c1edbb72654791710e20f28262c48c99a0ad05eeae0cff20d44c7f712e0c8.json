@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM character_specs\n        WHERE character_id = $1\n            AND (SELECT class FROM characters WHERE id = $1) <> $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9f5c1edbb72654791710e20f28262c48c99a0ad05eeae0cff20d44c7f712e0c8"
+}

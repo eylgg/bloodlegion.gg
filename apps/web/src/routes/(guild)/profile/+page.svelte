@@ -188,11 +188,7 @@
 					lastName={character.last_name}
 					cls={character.class}
 				/>
-				<CharacterSpecs
-					cls={character.class}
-					primary={character.primary_spec}
-					secondary={character.secondary_spec}
-				/>
+				<CharacterSpecs cls={character.class} specs={character.specs} />
 				{#if character.is_main}<span class="main-badge">Main</span>{/if}
 				<div class="actions">
 					{#if !character.is_main}

@@ -25,12 +25,8 @@ pub struct Character {
     pub last_name: String,
     pub class: String,
     pub is_main: bool,
-    /// Its two specs (Forever has dual spec), each with the notable talents it takes; see
-    /// `launch::catalog` for both.
-    pub primary_spec: Option<String>,
-    pub primary_talents: Vec<String>,
-    pub secondary_spec: Option<String>,
-    pub secondary_talents: Vec<String>,
+    /// The specs it plays, its main (if it has one) first, then in the catalog's order.
+    pub specs: sqlx::types::Json<Vec<CharacterSpec>>,
     #[serde(with = "iso8601")]
     pub created_at: OffsetDateTime,
     #[serde(with = "iso8601")]
@@ -51,7 +47,16 @@ pub struct CharacterInput {
     pub user_id: Option<Option<UserId>>,
 }
 
-/// One of a character's specs as submitted: the spec's slug and the notable talents it takes.
+/// A spec a character plays: any of its class's, with the notable talents it takes there (see
+/// `launch::catalog` for both), and whether it is the character's main.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct CharacterSpec {
+    pub spec: String,
+    pub talents: Vec<String>,
+    pub is_main: bool,
+}
+
+/// One spec as submitted: its slug and its talents.
 #[derive(Debug, serde::Deserialize)]
 pub struct SpecInput {
     pub spec: String,
@@ -59,13 +64,23 @@ pub struct SpecInput {
     pub talents: Vec<String>,
 }
 
-/// Both specs; a missing one is cleared.
-#[derive(Debug, serde::Deserialize)]
+/// Every spec the character plays (replacing what it had), and which is its main, if any.
+#[derive(Debug, Default, serde::Deserialize)]
 pub struct SpecsInput {
     #[serde(default)]
-    pub primary: Option<SpecInput>,
+    pub specs: Vec<SpecInput>,
     #[serde(default)]
-    pub secondary: Option<SpecInput>,
+    pub main: Option<String>,
+}
+
+/// Orders specs as characters show them: the main first, then the class catalog's order.
+pub(crate) fn order_specs(class: &str, specs: &mut [CharacterSpec]) {
+    let position = |slug: &str| {
+        crate::launch::catalog::find(class)
+            .and_then(|c| c.specs.iter().position(|s| s.slug == slug))
+            .unwrap_or(usize::MAX)
+    };
+    specs.sort_by_key(|s| (!s.is_main, position(&s.spec)));
 }
 
 #[derive(Debug, thiserror::Error, Problem)]
@@ -253,6 +268,8 @@ pub async fn update(
     if let (true, Some(owner)) = (valid.is_main, valid.user_id) {
         db::clear_main(&mut tx, owner, Some(id)).await?;
     }
+    // A new class has other specs and talents.
+    db::clear_specs_unless_class(&mut tx, id, valid.class).await?;
     db::update(
         &mut tx,
         id,
@@ -270,34 +287,46 @@ pub async fn update(
         .expect("the character was just updated"))
 }
 
-/// A validated spec: its slug, and its talents in the catalog's order.
-fn valid_spec(
+/// Validates `input` against the class: each spec of the class at most once, talents of the class
+/// (in the catalog's order), and a main among the specs.
+fn valid_specs(
     class: &'static crate::launch::catalog::Class,
-    input: Option<&SpecInput>,
-) -> Result<(Option<&'static str>, Vec<String>), CharacterError> {
-    let Some(input) = input else {
-        return Ok((None, Vec::new()));
-    };
-    let Some(spec) = class.specs.iter().find(|s| s.slug == input.spec.trim()) else {
-        return external(CharacterError::InvalidSpec);
-    };
-    if !input
-        .talents
-        .iter()
-        .all(|t| class.talents.iter().any(|known| known.slug == t))
-    {
+    input: &SpecsInput,
+) -> Result<Vec<CharacterSpec>, CharacterError> {
+    let main = input.main.as_deref().map(str::trim);
+    let mut specs: Vec<CharacterSpec> = Vec::new();
+    for spec in &input.specs {
+        let Some(known) = class.specs.iter().find(|s| s.slug == spec.spec.trim()) else {
+            return external(CharacterError::InvalidSpec);
+        };
+        let talents_known = spec
+            .talents
+            .iter()
+            .all(|t| class.talents.iter().any(|known| known.slug == t));
+        if specs.iter().any(|s| s.spec == known.slug) || !talents_known {
+            return external(CharacterError::InvalidSpec);
+        }
+        specs.push(CharacterSpec {
+            spec: known.slug.to_string(),
+            talents: class
+                .talents
+                .iter()
+                .filter(|t| spec.talents.iter().any(|chosen| chosen == t.slug))
+                .map(|t| t.slug.to_string())
+                .collect(),
+            is_main: main == Some(known.slug),
+        });
+    }
+    if main.is_some() && !specs.iter().any(|s| s.is_main) {
         return external(CharacterError::InvalidSpec);
     }
-    let talents = class
-        .talents
-        .iter()
-        .filter(|t| input.talents.iter().any(|chosen| chosen == t.slug))
-        .map(|t| t.slug.to_string())
-        .collect();
-    Ok((Some(spec.slug), talents))
+    order_specs(class.slug, &mut specs);
+    Ok(specs)
 }
 
-/// Sets a character's two specs and their talents: by its player, or by an officer.
+/// Replaces the specs a character plays, with their talents and the main among them (or none):
+/// by its player, or by an officer. A raid it was set to play a removed spec in falls back to its
+/// main.
 pub async fn set_specs(
     pool: &PgPool,
     actor: &User,
@@ -313,17 +342,10 @@ pub async fn set_specs(
     let Some(class) = crate::launch::catalog::find(&character.class) else {
         return external(CharacterError::UnknownClass);
     };
-    let (primary, primary_talents) = valid_spec(class, input.primary.as_ref())?;
-    let (secondary, secondary_talents) = valid_spec(class, input.secondary.as_ref())?;
-    db::set_specs(
-        pool,
-        id,
-        primary,
-        &primary_talents,
-        secondary,
-        &secondary_talents,
-    )
-    .await?;
+    let specs = valid_specs(class, input)?;
+    let mut tx = pool.begin().await?;
+    db::replace_specs(&mut tx, id, &specs).await?;
+    tx.commit().await?;
     Ok(db::find(pool, id).await?.expect("the character exists"))
 }
 
@@ -403,32 +425,34 @@ pub struct NoteListing {
 const SEED_NAMES: [&str; 4] = ["One", "Two", "Three", "Four"];
 
 /// Test characters, linked to no member: four of each class, named after it ("Shaman One"
-/// through "Shaman Four"), whose main and second specs rotate through the class's three so every
-/// spec is played, each with the talents of its own tree. Names already taken are skipped.
-/// Returns how many were made.
+/// through "Shaman Four"), each playing all three of the class's specs with the talents of each
+/// spec's own tree. One, Two, and Three each have a different main; Four has none. Names already
+/// taken are skipped. Returns how many were made.
 pub async fn seed(pool: &PgPool) -> sqlx::Result<u64> {
     let mut created = 0;
     for class in crate::launch::catalog::CLASSES {
-        let talents = |spec: &str| -> Vec<String> {
-            class
-                .talents
-                .iter()
-                .filter(|t| t.tree == spec)
-                .map(|t| t.slug.to_string())
-                .collect()
-        };
         for (i, last_name) in SEED_NAMES.iter().enumerate() {
-            let primary = class.specs[i % class.specs.len()].slug;
-            let secondary = class.specs[(i + 1) % class.specs.len()].slug;
-            created += db::insert_seed(
-                pool,
-                class.name,
-                last_name,
-                class.slug,
-                (primary, &talents(primary)),
-                (secondary, &talents(secondary)),
-            )
-            .await?;
+            let main = class.specs.get(i).map(|s| s.slug);
+            let specs: Vec<CharacterSpec> = class
+                .specs
+                .iter()
+                .map(|spec| CharacterSpec {
+                    spec: spec.slug.to_string(),
+                    talents: class
+                        .talents
+                        .iter()
+                        .filter(|t| t.tree == spec.slug)
+                        .map(|t| t.slug.to_string())
+                        .collect(),
+                    is_main: main == Some(spec.slug),
+                })
+                .collect();
+            let mut tx = pool.begin().await?;
+            if let Some(id) = db::insert_seed(&mut tx, class.name, last_name, class.slug).await? {
+                db::replace_specs(&mut tx, id, &specs).await?;
+                created += 1;
+            }
+            tx.commit().await?;
         }
     }
     Ok(created)
@@ -575,7 +599,7 @@ pub(crate) mod tests {
     }
 
     #[sqlx::test]
-    async fn characters_have_two_specs_with_their_talents(pool: PgPool) {
+    async fn characters_play_any_specs_with_an_optional_main(pool: PgPool) {
         let ey = member(&pool, "Ey", Rank::Raider).await;
         let other = member(&pool, "Other", Rank::Raider).await;
         let paladin = create(&pool, &ey, &input("Arthas", "Menethil", "paladin", false))
@@ -585,46 +609,90 @@ pub(crate) mod tests {
             spec: spec.into(),
             talents: talents.iter().map(|t| t.to_string()).collect(),
         };
-        let specs = SpecsInput {
-            // Kings is in the protection tree, but a holy paladin can take it.
-            primary: Some(spec(
-                "holy",
-                &["improved-blessing-of-wisdom", "blessing-of-kings"],
-            )),
-            secondary: Some(spec("retribution", &["improved-blessing-of-might"])),
+        let all_three = SpecsInput {
+            specs: vec![
+                spec("retribution", &["improved-blessing-of-might"]),
+                // Kings is in the protection tree, but a holy paladin can take it.
+                spec(
+                    "holy",
+                    &["improved-blessing-of-wisdom", "blessing-of-kings"],
+                ),
+                spec("protection", &[]),
+            ],
+            main: Some("holy".into()),
         };
-        let saved = set_specs(&pool, &ey, paladin.id, &specs).await.unwrap();
-        assert_eq!(saved.primary_spec.as_deref(), Some("holy"));
-        // Catalog order, not click order.
+        let saved = set_specs(&pool, &ey, paladin.id, &all_three).await.unwrap();
+        let order: Vec<_> = saved
+            .specs
+            .iter()
+            .map(|s| (s.spec.as_str(), s.is_main))
+            .collect();
+        // The main first, then the catalog's order.
         assert_eq!(
-            saved.primary_talents,
+            order,
+            [
+                ("holy", true),
+                ("protection", false),
+                ("retribution", false)
+            ]
+        );
+        // Talents in the catalog's order, not click order.
+        assert_eq!(
+            saved.specs[0].talents,
             ["blessing-of-kings", "improved-blessing-of-wisdom"]
         );
-        assert_eq!(saved.secondary_spec.as_deref(), Some("retribution"));
 
-        // Another class's spec or talent is refused, as is someone else's character.
-        let wrong = SpecsInput {
-            primary: Some(spec("shadow", &[])),
-            secondary: None,
+        // No main is fine.
+        let unsure = SpecsInput {
+            specs: vec![spec("holy", &[]), spec("retribution", &[])],
+            main: None,
         };
-        assert!(matches!(
-            set_specs(&pool, &ey, paladin.id, &wrong).await,
-            Err(Error::External(CharacterError::InvalidSpec))
-        ));
-        let wrong = SpecsInput {
-            primary: Some(spec("holy", &["shadow-weaving"])),
-            secondary: None,
+        let saved = set_specs(&pool, &ey, paladin.id, &unsure).await.unwrap();
+        assert!(saved.specs.iter().all(|s| !s.is_main));
+
+        let (db, actor, id) = (&pool, &ey, paladin.id);
+        let refused = |input: SpecsInput| async move {
+            matches!(
+                set_specs(db, actor, id, &input).await,
+                Err(Error::External(CharacterError::InvalidSpec))
+            )
         };
+        // Another class's spec or talent, a spec twice, a main it does not play.
+        assert!(
+            refused(SpecsInput {
+                specs: vec![spec("shadow", &[])],
+                main: None
+            })
+            .await
+        );
+        assert!(
+            refused(SpecsInput {
+                specs: vec![spec("holy", &["shadow-weaving"])],
+                main: None
+            })
+            .await
+        );
+        assert!(
+            refused(SpecsInput {
+                specs: vec![spec("holy", &[]), spec("holy", &[])],
+                main: None
+            })
+            .await
+        );
+        assert!(
+            refused(SpecsInput {
+                specs: vec![spec("holy", &[])],
+                main: Some("retribution".into())
+            })
+            .await
+        );
         assert!(matches!(
-            set_specs(&pool, &ey, paladin.id, &wrong).await,
-            Err(Error::External(CharacterError::InvalidSpec))
-        ));
-        assert!(matches!(
-            set_specs(&pool, &other, paladin.id, &specs).await,
+            set_specs(&pool, &other, paladin.id, &all_three).await,
             Err(Error::External(CharacterError::Forbidden))
         ));
 
-        // Editing the character's name keeps its specs; clearing them leaves none.
+        // Renaming keeps the specs; a new class drops them.
+        set_specs(&pool, &ey, paladin.id, &all_three).await.unwrap();
         let renamed = update(
             &pool,
             &ey,
@@ -633,8 +701,7 @@ pub(crate) mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(renamed.secondary_spec.as_deref(), Some("retribution"));
-        // A new class drops the old one's specs.
+        assert_eq!(renamed.specs.len(), 3);
         let warrior = update(
             &pool,
             &ey,
@@ -643,39 +710,7 @@ pub(crate) mod tests {
         )
         .await
         .unwrap();
-        assert!(warrior.primary_spec.is_none() && warrior.secondary_talents.is_empty());
-        set_specs(
-            &pool,
-            &ey,
-            paladin.id,
-            &SpecsInput {
-                primary: None,
-                secondary: None,
-            },
-        )
-        .await
-        .unwrap();
-        update(
-            &pool,
-            &ey,
-            paladin.id,
-            &input("Arthas", "Light", "paladin", true),
-        )
-        .await
-        .unwrap();
-        set_specs(&pool, &ey, paladin.id, &specs).await.unwrap();
-        let cleared = set_specs(
-            &pool,
-            &ey,
-            paladin.id,
-            &SpecsInput {
-                primary: None,
-                secondary: None,
-            },
-        )
-        .await
-        .unwrap();
-        assert!(cleared.primary_spec.is_none() && cleared.primary_talents.is_empty());
+        assert!(warrior.specs.is_empty());
     }
 
     #[sqlx::test]
@@ -689,17 +724,25 @@ pub(crate) mod tests {
         let shamans: Vec<_> = all.iter().filter(|c| c.class == "shaman").collect();
         let names: Vec<_> = shamans.iter().map(|c| c.last_name.as_str()).collect();
         assert_eq!(names, ["Four", "One", "Three", "Two"]);
-        // Every spec is someone's main, with its tree's talents; the second spec is the next one.
+        // Every one plays all three specs, each with its tree's talents.
+        assert!(shamans.iter().all(|c| c.specs.len() == 3));
+        let main = |last: &str| {
+            shamans
+                .iter()
+                .find(|c| c.last_name == last)
+                .unwrap()
+                .specs
+                .iter()
+                .find(|s| s.is_main)
+                .map(|s| s.spec.clone())
+        };
+        assert_eq!(main("One").as_deref(), Some("elemental"));
+        assert_eq!(main("Two").as_deref(), Some("enhancement"));
+        assert_eq!(main("Three").as_deref(), Some("restoration"));
+        assert_eq!(main("Four"), None, "Four has no main");
         let one = shamans.iter().find(|c| c.last_name == "One").unwrap();
-        assert_eq!(one.first_name, "Shaman");
-        assert_eq!(one.primary_spec.as_deref(), Some("elemental"));
-        assert_eq!(one.secondary_spec.as_deref(), Some("enhancement"));
-        assert_eq!(one.secondary_talents, ["enhancing-totems", "stormstrike"]);
-        let mains: std::collections::HashSet<_> = shamans
-            .iter()
-            .filter_map(|c| c.primary_spec.as_deref())
-            .collect();
-        assert_eq!(mains.len(), 3);
+        let enhancement = one.specs.iter().find(|s| s.spec == "enhancement").unwrap();
+        assert_eq!(enhancement.talents, ["enhancing-totems", "stormstrike"]);
 
         // Unseeding removes them, except one with history; a member's own character stays.
         let officer = member(&pool, "Officer", Rank::Officer).await;
@@ -710,7 +753,6 @@ pub(crate) mod tests {
             &pool,
             &crate::raids::RaidInput {
                 zone: "onyxias-lair".into(),
-                title: None,
                 starts_local: time::macros::datetime!(2026-12-10 20:00),
             },
         )

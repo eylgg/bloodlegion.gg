@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id AS \"character_id!\", c.user_id AS \"user_id: UserId\",\n               u.username AS \"username?\", c.first_name AS \"first_name!\",\n               c.last_name AS \"last_name!\", c.class AS \"class!\", c.is_main AS \"is_main!\",\n               c.primary_spec, c.primary_talents AS \"primary_talents!\", c.secondary_spec,\n               c.secondary_talents AS \"secondary_talents!\", a.group_number, a.slot,\n               a.uses_secondary AS \"uses_secondary!\"\n        FROM raid_attendees a\n        JOIN characters c ON c.id = a.character_id\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE a.raid_id = $1\n        ORDER BY c.class, c.name_normalized\n        ",
+  "query": "\n        SELECT c.id AS \"character_id!\", c.user_id AS \"user_id: UserId\",\n               u.username AS \"username?\", c.first_name AS \"first_name!\",\n               c.last_name AS \"last_name!\", c.class AS \"class!\", c.is_main AS \"is_main!\",\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               a.group_number, a.slot, a.spec\n        FROM raid_attendees a\n        JOIN characters c ON c.id = a.character_id\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE a.raid_id = $1\n        ORDER BY c.class, c.name_normalized\n        ",
   "describe": {
     "columns": [
       {
@@ -82,50 +82,12 @@
       },
       {
         "ordinal": 7,
-        "name": "primary_spec",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "primary_spec"
-          }
-        }
+        "name": "specs!: Json<Vec<CharacterSpec>>",
+        "type_info": "Jsonb",
+        "origin": "Expression"
       },
       {
         "ordinal": 8,
-        "name": "primary_talents!",
-        "type_info": "TextArray",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "primary_talents"
-          }
-        }
-      },
-      {
-        "ordinal": 9,
-        "name": "secondary_spec",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "secondary_spec"
-          }
-        }
-      },
-      {
-        "ordinal": 10,
-        "name": "secondary_talents!",
-        "type_info": "TextArray",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "secondary_talents"
-          }
-        }
-      },
-      {
-        "ordinal": 11,
         "name": "group_number",
         "type_info": "Int2",
         "origin": {
@@ -136,7 +98,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 9,
         "name": "slot",
         "type_info": "Int2",
         "origin": {
@@ -147,13 +109,13 @@
         }
       },
       {
-        "ordinal": 13,
-        "name": "uses_secondary!",
-        "type_info": "Bool",
+        "ordinal": 10,
+        "name": "spec",
+        "type_info": "Text",
         "origin": {
           "Table": {
             "table": "raid_attendees",
-            "name": "uses_secondary"
+            "name": "spec"
           }
         }
       }
@@ -171,14 +133,11 @@
       false,
       false,
       false,
-      true,
+      null,
       false,
-      true,
       false,
-      true,
-      true,
-      false
+      true
     ]
   },
-  "hash": "3cf0ec1188a9935f5a6dfcbc8799ac932936f9ed31002101239618cfdf0e6b25"
+  "hash": "40cda937e5eaf45e62daf2cc549dd66cbf6bc0be7c9da2c325abe6b77c2d46d6"
 }

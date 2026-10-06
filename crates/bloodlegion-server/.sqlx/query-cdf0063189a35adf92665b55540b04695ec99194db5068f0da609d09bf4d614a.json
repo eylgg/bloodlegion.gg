@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT r.id, r.zone, r.title, r.starts_local, r.time_zone, r.starts_at,\n               (SELECT count(*) FROM raid_attendees a WHERE a.raid_id = r.id) AS \"attendee_count!\",\n               (SELECT count(*) FROM loot l WHERE l.raid_id = r.id) AS \"loot_count!\"\n        FROM raids r\n        WHERE r.id = $1\n        ",
+  "query": "\n        SELECT r.id, r.zone, r.starts_local, r.time_zone, r.starts_at,\n               (SELECT count(*) FROM raid_attendees a WHERE a.raid_id = r.id) AS \"attendee_count!\",\n               (SELECT count(*) FROM loot l WHERE l.raid_id = r.id) AS \"loot_count!\"\n        FROM raids r\n        WHERE r.id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -27,17 +27,6 @@
       },
       {
         "ordinal": 2,
-        "name": "title",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "raids",
-            "name": "title"
-          }
-        }
-      },
-      {
-        "ordinal": 3,
         "name": "starts_local",
         "type_info": "Timestamp",
         "origin": {
@@ -48,7 +37,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "time_zone",
         "type_info": "Text",
         "origin": {
@@ -59,7 +48,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 4,
         "name": "starts_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -70,13 +59,13 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "attendee_count!",
         "type_info": "Int8",
         "origin": "Expression"
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "loot_count!",
         "type_info": "Int8",
         "origin": "Expression"
@@ -90,7 +79,6 @@
     "nullable": [
       false,
       false,
-      true,
       false,
       false,
       false,
@@ -98,5 +86,5 @@
       null
     ]
   },
-  "hash": "f2141e41569019a29f081bf0a31de9296efc35871c8ff7d704cf67828f6a40a0"
+  "hash": "cdf0063189a35adf92665b55540b04695ec99194db5068f0da609d09bf4d614a"
 }

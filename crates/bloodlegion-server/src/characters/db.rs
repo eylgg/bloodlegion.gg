@@ -1,6 +1,8 @@
 use sqlx::{PgConnection, PgPool};
 
-use super::{Character, Note, NoteListing};
+use sqlx::types::Json;
+
+use super::{Character, CharacterSpec, Note, NoteListing, order_specs};
 use crate::users::UserId;
 
 pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
@@ -9,8 +11,14 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.is_main AS "is_main!", c.primary_spec, c.primary_talents AS "primary_talents!",
-               c.secondary_spec, c.secondary_talents AS "secondary_talents!",
+               c.is_main AS "is_main!",
+               (SELECT COALESCE(
+                    jsonb_agg(jsonb_build_object(
+                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
+                    )),
+                    '[]'::jsonb
+                ) FROM character_specs s WHERE s.character_id = c.id)
+                   AS "specs!: Json<Vec<CharacterSpec>>",
                c.created_at AS "created_at!",
                c.updated_at AS "updated_at!"
         FROM characters c
@@ -20,6 +28,13 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
     )
     .fetch_all(pool)
     .await
+    .map(|characters| characters.into_iter().map(ordered).collect())
+}
+
+/// The character with its specs in the order characters show them.
+fn ordered(mut character: Character) -> Character {
+    order_specs(&character.class, &mut character.specs.0);
+    character
 }
 
 pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
@@ -28,8 +43,14 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.is_main AS "is_main!", c.primary_spec, c.primary_talents AS "primary_talents!",
-               c.secondary_spec, c.secondary_talents AS "secondary_talents!",
+               c.is_main AS "is_main!",
+               (SELECT COALESCE(
+                    jsonb_agg(jsonb_build_object(
+                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
+                    )),
+                    '[]'::jsonb
+                ) FROM character_specs s WHERE s.character_id = c.id)
+                   AS "specs!: Json<Vec<CharacterSpec>>",
                c.created_at AS "created_at!",
                c.updated_at AS "updated_at!"
         FROM characters c
@@ -40,6 +61,7 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
     )
     .fetch_optional(pool)
     .await
+    .map(|character| character.map(ordered))
 }
 
 pub async fn count_owned(conn: &mut PgConnection, user_id: UserId) -> sqlx::Result<i64> {
@@ -117,12 +139,7 @@ pub async fn update(
     sqlx::query!(
         r#"
         UPDATE characters
-        SET user_id = $2, first_name = $3, last_name = $4, class = $5, is_main = $6,
-            -- A new class has other specs and talents; on the right, `class` is the old one.
-            primary_spec = CASE WHEN class = $5 THEN primary_spec END,
-            primary_talents = CASE WHEN class = $5 THEN primary_talents ELSE '{}' END,
-            secondary_spec = CASE WHEN class = $5 THEN secondary_spec END,
-            secondary_talents = CASE WHEN class = $5 THEN secondary_talents ELSE '{}' END
+        SET user_id = $2, first_name = $3, last_name = $4, class = $5, is_main = $6
         WHERE id = $1
         "#,
         id,
@@ -137,27 +154,48 @@ pub async fn update(
     Ok(())
 }
 
-pub async fn set_specs(
-    pool: &PgPool,
+/// Replaces the character's specs with `specs`.
+pub async fn replace_specs(
+    conn: &mut PgConnection,
     id: i64,
-    primary: Option<&str>,
-    primary_talents: &[String],
-    secondary: Option<&str>,
-    secondary_talents: &[String],
+    specs: &[CharacterSpec],
+) -> sqlx::Result<()> {
+    sqlx::query!("DELETE FROM character_specs WHERE character_id = $1", id)
+        .execute(&mut *conn)
+        .await?;
+    for spec in specs {
+        sqlx::query!(
+            r#"
+            INSERT INTO character_specs (character_id, spec, talents, is_main)
+            VALUES ($1, $2, $3, $4)
+            "#,
+            id,
+            spec.spec,
+            &spec.talents,
+            spec.is_main,
+        )
+        .execute(&mut *conn)
+        .await?;
+    }
+    Ok(())
+}
+
+/// Drops the character's specs when it is about to become another class.
+pub async fn clear_specs_unless_class(
+    conn: &mut PgConnection,
+    id: i64,
+    class: &str,
 ) -> sqlx::Result<()> {
     sqlx::query!(
         r#"
-        UPDATE characters
-        SET primary_spec = $2, primary_talents = $3, secondary_spec = $4, secondary_talents = $5
-        WHERE id = $1
+        DELETE FROM character_specs
+        WHERE character_id = $1
+            AND (SELECT class FROM characters WHERE id = $1) <> $2
         "#,
         id,
-        primary,
-        primary_talents,
-        secondary,
-        secondary_talents,
+        class,
     )
-    .execute(pool)
+    .execute(&mut *conn)
     .await?;
     Ok(())
 }
@@ -236,34 +274,26 @@ pub async fn list_raiding_notes(pool: &PgPool) -> sqlx::Result<Vec<NoteListing>>
     .await
 }
 
-/// Inserts one of `seed`'s characters, unless the name is taken; returns 1 when it was made.
+/// Inserts one of `seed`'s characters, unless the name is taken; its id when it was made.
 pub async fn insert_seed(
-    pool: &PgPool,
+    conn: &mut PgConnection,
     first_name: &str,
     last_name: &str,
     class: &str,
-    (primary, primary_talents): (&str, &[String]),
-    (secondary, secondary_talents): (&str, &[String]),
-) -> sqlx::Result<u64> {
-    let result = sqlx::query!(
+) -> sqlx::Result<Option<i64>> {
+    sqlx::query_scalar!(
         r#"
-        INSERT INTO characters
-            (first_name, last_name, class, primary_spec, primary_talents, secondary_spec,
-             secondary_talents)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO characters (first_name, last_name, class)
+        VALUES ($1, $2, $3)
         ON CONFLICT (name_normalized) DO NOTHING
+        RETURNING id
         "#,
         first_name,
         last_name,
         class,
-        primary,
-        primary_talents,
-        secondary,
-        secondary_talents,
     )
-    .execute(pool)
-    .await?;
-    Ok(result.rows_affected())
+    .fetch_optional(&mut *conn)
+    .await
 }
 
 /// Deletes the unlinked characters of those (lowercase, full) names that never raided or won

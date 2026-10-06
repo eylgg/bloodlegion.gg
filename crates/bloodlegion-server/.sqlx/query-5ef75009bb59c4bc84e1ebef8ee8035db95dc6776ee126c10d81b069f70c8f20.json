@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE raid_attendees SET group_number = $3, slot = $4, spec = $5\n        WHERE raid_id = $1 AND character_id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int2",
+        "Int2",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5ef75009bb59c4bc84e1ebef8ee8035db95dc6776ee126c10d81b069f70c8f20"
+}

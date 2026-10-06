@@ -81,8 +81,8 @@ struct AttendeesInput {
     character_ids: Vec<i64>,
 }
 
-/// `POST /api/raids/{id}/attendees`: adds characters (all or none); answers with everyone now on
-/// the raid.
+/// `POST /api/raids/{id}/attendees`: adds characters, each in the first free place (all or
+/// none); answers with everyone now on the raid.
 async fn add_attendees(
     state: State,
     _: SameOrigin,
@@ -100,7 +100,7 @@ struct LayoutInput {
     placements: Vec<Placement>,
 }
 
-/// `PUT /api/raids/{id}/layout`: the whole layout at once (attendees left out are benched);
+/// `PUT /api/raids/{id}/layout`: moves the attendees named (others stay put; two may swap);
 /// answers with everyone on the raid.
 async fn set_layout(
     state: State,
@@ -114,8 +114,8 @@ async fn set_layout(
     ))
 }
 
-/// `PUT /api/raids/{id}/attendees/{character_id}`: puts a character on the raid at a place (a
-/// group and slot, or the bench), adding them if they are not on it; answers with everyone on it.
+/// `PUT /api/raids/{id}/attendees/{character_id}`: puts a character on the raid at a group and
+/// slot, adding them if they are not on it; answers with everyone on it.
 async fn place_attendee(
     state: State,
     _: SameOrigin,
@@ -127,7 +127,7 @@ async fn place_attendee(
         character_id,
         group_number: input.group_number,
         slot: input.slot,
-        uses_secondary: input.uses_secondary,
+        spec: input.spec,
     };
     Ok(Json(
         super::place_attendee(&state.pool, id, &placement).await?,
@@ -136,12 +136,11 @@ async fn place_attendee(
 
 #[derive(Debug, serde::Deserialize)]
 struct PlaceInput {
+    group_number: i16,
+    slot: i16,
+    /// One of the character's specs, or none for their main.
     #[serde(default)]
-    group_number: Option<i16>,
-    #[serde(default)]
-    slot: Option<i16>,
-    #[serde(default)]
-    uses_secondary: bool,
+    spec: Option<String>,
 }
 
 async fn remove_attendee(

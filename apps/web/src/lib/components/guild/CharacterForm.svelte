@@ -4,14 +4,8 @@
 	import { classIcon } from '$lib/wow/icons';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
-	import SpecPicker from './SpecPicker.svelte';
-	import type {
-		GuildCharacter,
-		GuildCharacterInput,
-		SpecChoice,
-		SpecsInput,
-		WowClass
-	} from '$lib/types';
+	import SpecsPicker from './SpecsPicker.svelte';
+	import type { GuildCharacter, GuildCharacterInput, SpecsInput, WowClass } from '$lib/types';
 
 	/**
 	 * Adds or edits a character. `owners` turns on the officers' owner picker: any member, or
@@ -48,24 +42,16 @@
 	let owner = $state(
 		character ? String(character.user_id ?? '') : String(page.data.user?.id ?? '')
 	);
-	// The two specs; a new class starts both over.
-	const specOf = (spec: string | null | undefined, talents: string[] | undefined) =>
-		spec ? { spec, talents: [...(talents ?? [])] } : null;
+	// The specs played and the main; a new class starts them over.
 	// svelte-ignore state_referenced_locally
-	let primary = $state<SpecChoice | null>(
-		specOf(character?.primary_spec, character?.primary_talents)
-	);
-	// svelte-ignore state_referenced_locally
-	let secondary = $state<SpecChoice | null>(
-		specOf(character?.secondary_spec, character?.secondary_talents)
-	);
+	let specs = $state<SpecsInput>({
+		specs: (character?.specs ?? []).map((s) => ({ spec: s.spec, talents: [...s.talents] })),
+		main: character?.specs.find((s) => s.is_main)?.spec ?? null
+	});
 	const selectedClass = $derived(classes.find((c) => c.slug === classSlug));
 
 	function pickClass(slug: string) {
-		if (slug !== classSlug) {
-			primary = null;
-			secondary = null;
-		}
+		if (slug !== classSlug) specs = { specs: [], main: null };
 		classSlug = slug;
 	}
 
@@ -91,7 +77,6 @@
 			const saved = character
 				? await api.put<GuildCharacter>(`/api/characters/${character.id}`, body)
 				: await api.post<GuildCharacter>('/api/characters', body);
-			const specs: SpecsInput = { primary, secondary };
 			onsaved(await api.put<GuildCharacter>(`/api/characters/${saved.id}/specs`, specs));
 		} catch (err) {
 			error = errorMessage(err, 'Saving failed. Please try again.');
@@ -138,8 +123,7 @@
 	</fieldset>
 
 	{#if selectedClass}
-		<SpecPicker wowClass={selectedClass} legend="Main spec" bind:value={primary} />
-		<SpecPicker wowClass={selectedClass} legend="Second spec (dual spec)" bind:value={secondary} />
+		<SpecsPicker wowClass={selectedClass} bind:value={specs} />
 	{/if}
 
 	{#if owners}

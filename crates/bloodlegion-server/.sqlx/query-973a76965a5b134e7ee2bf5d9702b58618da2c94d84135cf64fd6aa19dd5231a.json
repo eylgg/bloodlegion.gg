@@ -1,17 +1,16 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE raids SET zone = $2, title = $3, starts_local = $4 WHERE id = $1",
+  "query": "UPDATE raids SET zone = $2, starts_local = $3 WHERE id = $1",
   "describe": {
     "columns": [],
     "parameters": {
       "Left": [
         "Int8",
         "Text",
-        "Text",
         "Timestamp"
       ]
     },
     "nullable": []
   },
-  "hash": "aec8358fc55e0912d9e55b497237dcf090df4a27e23d1ce74985902a18ea1378"
+  "hash": "973a76965a5b134e7ee2bf5d9702b58618da2c94d84135cf64fd6aa19dd5231a"
 }

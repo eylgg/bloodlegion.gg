@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT group_number AS \"group_number!\", slot AS \"slot!\" FROM raid_free_slot($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "group_number!",
+        "type_info": "Int2",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "slot!",
+        "type_info": "Int2",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "7808cf63ade779bbccff814b4f6e13c2175b4cfc5ea959997a03cdd16880b6f3"
+}

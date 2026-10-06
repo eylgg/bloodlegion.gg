@@ -19,3 +19,11 @@
 </svelte:head>
 
 {@render children()}
+
+<style>
+	/* iOS Safari gives button text its own system blue; take the surrounding text color instead,
+	   as other browsers do. A component's own color still wins. */
+	:global(button) {
+		color: inherit;
+	}
+</style>

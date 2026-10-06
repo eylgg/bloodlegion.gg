@@ -132,3 +132,22 @@ export function formatWeekSpan(week: { starts_at: string; ends_at: string }): st
  * Mirrors the backend's `raids::RAID_LENGTH`, which enforces it.
  */
 export const RAID_LENGTH_HOURS = 3;
+
+/**
+ * Each raid's name: its zone, numbered when the zone has more than one raid in a raid week
+ * ("Onyxia's Lair 2"), in order of start. Raids are not named otherwise.
+ */
+export function raidNames(
+	zones: Zone[],
+	raids: { id: number; zone: string; starts_at: string; week: { number: number } | null }[]
+): Map<number, string> {
+	const names = new Map<number, string>();
+	const key = (r: (typeof raids)[number]) => `${r.zone}:${r.week?.number ?? 'before'}`;
+	const sorted = [...raids].sort((a, b) => a.starts_at.localeCompare(b.starts_at) || a.id - b.id);
+	for (const raid of sorted) {
+		const same = sorted.filter((r) => key(r) === key(raid));
+		const name = zoneName(zones, raid.zone);
+		names.set(raid.id, same.length > 1 ? `${name} ${same.indexOf(raid) + 1}` : name);
+	}
+	return names;
+}

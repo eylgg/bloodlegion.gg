@@ -82,12 +82,7 @@
 					icon={false}
 				/>
 				<span class="muted small">
-					<CharacterSpecs
-						cls={character.class}
-						primary={character.primary_spec}
-						secondary={character.secondary_spec}
-						size={16}
-					/>
+					<CharacterSpecs cls={character.class} specs={character.specs} size={16} />
 					{[character.username, character.is_main && 'main'].filter(Boolean).join(' · ')}
 				</span>
 			</div>

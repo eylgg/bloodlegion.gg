@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { formatDateTime, formatInZone, formatWeekSpan, zoneCity, zoneName } from '$lib/guild';
+	import { formatDateTime, formatInZone, formatWeekSpan, raidNames, zoneCity } from '$lib/guild';
 	import Button from '$lib/components/Button.svelte';
 	import RaidForm from './RaidForm.svelte';
 	import type { Raid } from '$lib/types';
@@ -10,6 +10,7 @@
 	let { data }: PageProps = $props();
 
 	let scheduling = $state(false);
+	const names = $derived(raidNames(data.zones, data.raids));
 
 	const calendar = $derived(data.calendar);
 	const now = Date.now();
@@ -108,7 +109,7 @@
 			<li>
 				<a href={resolve('/(guild)/raids/[id]', { id: String(raid.id) })}>
 					<span class="zone-name">
-						{zoneName(data.zones, raid.zone)}{raid.title ? ` · ${raid.title}` : ''}
+						{names.get(raid.id)}
 					</span>
 					<span class="muted">
 						{formatInZone(raid.starts_at, raid.time_zone)}{raid.week

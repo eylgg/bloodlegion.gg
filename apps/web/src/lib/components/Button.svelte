@@ -58,6 +58,8 @@
 
 <style>
 	.btn {
+		/* Set, not left to the browser: iOS Safari colors button text its own system blue. */
+		color: var(--foreground);
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;

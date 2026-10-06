@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.is_main AS \"is_main!\", c.primary_spec, c.primary_talents AS \"primary_talents!\",\n               c.secondary_spec, c.secondary_talents AS \"secondary_talents!\",\n               c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE c.id = $1\n        ",
+  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.is_main AS \"is_main!\",\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        ORDER BY c.name_normalized\n        ",
   "describe": {
     "columns": [
       {
@@ -82,50 +82,12 @@
       },
       {
         "ordinal": 7,
-        "name": "primary_spec",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "primary_spec"
-          }
-        }
+        "name": "specs!: Json<Vec<CharacterSpec>>",
+        "type_info": "Jsonb",
+        "origin": "Expression"
       },
       {
         "ordinal": 8,
-        "name": "primary_talents!",
-        "type_info": "TextArray",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "primary_talents"
-          }
-        }
-      },
-      {
-        "ordinal": 9,
-        "name": "secondary_spec",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "secondary_spec"
-          }
-        }
-      },
-      {
-        "ordinal": 10,
-        "name": "secondary_talents!",
-        "type_info": "TextArray",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "secondary_talents"
-          }
-        }
-      },
-      {
-        "ordinal": 11,
         "name": "created_at!",
         "type_info": "Timestamptz",
         "origin": {
@@ -136,7 +98,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 9,
         "name": "updated_at!",
         "type_info": "Timestamptz",
         "origin": {
@@ -148,25 +110,20 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Int8"
-      ]
+      "Left": []
     },
     "nullable": [
-      true,
-      true,
       false,
       true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      true
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false
     ]
   },
-  "hash": "fc7f4e63edebcefbf297f65cec1373e81e01bc6f2b753668d90b212c78a8d591"
+  "hash": "48bb140ff9dfc6f357952b5fe1313e64b8ac6bc7358ff322d05d5cebed8b79ec"
 }

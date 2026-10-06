@@ -21,7 +21,8 @@ export const load: PageLoad = async ({ parent, url, fetch }) => {
 			param === 'before' ? null : Number(param) || (calendar.current_week?.number ?? 1);
 		const shown = raids
 			.filter((r) => (week === null ? r.week === null : r.week?.number === week))
-			.sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+			// The order raids are numbered in (see `raidNames`): by start, then as scheduled.
+			.sort((a, b) => a.starts_at.localeCompare(b.starts_at) || a.id - b.id);
 		const details = await Promise.all(
 			shown.map((r) => api.get<RaidDetail>(`/api/raids/${r.id}`, { fetch }))
 		);

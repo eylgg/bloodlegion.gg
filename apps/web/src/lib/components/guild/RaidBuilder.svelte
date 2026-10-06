@@ -2,17 +2,24 @@
 	import { page } from '$app/state';
 	import { api, errorMessage } from '$lib/api';
 	import { ROLES, ROLE_LABEL } from '$lib/wow/icons';
-	import { contention, coverage, member, roles, type Coverage } from '$lib/wow/composition';
+	import {
+		contention,
+		coverage,
+		member,
+		playedSpec,
+		roles,
+		type Coverage
+	} from '$lib/wow/composition';
 	import RoleIcon from '$lib/components/RoleIcon.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import CharacterSpecs from './CharacterSpecs.svelte';
 	import type { Attendee, Effect, Placement, WowClass } from '$lib/types';
 
 	/**
-	 * The raid's groups of five and its bench, with what the composition covers: buffs (raid-wide,
-	 * and group-only ones per group), debuffs, and utility. Officers move people by dragging, or by
-	 * clicking a person then where they go; moving onto someone swaps the two. Every change saves
-	 * the whole layout.
+	 * A raid's groups of five, each with the group-only buffs it has, and what the whole raid
+	 * covers: buffs, debuffs, utility, and roles. Officers move people by dragging, or by clicking
+	 * one then where they go; moving onto someone swaps the two. People come from outside (the
+	 * roster, another raid) through `onincoming`, and leave by × or by being dragged back.
 	 */
 	let {
 		raidId,
@@ -34,14 +41,14 @@
 		onchange: (attendees: Attendee[]) => void;
 		effects: Effect[];
 		editable: boolean;
-		/** Takes someone off the raid altogether (from the bench). */
+		/** Takes someone off the raid. */
 		onremove?: (attendee: Attendee) => void;
 		/** A condensed coverage summary, for raids side by side. */
 		compact?: boolean;
-		/** A character picked outside this raid (the planner's roster), to put down here. */
+		/** A character picked outside this raid (the roster), to put down here. */
 		incoming?: number | null;
-		/** Someone not on this raid dropped or put down here: the planner adds them. */
-		onincoming?: (characterId: number, target: { group: number; slot: number } | null) => void;
+		/** Someone not on this raid dropped or put down at a place. */
+		onincoming?: (characterId: number, target: { group: number; slot: number }) => void;
 	} = $props();
 
 	const classes = $derived((page.data.classes as WowClass[] | undefined) ?? []);
@@ -50,18 +57,20 @@
 	const SLOTS = [1, 2, 3, 4, 5];
 	const at = (group: number, slot: number) =>
 		attendees.find((a) => a.group_number === group && a.slot === slot);
-	const bench = $derived(
-		attendees
-			.filter((a) => a.group_number === null)
-			.sort((a, b) => a.class.localeCompare(b.class) || a.first_name.localeCompare(b.first_name))
-	);
 
 	const members = $derived(attendees.map(member));
-	const placedCount = $derived(members.filter((m) => m.group !== null).length);
 	const covered = $derived(coverage(effects, members));
 	const roleCounts = $derived(roles(classes, members));
 	const shared = $derived(contention(effects, members));
 	const byKind = (kind: Effect['kind']) => covered.filter((c) => c.effect.kind === kind);
+	/** The group-only buffs someone in `group` brings it. */
+	const partyBuffs = (group: number) =>
+		covered.filter(
+			(c) =>
+				c.effect.scope === 'party' &&
+				c.effect.kind === 'buff' &&
+				c.providers.some((m) => m.group === group)
+		);
 
 	const SHARED_LABEL: Record<string, (casters: number, wanted: number) => string> = {
 		blessing: (n, w) =>
@@ -73,7 +82,7 @@
 		armor: () => "Sunder Armor and Expose Armor don't stack."
 	};
 
-	/** green: everyone has it; partial: a group-only buff some groups miss; missing: nobody. */
+	/** covered: everyone has it; partial: a group-only buff some groups miss; missing: nobody. */
 	function status(c: Coverage): 'covered' | 'partial' | 'missing' {
 		if (c.providers.length === 0) return 'missing';
 		return c.groups.missing.length > 0 ? 'partial' : 'covered';
@@ -85,33 +94,25 @@
 	/* --- moving people --- */
 
 	let selected = $state<number | null>(null);
-	let dragging = $state<number | null>(null);
 	let saving = $state(false);
 	let error = $state('');
 
-	type Target = { group: number; slot: number } | null;
+	type Target = { group: number; slot: number };
 
-	function placements(list: Attendee[]): Placement[] {
-		return list.map((a) => ({
-			character_id: a.character_id,
-			group_number: a.group_number,
-			slot: a.slot,
-			uses_secondary: a.uses_secondary
-		}));
-	}
-
-	/** Saves `next` as the layout, showing it at once and putting the old one back on failure. */
+	/** Saves `next`, showing it at once and putting the old layout back on failure. */
 	async function save(next: Attendee[]) {
 		const previous = attendees;
 		onchange(next);
 		saving = true;
 		error = '';
+		const placements: Placement[] = next.map((a) => ({
+			character_id: a.character_id,
+			group_number: a.group_number,
+			slot: a.slot,
+			spec: a.spec
+		}));
 		try {
-			onchange(
-				await api.put<Attendee[]>(`/api/raids/${raidId}/layout`, {
-					placements: placements(next)
-				})
-			);
+			onchange(await api.put<Attendee[]>(`/api/raids/${raidId}/layout`, { placements }));
 		} catch (err) {
 			onchange(previous);
 			error = errorMessage(err, 'Saving the groups failed. Please try again.');
@@ -120,81 +121,80 @@
 		}
 	}
 
-	/** Moves a character to a slot (swapping with whoever is there) or to the bench (`null`). */
+	/** Moves a character to a slot, swapping with whoever is there. */
 	function move(characterId: number, target: Target) {
 		const mover = attendees.find((a) => a.character_id === characterId);
 		if (!mover) return;
-		const from = { group: mover.group_number, slot: mover.slot };
-		const occupant = target ? at(target.group, target.slot) : undefined;
+		const occupant = at(target.group, target.slot);
 		if (occupant?.character_id === characterId) return;
 		save(
 			attendees.map((a) => {
 				if (a.character_id === characterId) {
-					return { ...a, group_number: target?.group ?? null, slot: target?.slot ?? null };
+					return { ...a, group_number: target.group, slot: target.slot };
 				}
 				if (occupant && a.character_id === occupant.character_id) {
-					return { ...a, group_number: from.group, slot: from.slot };
+					return { ...a, group_number: mover.group_number, slot: mover.slot };
 				}
 				return a;
 			})
 		);
 	}
 
-	function toggleSpec(attendee: Attendee) {
+	/** Moves someone on to the next spec they play, for this raid. */
+	function nextSpec(attendee: Attendee) {
+		const specs = attendee.specs;
+		const now = specs.findIndex((s) => s.spec === playing(attendee));
+		const next = specs[(now + 1) % specs.length].spec;
 		save(
-			attendees.map((a) =>
-				a.character_id === attendee.character_id ? { ...a, uses_secondary: !a.uses_secondary } : a
-			)
+			attendees.map((a) => (a.character_id === attendee.character_id ? { ...a, spec: next } : a))
 		);
 	}
 
-	/** A click on a person: select them, or put them down where the selected one was headed. */
+	const onRaid = (id: number) => attendees.some((a) => a.character_id === id);
+
+	/** A click on a person: select them, or swap the selected one with them. */
 	function choose(attendee: Attendee) {
 		if (!editable) return;
-		if (selected === null) {
-			selected = attendee.character_id;
-		} else if (selected === attendee.character_id) {
+		if (selected === attendee.character_id) {
 			selected = null;
+		} else if (selected !== null) {
+			move(selected, { group: attendee.group_number, slot: attendee.slot });
+			selected = null;
+		} else if (incoming !== null && !onRaid(incoming)) {
+			onincoming?.(incoming, { group: attendee.group_number, slot: attendee.slot });
 		} else {
-			const target =
-				attendee.group_number !== null && attendee.slot !== null
-					? { group: attendee.group_number, slot: attendee.slot }
-					: null;
-			move(selected, target);
-			selected = null;
+			selected = attendee.character_id;
 		}
 	}
 
-	/** A click on an empty slot or the bench: put the selected (or incoming) person there. */
-	function drop(target: Target) {
+	/** A click on a free slot: put the selected (or incoming) person there. */
+	function put(target: Target) {
 		if (!editable) return;
 		if (selected !== null) {
 			move(selected, target);
 			selected = null;
 		} else if (incoming !== null) {
-			onincoming?.(incoming, target);
+			if (onRaid(incoming)) move(incoming, target);
+			else onincoming?.(incoming, target);
 		}
 	}
 
-	const onRaid = (id: number) => attendees.some((a) => a.character_id === id);
-
-	/** A drop: someone from this raid moves; anyone else (another raid, the roster) joins. */
+	/** A drop: someone from this raid moves; anyone else (the roster, another raid) joins. */
 	function ondrop(event: DragEvent, target: Target) {
 		event.preventDefault();
 		const id = Number(event.dataTransfer?.getData('text/plain'));
-		dragging = null;
 		if (!Number.isInteger(id) || id <= 0) return;
 		if (onRaid(id)) move(id, target);
 		else onincoming?.(id, target);
 	}
 
 	function ondragstart(event: DragEvent, attendee: Attendee) {
-		dragging = attendee.character_id;
 		event.dataTransfer?.setData('text/plain', String(attendee.character_id));
+		event.dataTransfer?.setData('application/x-raid', String(raidId));
 	}
 
-	const playing = (a: Attendee) =>
-		a.uses_secondary && a.secondary_spec ? a.secondary_spec : a.primary_spec;
+	const playing = (a: Attendee) => playedSpec(a.specs, a.spec)?.spec ?? null;
+	const picking = $derived(editable && (selected !== null || incoming !== null));
 </script>
 
 {#snippet person(attendee: Attendee)}
@@ -208,26 +208,24 @@
 		aria-disabled={!editable}
 		aria-pressed={selected === attendee.character_id}
 		ondragstart={(e) => ondragstart(e, attendee)}
-		ondragend={() => (dragging = null)}
 		onclick={() => choose(attendee)}
 		onkeydown={(e) =>
 			(e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), choose(attendee))}
 	>
 		<span class="who">{attendee.first_name} {attendee.last_name}</span>
-		{#if editable && attendee.secondary_spec}
+		{#if editable && attendee.specs.length > 1}
 			<button
 				type="button"
-				class="spec-toggle"
-				title="Switch spec for this raid"
+				class="plain"
+				title="Switch the spec they play in this raid"
 				onclick={(e) => {
 					e.stopPropagation();
-					toggleSpec(attendee);
+					nextSpec(attendee);
 				}}
 			>
 				<CharacterSpecs
 					cls={attendee.class}
-					primary={attendee.primary_spec}
-					secondary={attendee.secondary_spec}
+					specs={attendee.specs}
 					playing={playing(attendee)}
 					size={18}
 				/>
@@ -235,11 +233,21 @@
 		{:else}
 			<CharacterSpecs
 				cls={attendee.class}
-				primary={attendee.primary_spec}
-				secondary={attendee.secondary_spec}
+				specs={attendee.specs}
 				playing={playing(attendee)}
 				size={18}
 			/>
+		{/if}
+		{#if editable && onremove}
+			<button
+				type="button"
+				class="plain remove"
+				aria-label="Take {attendee.first_name} {attendee.last_name} off the raid"
+				onclick={(e) => {
+					e.stopPropagation();
+					onremove(attendee);
+				}}>×</button
+			>
 		{/if}
 	</div>
 {/snippet}
@@ -247,16 +255,10 @@
 <div class="builder" class:compact>
 	<div class="layout">
 		{#if error}<Alert variant="error">{error}</Alert>{/if}
-		{#if editable && !compact}
-			<p class="muted small">
-				Drag people into groups, or click someone then click where they go. Moving onto someone
-				swaps the two. Click spec icons to switch someone's spec for this raid.
-				{saving ? 'Saving...' : ''}
-			</p>
-		{/if}
-
+		{#if saving}<p class="muted small">Saving...</p>{/if}
 		<div class="groups">
 			{#each groupNumbers as group (group)}
+				{@const buffs = partyBuffs(group)}
 				<div class="group">
 					<h4>Group {group}</h4>
 					<ol>
@@ -264,15 +266,14 @@
 							{@const occupant = at(group, slot)}
 							<li
 								class="slot"
-								class:target={editable &&
-									(selected !== null || dragging !== null || incoming !== null)}
+								class:target={picking}
 								ondragover={(e) => editable && e.preventDefault()}
 								ondrop={(e) => ondrop(e, { group, slot })}
 							>
 								{#if occupant}
 									{@render person(occupant)}
 								{:else if editable}
-									<button type="button" class="empty" onclick={() => drop({ group, slot })}
+									<button type="button" class="empty" onclick={() => put({ group, slot })}
 										>Empty</button
 									>
 								{:else}
@@ -281,45 +282,21 @@
 							</li>
 						{/each}
 					</ol>
+					<p class="party" title="Group-only buffs this group has">
+						{#if buffs.length === 0}
+							<span class="muted">No group buffs</span>
+						{:else}
+							{#each buffs as c (c.effect.slug)}
+								<span class="buff" class:improved={c.improved}>{c.effect.name}</span>
+							{/each}
+						{/if}
+					</p>
 				</div>
 			{/each}
 		</div>
-
-		<div
-			class="bench"
-			role="list"
-			ondragover={(e) => editable && e.preventDefault()}
-			ondrop={(e) => ondrop(e, null)}
-		>
-			<h4>
-				Bench <span class="muted">{bench.length}</span>
-				{#if editable && (selected !== null || incoming !== null)}
-					<button type="button" class="link" onclick={() => drop(null)}>Move here</button>
-				{/if}
-			</h4>
-			{#if bench.length === 0}
-				<p class="muted small">Everyone is in a group.</p>
-			{:else}
-				<ul>
-					{#each bench as attendee (attendee.character_id)}
-						<li role="listitem">
-							{@render person(attendee)}
-							{#if editable && onremove}
-								<button
-									type="button"
-									class="remove"
-									aria-label="Take {attendee.first_name} {attendee.last_name} off the raid"
-									onclick={() => onremove(attendee)}>×</button
-								>
-							{/if}
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</div>
 	</div>
 
-	<aside class="coverage" aria-label="What the groups bring">
+	<aside class="coverage" aria-label="What the raid brings">
 		<div class="roles">
 			{#each ROLES as role (role)}
 				<span title={ROLE_LABEL[role]}>
@@ -329,7 +306,7 @@
 				</span>
 			{/each}
 		</div>
-		{#if placedCount === 0}
+		{#if attendees.length === 0}
 			<p class="muted small">Put people in groups to see what the raid brings.</p>
 		{:else if compact}
 			{@const gaps = covered.filter((c) => status(c) !== 'covered')}
@@ -409,22 +386,6 @@
 		grid-template-columns: 1fr;
 	}
 
-	.compact .coverage {
-		position: static;
-	}
-
-	.compact .groups {
-		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-	}
-
-	.gaps .missing {
-		color: var(--grey-text);
-	}
-
-	.gaps .partial {
-		color: #ffd100;
-	}
-
 	.layout {
 		display: flex;
 		flex-direction: column;
@@ -436,9 +397,6 @@
 	}
 
 	h4 {
-		display: flex;
-		align-items: baseline;
-		gap: var(--space-2);
 		margin: 0;
 		font-size: var(--text-md);
 	}
@@ -449,8 +407,11 @@
 		gap: var(--space-3);
 	}
 
+	.compact .groups {
+		grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+	}
+
 	.group,
-	.bench,
 	.coverage {
 		display: flex;
 		flex-direction: column;
@@ -505,10 +466,9 @@
 	.person {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
 		gap: var(--space-2);
 		height: 2.25rem;
-		padding: 0 var(--space-2);
+		padding: 0 var(--space-1) 0 var(--space-2);
 		background-color: var(--background);
 		border: 1px solid var(--grey-surface);
 		border-left: 3px solid var(--class-color);
@@ -525,6 +485,7 @@
 	}
 
 	.who {
+		flex: 1;
 		overflow: hidden;
 		color: var(--class-color);
 		font-size: var(--text-md);
@@ -533,31 +494,8 @@
 		white-space: nowrap;
 	}
 
-	.spec-toggle {
+	.plain {
 		padding: 0;
-		background: none;
-		border: 0;
-		cursor: pointer;
-	}
-
-	.bench ul {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
-	}
-
-	.bench li {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-	}
-
-	.bench li > :global(.person) {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.remove,
-	.link {
 		color: var(--grey-text);
 		font: inherit;
 		background: none;
@@ -566,6 +504,7 @@
 	}
 
 	.remove {
+		padding: 0 var(--space-1);
 		font-size: var(--text-lg);
 		line-height: 1;
 	}
@@ -574,10 +513,24 @@
 		color: var(--red-text);
 	}
 
-	.link {
-		margin-left: auto;
-		font-size: var(--text-sm);
-		text-decoration: underline;
+	.party {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 3px;
+		margin: 0;
+		font-size: var(--text-xs);
+	}
+
+	.buff {
+		padding: 0 5px;
+		color: var(--green-text);
+		background-color: var(--green-bg);
+		border: 1px solid var(--green-soft);
+		border-radius: var(--radius-sm);
+	}
+
+	.buff.improved {
+		font-weight: 600;
 	}
 
 	.coverage {
@@ -586,10 +539,20 @@
 		gap: var(--space-3);
 	}
 
+	.compact .coverage {
+		position: static;
+	}
+
 	.roles {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
 		gap: var(--space-2);
+	}
+
+	.compact .roles {
+		grid-template-columns: repeat(4, auto);
+		justify-content: start;
+		gap: var(--space-4);
 	}
 
 	.roles > span {
@@ -647,7 +610,12 @@
 		font-variant-numeric: tabular-nums;
 	}
 
-	.partial .detail {
+	.partial .detail,
+	.gaps .partial {
 		color: #ffd100;
+	}
+
+	.gaps .missing {
+		color: var(--grey-text);
 	}
 </style>

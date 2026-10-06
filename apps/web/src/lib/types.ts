@@ -120,19 +120,17 @@ export type GuildCharacter = {
 	last_name: string;
 	class: string;
 	is_main: boolean;
-	/** Its two specs (dual spec), each with the notable talents it takes. */
-	primary_spec: string | null;
-	primary_talents: string[];
-	secondary_spec: string | null;
-	secondary_talents: string[];
+	/** The specs it plays, its main (if it has one) first. */
+	specs: CharacterSpec[];
 	created_at: string;
 	updated_at: string;
 };
 
-export type SpecChoice = { spec: string; talents: string[] };
+/** A spec a character plays, with the notable talents it takes there. */
+export type CharacterSpec = { spec: string; talents: string[]; is_main: boolean };
 
-/** `PUT /api/characters/{id}/specs`; a missing spec is cleared. */
-export type SpecsInput = { primary: SpecChoice | null; secondary: SpecChoice | null };
+/** `PUT /api/characters/{id}/specs`: every spec it plays, and its main (or none). */
+export type SpecsInput = { specs: { spec: string; talents: string[] }[]; main: string | null };
 
 export type GuildCharacterInput = {
 	first_name: string;
@@ -279,7 +277,6 @@ export type Calendar = {
 export type Raid = {
 	id: number;
 	zone: string;
-	title: string | null;
 	/** When it starts, as `time_zone`'s clock reads it (`2026-12-09T20:00`): what was scheduled. */
 	starts_local: string;
 	time_zone: string;
@@ -299,23 +296,21 @@ export type Attendee = {
 	last_name: string;
 	class: string;
 	is_main: boolean;
-	primary_spec: string | null;
-	primary_talents: string[];
-	secondary_spec: string | null;
-	secondary_talents: string[];
-	/** Where they stand: a group and a slot in it, or neither (the bench). */
-	group_number: number | null;
-	slot: number | null;
-	/** Whether they play their secondary spec that night. */
-	uses_secondary: boolean;
+	/** The specs the character plays, its main first. */
+	specs: CharacterSpec[];
+	/** Where they stand: a group, and a slot in it. */
+	group_number: number;
+	slot: number;
+	/** The spec they play that night; null for their main (or their only one). */
+	spec: string | null;
 };
 
 /** One attendee's place, as `PUT /api/raids/{id}/layout` takes it. */
 export type Placement = {
 	character_id: number;
-	group_number: number | null;
-	slot: number | null;
-	uses_secondary: boolean;
+	group_number: number;
+	slot: number;
+	spec: string | null;
 };
 
 /** Who provides an effect: a class, while playing a spec or with a talent if named. */
@@ -341,7 +336,6 @@ export type LootEntry = {
 	id: number;
 	raid_id: number;
 	zone: string;
-	raid_title: string | null;
 	raid_starts_local: string;
 	raid_time_zone: string;
 	raid_starts_at: string;
