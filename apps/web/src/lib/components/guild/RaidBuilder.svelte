@@ -13,6 +13,7 @@
 	import RoleIcon from '$lib/components/RoleIcon.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import CharacterSpecs from './CharacterSpecs.svelte';
+	import { dragCharacter } from '$lib/wow/drag';
 	import type { Attendee, Effect, Placement, WowClass } from '$lib/types';
 
 	/**
@@ -189,8 +190,7 @@
 	}
 
 	function ondragstart(event: DragEvent, attendee: Attendee) {
-		event.dataTransfer?.setData('text/plain', String(attendee.character_id));
-		event.dataTransfer?.setData('application/x-raid', String(raidId));
+		dragCharacter(event, attendee.character_id, raidId);
 	}
 
 	const playing = (a: Attendee) => playedSpec(a.specs, a.spec)?.spec ?? null;
@@ -402,6 +402,9 @@
 	}
 
 	.groups {
+		/* People are picked up whole, never text-selected (a selection would be dragged along). */
+		user-select: none;
+		-webkit-user-select: none;
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
 		gap: var(--space-3);

@@ -83,11 +83,20 @@
 		}
 	}
 
-	/** A zone's quick add: the week's first raid night, or the schedule form when there is none. */
+	/** A zone's quick add: on the week's first raid night, or its first evening when it has none. */
 	function quickAdd(zone: string) {
-		const first = raids[0]?.raid;
-		if (first) addRaid(zone, first.starts_local);
-		else scheduling = zone;
+		addRaid(zone, raids[0]?.raid.starts_local ?? data.defaultStart);
+	}
+
+	/** Deletes a raid nobody is on and nothing was won in. */
+	async function deleteRaid(raidId: number) {
+		error = '';
+		try {
+			await api.del(`/api/raids/${raidId}`);
+			raids = raids.filter((r) => r.raid.id !== raidId);
+		} catch (err) {
+			error = errorMessage(err, 'Deleting the raid failed. Please try again.');
+		}
 	}
 
 	function goToWeek(value: string) {
@@ -95,14 +104,7 @@
 		goto(`${resolve('/raids/plan')}?week=${value}`);
 	}
 
-	// The week's dates: the calendar knows the weeks so far, and every raid carries its own.
-	const span = $derived(
-		data.week === null
-			? null
-			: (data.calendar.weeks.find((w) => w.number === data.week) ??
-					raids.find((r) => r.raid.week)?.raid.week ??
-					null)
-	);
+	const span = $derived(data.span);
 </script>
 
 <svelte:head>
@@ -198,6 +200,14 @@
 					</span>
 					{#if data.officer}
 						<span class="add-group">
+							{#if raid.attendees.length === 0 && raid.raid.loot_count === 0}
+								<Button
+									size="small"
+									variant="danger"
+									title="Delete this empty raid"
+									onclick={() => deleteRaid(raid.raid.id)}>Delete</Button
+								>
+							{/if}
 							<Button
 								size="small"
 								variant="secondary"
@@ -301,6 +311,8 @@
 	}
 
 	.add-group {
+		display: flex;
+		gap: var(--space-2);
 		margin-left: auto;
 	}
 </style>

@@ -6,6 +6,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import CharacterSpecs from './CharacterSpecs.svelte';
+	import { dragCharacter } from '$lib/wow/drag';
 	import type { GuildCharacter, WowClass } from '$lib/types';
 
 	/**
@@ -89,7 +90,7 @@
 			style:--class-color={color(character.class) ?? 'var(--foreground)'}
 			draggable={editable}
 			disabled={!editable}
-			ondragstart={(e) => e.dataTransfer?.setData('text/plain', String(character.id))}
+			ondragstart={(e) => dragCharacter(e, character.id)}
 			onclick={() => pick(character)}
 		>
 			<span class="name">{fullName(character)}</span>
@@ -183,6 +184,12 @@
 		gap: var(--space-2);
 		font-size: var(--text-sm);
 		cursor: pointer;
+	}
+
+	/* Names are picked up whole, never text-selected (a selection would be dragged along). */
+	.players {
+		user-select: none;
+		-webkit-user-select: none;
 	}
 
 	.players,

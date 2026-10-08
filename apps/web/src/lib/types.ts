@@ -274,6 +274,13 @@ export type Calendar = {
 	weeks: Week[];
 };
 
+/** `GET /api/raids/weeks/{number}`: a raid week and when its raids start unless said otherwise. */
+export type WeekPlan = {
+	week: Week;
+	/** The week's first evening at the guild's default raid time, on the guild's clock. */
+	default_start_local: string;
+};
+
 export type Raid = {
 	id: number;
 	zone: string;

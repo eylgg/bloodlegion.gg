@@ -3,6 +3,7 @@
 
 use axum::extract::{Path, Query};
 use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get};
 use axum::{Json, Router};
 
@@ -25,6 +26,32 @@ async fn zones() -> Json<&'static [catalog::Zone]> {
 /// builder. Public, like the class catalog.
 async fn effects() -> Json<&'static [effects::Effect]> {
     Json(effects::EFFECTS)
+}
+
+/// One raid week: its span, and when a raid in it starts unless said otherwise (the guild's
+/// default raid time on the week's first evening, on the guild's clock).
+#[derive(Debug, serde::Serialize)]
+struct WeekPlan {
+    week: calendar::Week,
+    #[serde(with = "crate::local_time::minute")]
+    default_start_local: time::PrimitiveDateTime,
+}
+
+/// `GET /api/raids/weeks/{number}`: any raid week, past or to come. Members only.
+async fn week(state: State, _user: User, Path(number): Path<i64>) -> Result<Response, RaidError> {
+    let settings = crate::guild::settings(&state.pool).await?;
+    let plan = calendar::week(number).and_then(|week| {
+        calendar::default_start(number, &settings.time_zone, settings.default_raid_time).map(
+            |default_start_local| WeekPlan {
+                week,
+                default_start_local,
+            },
+        )
+    });
+    Ok(match plan {
+        Some(plan) => Json(plan).into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    })
 }
 
 /// `GET /api/raids/calendar`: when the raids open, the weekly reset, and the weeks so far. Public.
@@ -297,6 +324,7 @@ pub fn router() -> Router<State> {
         .route("/raids", get(list_raids).post(create_raid))
         .route("/raids/zones", get(zones))
         .route("/raids/calendar", get(calendar))
+        .route("/raids/weeks/{number}", get(week))
         .route("/raids/effects", get(effects))
         .route("/raids/{id}/layout", axum::routing::put(set_layout))
         .route(

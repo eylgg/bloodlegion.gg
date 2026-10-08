@@ -99,6 +99,37 @@ pub fn week_of(at: OffsetDateTime) -> Option<Week> {
     week(2 + since.whole_weeks())
 }
 
+/// When a raid in week `number` starts unless said otherwise: the week's first day at `clock`, on
+/// the clock of `time_zone` (the guild's), or the next day when that is before the week begins
+/// (the release is in the evening). `None` for a week that does not exist or a zone jiff does not
+/// know.
+pub fn default_start(
+    number: i64,
+    time_zone: &str,
+    clock: time::Time,
+) -> Option<time::PrimitiveDateTime> {
+    let week = week(number)?;
+    let tz = jiff::tz::TimeZone::get(time_zone).ok()?;
+    let starts = jiff::Timestamp::from_second(week.starts_at.unix_timestamp()).ok()?;
+    let mut day = starts.to_zoned(tz.clone()).date();
+    let at = |day: civil::Date| {
+        day.at(clock.hour() as i8, clock.minute() as i8, 0, 0)
+            .to_zoned(tz.clone())
+            .ok()
+    };
+    if at(day)?.timestamp() < starts {
+        day = day.tomorrow().ok()?;
+    }
+    let local = at(day)?.datetime();
+    let date = time::Date::from_calendar_date(
+        i32::from(local.year()),
+        time::Month::try_from(local.month() as u8).ok()?,
+        local.day() as u8,
+    )
+    .ok()?;
+    Some(date.with_time(clock))
+}
+
 /// The calendar as the site shows it: the release (its wall-clock reading and its zone, and the
 /// instant), the reset rule, and every week so far.
 #[derive(Debug, serde::Serialize)]
@@ -177,6 +208,33 @@ mod tests {
         assert_eq!(after.number, before.number + 1);
         assert_eq!(after.starts_at, datetime!(2027-03-16 15:00 UTC));
         assert_eq!(week(after.number), Some(after));
+    }
+
+    #[test]
+    fn a_weeks_raids_default_to_its_first_evening() {
+        use time::macros::{datetime, time};
+        // Week 1 starts with the release, 6 PM in New York: an 8 PM raid that night.
+        assert_eq!(
+            default_start(1, "America/New_York", time!(20:00)),
+            Some(datetime!(2026-12-09 20:00))
+        );
+        // A 5 PM default is before the release, so the next evening.
+        assert_eq!(
+            default_start(1, "America/New_York", time!(17:00)),
+            Some(datetime!(2026-12-10 17:00))
+        );
+        // Week 2 starts at the Tuesday reset (10 AM in New York).
+        assert_eq!(
+            default_start(2, "America/New_York", time!(20:00)),
+            Some(datetime!(2026-12-15 20:00))
+        );
+        // In Berlin the reset is 4 PM; 3 PM is before it.
+        assert_eq!(
+            default_start(2, "Europe/Berlin", time!(15:00)),
+            Some(datetime!(2026-12-16 15:00))
+        );
+        assert_eq!(default_start(0, "America/New_York", time!(20:00)), None);
+        assert_eq!(default_start(1, "Mars/Olympus", time!(20:00)), None);
     }
 
     #[test]
