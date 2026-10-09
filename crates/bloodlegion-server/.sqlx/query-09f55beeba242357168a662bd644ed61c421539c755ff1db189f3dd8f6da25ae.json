@@ -1,0 +1,143 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.id, p.zone, p.boss_id, b.name AS \"boss_name?\", p.label, p.item_id,\n               i.name AS \"item_name?\", i.quality AS \"item_quality?\",\n               i.game_item_id AS \"game_item_id?\", g.icon AS \"item_icon?\",\n               COALESCE((\n                   SELECT jsonb_agg(jsonb_build_object(\n                       'character_id', c.id,\n                       'user_id', c.user_id,\n                       'username', u.username,\n                       'first_name', c.first_name,\n                       'last_name', c.last_name,\n                       'class', c.class,\n                       'note', pc.note,\n                       'received', EXISTS (\n                           SELECT 1 FROM loot l\n                           WHERE l.item_id = p.item_id AND l.character_id = c.id\n                       )\n                   ) ORDER BY pc.position)\n                   FROM loot_priority_characters pc\n                   JOIN characters c ON c.id = pc.character_id\n                   LEFT JOIN users u ON u.id = c.user_id\n                   WHERE pc.priority_id = p.id\n               ), '[]') AS \"characters!: Json<Vec<InLine>>\"\n        FROM loot_priorities p\n        LEFT JOIN bosses b ON b.id = p.boss_id\n        LEFT JOIN items i ON i.id = p.item_id\n        LEFT JOIN game_items g ON g.id = i.game_item_id\n        WHERE $1::bigint IS NULL OR p.id = $1\n        ORDER BY p.zone, b.id NULLS LAST, p.label IS NOT NULL, p.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "loot_priorities",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "zone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "loot_priorities",
+            "name": "zone"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "boss_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "loot_priorities",
+            "name": "boss_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "boss_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "bosses",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "label",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "loot_priorities",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "item_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "loot_priorities",
+            "name": "item_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "item_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "items",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "item_quality?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "items",
+            "name": "quality"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "game_item_id?",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "items",
+            "name": "game_item_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "item_icon?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "icon"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "characters!: Json<Vec<InLine>>",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "09f55beeba242357168a662bd644ed61c421539c755ff1db189f3dd8f6da25ae"
+}

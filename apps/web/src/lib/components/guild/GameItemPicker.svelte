@@ -12,8 +12,17 @@
 	let {
 		name = $bindable(''),
 		selected = $bindable(),
-		id
-	}: { name?: string; selected?: GameItemSummary | null; id?: string } = $props();
+		id,
+		label,
+		placeholder
+	}: {
+		name?: string;
+		selected?: GameItemSummary | null;
+		id?: string;
+		/** The field's name for assistive tech, when no `<label>` names it. */
+		label?: string;
+		placeholder?: string;
+	} = $props();
 
 	const listbox = $props.id();
 
@@ -74,6 +83,8 @@
 <div class="picker" class:picked={selected}>
 	<input
 		{id}
+		{placeholder}
+		aria-label={label}
 		type="text"
 		role="combobox"
 		aria-expanded={open}

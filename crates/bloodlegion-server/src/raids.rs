@@ -10,6 +10,7 @@ pub mod calendar;
 pub mod catalog;
 mod db;
 pub mod effects;
+pub mod priorities;
 
 use sqlx::PgPool;
 use time::{OffsetDateTime, PrimitiveDateTime, serde::iso8601};
@@ -160,6 +161,30 @@ pub enum RaidError {
     #[error("loot not found")]
     #[problem(status = NOT_FOUND, title = "Not Found", detail = "No such loot.")]
     LootNotFound,
+    #[error("priority not found")]
+    #[problem(status = NOT_FOUND, title = "Not Found", detail = "No such loot priority.")]
+    PriorityNotFound,
+    #[error("priority exists")]
+    #[problem(
+        status = CONFLICT,
+        title = "Already Planned",
+        detail = "That item already has a line in this zone."
+    )]
+    PriorityExists,
+    #[error("invalid priority")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Invalid Priority",
+        detail = "A line is for an item, or a kind of item named in 1 to 64 characters."
+    )]
+    InvalidPriority,
+    #[error("invalid line")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Invalid Line",
+        detail = "Each character is in a line once, with a note of at most 32 characters."
+    )]
+    InvalidLine,
 }
 
 fn external<T>(error: RaidError) -> Result<T, RaidError> {
@@ -176,15 +201,20 @@ fn classify(error: sqlx::Error) -> Error<RaidError> {
         | "raid_attendees_raid_id_group_number_slot_key" => Some(RaidError::InvalidPlacement),
         "raids_within_size_check" => Some(RaidError::ZoneTooSmall),
         "raids_zone_loot_consistent_check" => Some(RaidError::ZoneHasLoot),
-        "raid_attendees_character_id_fkey" | "loot_character_id_fkey" => {
-            Some(RaidError::UnknownCharacter)
-        }
+        "raid_attendees_character_id_fkey"
+        | "loot_character_id_fkey"
+        | "loot_priority_characters_character_id_fkey" => Some(RaidError::UnknownCharacter),
         "bosses_zone_name_key" => Some(RaidError::BossTaken),
         "loot_boss_id_fkey" => Some(RaidError::BossNotFound),
         "loot_boss_zone_consistent_check" => Some(RaidError::BossNotInZone),
         "items_name_normalized_unlinked_idx" => Some(RaidError::ItemNameTaken),
         "items_game_item_id_key" => Some(RaidError::ItemIdTaken),
-        "loot_item_id_fkey" => Some(RaidError::ItemNotFound),
+        "loot_item_id_fkey" | "loot_priorities_item_id_fkey" => Some(RaidError::ItemNotFound),
+        "loot_priorities_zone_item_id_key" => Some(RaidError::PriorityExists),
+        "loot_priorities_label_check" => Some(RaidError::InvalidPriority),
+        "loot_priority_characters_note_check" | "loot_priority_characters_position_check" => {
+            Some(RaidError::InvalidLine)
+        }
         _ => None,
     })
 }

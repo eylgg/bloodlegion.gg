@@ -378,6 +378,38 @@ export type BossDetail = {
 
 export type ItemDetail = { item: Item; loot: LootEntry[] };
 
+/** A character in line for an item, in a loot priority. */
+export type InLine = {
+	character_id: number;
+	user_id: number | null;
+	username: string | null;
+	first_name: string;
+	last_name: string;
+	class: string;
+	/** What they want it for ("dm"). */
+	note: string | null;
+	/** Whether they have won the item already. */
+	received: boolean;
+};
+
+/**
+ * The officers' plan for an item a zone drops, or a kind of item (`label`, "caster trinket"):
+ * who is in line for it, first to last. From `GET /api/loot-priorities`, officers only.
+ */
+export type LootPriority = {
+	id: number;
+	zone: string;
+	boss_id: number | null;
+	boss_name: string | null;
+	label: string | null;
+	item_id: number | null;
+	item_name: string | null;
+	item_quality: Quality | null;
+	game_item_id: number | null;
+	item_icon: string | null;
+	characters: InLine[];
+};
+
 export type Question = {
 	id: number;
 	title: string;

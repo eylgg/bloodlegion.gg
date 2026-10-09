@@ -1,5 +1,5 @@
-//! Mounted at `/api`: `/raids`, `/bosses`, `/items`, and `/loot`. Every read needs a session;
-//! every write needs an officer.
+//! Mounted at `/api`: `/raids`, `/bosses`, `/items`, `/loot`, and `/loot-priorities`. Every read
+//! needs a session (the loot priorities, an officer's); every write needs an officer.
 
 use axum::extract::{Path, Query};
 use axum::http::StatusCode;
@@ -14,7 +14,7 @@ use crate::{Result, State};
 use super::{
     Attendee, Boss, BossDetail, BossInput, Item, ItemDetail, ItemInput, LootEntry, LootFilter,
     LootInput, LootUpdate, Placement, Raid, RaidDetail, RaidError, RaidInput, calendar, catalog,
-    effects,
+    effects, priorities,
 };
 
 /// `GET /api/raids/zones`: the raid zones and their sizes. Public, like the class catalog.
@@ -319,6 +319,63 @@ async fn delete_item(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/* --- loot priorities (officers only, reads too) --- */
+
+async fn list_priorities(
+    state: State,
+    _officer: Officer,
+) -> Result<Json<Vec<priorities::Priority>>> {
+    Ok(Json(priorities::priorities(&state.pool).await?))
+}
+
+async fn create_priority(
+    state: State,
+    _: SameOrigin,
+    _officer: Officer,
+    Json(input): Json<priorities::PriorityInput>,
+) -> Result<(StatusCode, Json<priorities::Priority>), RaidError> {
+    let priority = priorities::create(&state.pool, &input).await?;
+    Ok((StatusCode::CREATED, Json(priority)))
+}
+
+async fn update_priority(
+    state: State,
+    _: SameOrigin,
+    _officer: Officer,
+    Path(id): Path<i64>,
+    Json(input): Json<priorities::PriorityUpdate>,
+) -> Result<Json<priorities::Priority>, RaidError> {
+    Ok(Json(priorities::update(&state.pool, id, &input).await?))
+}
+
+async fn delete_priority(
+    state: State,
+    _: SameOrigin,
+    _officer: Officer,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, RaidError> {
+    priorities::delete(&state.pool, id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct LineBody {
+    characters: Vec<priorities::LineInput>,
+}
+
+/// `PUT /api/loot-priorities/{id}/characters`: who is in line, first to last.
+async fn set_priority_line(
+    state: State,
+    _: SameOrigin,
+    _officer: Officer,
+    Path(id): Path<i64>,
+    Json(input): Json<LineBody>,
+) -> Result<Json<priorities::Priority>, RaidError> {
+    Ok(Json(
+        priorities::set_line(&state.pool, id, &input.characters).await?,
+    ))
+}
+
 pub fn router() -> Router<State> {
     Router::new()
         .route("/raids", get(list_raids).post(create_raid))
@@ -346,6 +403,18 @@ pub fn router() -> Router<State> {
         .route(
             "/bosses/{id}",
             get(boss_detail).put(rename_boss).delete(delete_boss),
+        )
+        .route(
+            "/loot-priorities",
+            get(list_priorities).post(create_priority),
+        )
+        .route(
+            "/loot-priorities/{id}",
+            axum::routing::put(update_priority).delete(delete_priority),
+        )
+        .route(
+            "/loot-priorities/{id}/characters",
+            axum::routing::put(set_priority_line),
         )
         .route("/items", get(list_items).post(create_item))
         .route(

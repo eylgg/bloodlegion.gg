@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO loot_priority_characters (priority_id, character_id, position, note)\n        SELECT $1, character_id, position::smallint, note\n        FROM unnest($2::bigint[], $3::text[]) WITH ORDINALITY AS l (character_id, note, position)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8Array",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "61243a93df35328989d6f0357e977807b0a2a393122b799282dbe0e4dc0ba841"
+}

@@ -19,13 +19,16 @@
 		places,
 		editable,
 		selected = $bindable(null),
-		onreturn
+		onreturn,
+		hint = 'Drag characters onto a group, or click one then a free slot. Drag someone back here to take them off the raid.'
 	}: {
 		characters: GuildCharacter[];
 		places: (characterId: number) => Place[];
 		editable: boolean;
 		selected?: number | null;
 		onreturn?: (raidId: number, characterId: number) => void;
+		/** How to use it, for officers. */
+		hint?: string;
 	} = $props();
 
 	const classes = $derived((page.data.classes as WowClass[] | undefined) ?? []);
@@ -117,10 +120,7 @@
 		Only characters not in a raid here
 	</label>
 	{#if editable}
-		<p class="muted small">
-			Drag characters onto a group, or click one then a free slot. Drag someone back here to take
-			them off the raid.
-		</p>
+		<p class="muted small">{hint}</p>
 	{/if}
 	<ul class="players">
 		{#each players as player (player.username)}
