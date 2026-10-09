@@ -4,13 +4,12 @@ import type { Boss, GuildCharacter, LootPriority, Raid, RaidDetail } from '$lib/
 import { api, statusFrom } from '$lib/api';
 
 /**
- * The loot plan, officers only: for each item a zone drops, who is in line for it, beside who is
+ * The loot plan (officers only, as the whole planner is): for each item a zone drops, who is in line for it, beside who is
  * in which of that zone's raids in a week. `?zone=` picks the zone (the first one raided that
  * week by default) and `?week=N` the week (the current one by default).
  */
 export const load: PageLoad = async ({ parent, url, fetch }) => {
-	const { calendar, zones, officer } = await parent();
-	if (!officer) error(403, 'The loot plan is for officers.');
+	const { calendar, zones } = await parent();
 	try {
 		const [priorities, bosses, characters, raids] = await Promise.all([
 			api.get<LootPriority[]>('/api/loot-priorities', { fetch }),

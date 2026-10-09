@@ -177,7 +177,7 @@
 
 	function go(zone: string, week: number) {
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same page, new query
-		goto(`${resolve('/loot-plan')}?zone=${zone}&week=${week}`);
+		goto(`${resolve('/planner/loot')}?zone=${zone}&week=${week}`);
 	}
 </script>
 
@@ -206,7 +206,7 @@
 
 <div class="page-head">
 	<div>
-		<p class="kicker">Loot plan · officers only</p>
+		<p class="kicker">Loot plan</p>
 		<h1>{zoneName(data.zones, data.zone)} <span class="muted span">Week {data.week}</span></h1>
 	</div>
 	<div class="nav">
@@ -369,7 +369,7 @@
 			<p class="muted small">
 				No {zoneName(data.zones, data.zone)} raids in week {data.week}, so there are no raid
 				columns.
-				<a href={resolve('/raids/plan')}>Plan the raids</a>
+				<a href={resolve('/planner')}>Plan the raids</a>
 			</p>
 		{/if}
 	</div>

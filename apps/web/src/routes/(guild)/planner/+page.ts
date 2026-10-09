@@ -5,7 +5,8 @@ import { api, statusFrom } from '$lib/api';
 import { todayAt } from '$lib/guild';
 
 /**
- * The raid planner: one raid week's raids side by side, with the roster to fill them from.
+ * The raid planner (officers only, as the whole planner is): one raid week's raids side by side,
+ * with the roster to fill them from.
  * `?week=N` picks the week (`before` for raids before the release); the default is the current
  * week, or week 1 before the release.
  */

@@ -8,7 +8,7 @@
 	import Alert from '$lib/components/Alert.svelte';
 	import RaidBuilder from '$lib/components/guild/RaidBuilder.svelte';
 	import Roster from '$lib/components/guild/Roster.svelte';
-	import RaidForm from '../RaidForm.svelte';
+	import RaidForm from '../raids/RaidForm.svelte';
 	import type { Raid, RaidDetail } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -101,7 +101,7 @@
 
 	function goToWeek(value: string) {
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same page, new query
-		goto(`${resolve('/raids/plan')}?week=${value}`);
+		goto(`${resolve('/planner')}?week=${value}`);
 	}
 
 	const span = $derived(data.span);
@@ -147,21 +147,19 @@
 	</div>
 </div>
 
-{#if data.officer}
-	<div class="quick-add">
-		<span class="muted small">Add a raid this week:</span>
-		{#each data.zones as zone (zone.slug)}
-			<Button size="small" variant="secondary" disabled={adding} onclick={() => quickAdd(zone.slug)}
-				>+ {zone.name}</Button
-			>
-		{/each}
-		{#if scheduling === null}
-			<Button size="small" variant="secondary" onclick={() => (scheduling = '')}>
-				At another time...
-			</Button>
-		{/if}
-	</div>
-{/if}
+<div class="quick-add">
+	<span class="muted small">Add a raid this week:</span>
+	{#each data.zones as zone (zone.slug)}
+		<Button size="small" variant="secondary" disabled={adding} onclick={() => quickAdd(zone.slug)}
+			>+ {zone.name}</Button
+		>
+	{/each}
+	{#if scheduling === null}
+		<Button size="small" variant="secondary" onclick={() => (scheduling = '')}>
+			At another time...
+		</Button>
+	{/if}
+</div>
 
 {#if scheduling !== null}
 	<RaidForm
@@ -179,13 +177,7 @@
 {#if error}<Alert variant="error">{error}</Alert>{/if}
 
 <div class="planner">
-	<Roster
-		characters={data.characters}
-		{places}
-		editable={data.officer}
-		bind:selected
-		onreturn={remove}
-	/>
+	<Roster characters={data.characters} {places} editable bind:selected onreturn={remove} />
 
 	<div class="raids">
 		{#each raids as raid (raid.raid.id)}
@@ -198,25 +190,23 @@
 						{formatInZone(raid.raid.starts_at, raid.raid.time_zone)} · {raid.attendees
 							.length}/{size(raid.raid.zone)}
 					</span>
-					{#if data.officer}
-						<span class="add-group">
-							{#if raid.attendees.length === 0 && raid.raid.loot_count === 0}
-								<Button
-									size="small"
-									variant="danger"
-									title="Delete this empty raid"
-									onclick={() => deleteRaid(raid.raid.id)}>Delete</Button
-								>
-							{/if}
+					<span class="add-group">
+						{#if raid.attendees.length === 0 && raid.raid.loot_count === 0}
 							<Button
 								size="small"
-								variant="secondary"
-								disabled={adding}
-								title="Another {nameOf(raid.raid.id)} at the same time"
-								onclick={() => addRaid(raid.raid.zone, raid.raid.starts_local)}>Add a group</Button
+								variant="danger"
+								title="Delete this empty raid"
+								onclick={() => deleteRaid(raid.raid.id)}>Delete</Button
 							>
-						</span>
-					{/if}
+						{/if}
+						<Button
+							size="small"
+							variant="secondary"
+							disabled={adding}
+							title="Another {nameOf(raid.raid.id)} at the same time"
+							onclick={() => addRaid(raid.raid.zone, raid.raid.starts_local)}>Add a group</Button
+						>
+					</span>
 				</header>
 				<RaidBuilder
 					raidId={raid.raid.id}
@@ -227,7 +217,7 @@
 							r.raid.id === raid.raid.id ? { ...r, attendees: next } : r
 						))}
 					effects={data.effects}
-					editable={data.officer}
+					editable
 					onremove={(attendee) => remove(raid.raid.id, attendee.character_id)}
 					compact
 					incoming={selected}
@@ -236,8 +226,7 @@
 			</section>
 		{:else}
 			<p class="muted">
-				No raids {data.week === null ? 'before the release' : 'this week'} yet.
-				{#if data.officer}Add one above.{/if}
+				No raids {data.week === null ? 'before the release' : 'this week'} yet. Add one above.
 			</p>
 		{/each}
 	</div>

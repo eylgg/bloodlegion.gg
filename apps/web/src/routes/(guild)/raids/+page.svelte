@@ -1,15 +1,11 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { formatDateTime, formatInZone, formatWeekSpan, raidNames, zoneCity } from '$lib/guild';
-	import Button from '$lib/components/Button.svelte';
-	import RaidForm from './RaidForm.svelte';
 	import type { Raid } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
-	let scheduling = $state(false);
 	const names = $derived(raidNames(data.zones, data.raids));
 
 	const calendar = $derived(data.calendar);
@@ -59,12 +55,6 @@
 		</p>
 		<h1>Raids</h1>
 	</div>
-	<div class="head-actions">
-		<Button variant="secondary" href={resolve('/raids/plan')}>Plan the week</Button>
-		{#if data.officer && !scheduling}
-			<Button variant="primary" onclick={() => (scheduling = true)}>Schedule a raid</Button>
-		{/if}
-	</div>
 </div>
 
 <div class="calendar panel">
@@ -86,13 +76,6 @@
 		usually at {data.settings.default_raid_time}.
 	</p>
 </div>
-
-{#if scheduling}
-	<RaidForm
-		onsaved={(raid) => goto(resolve('/(guild)/raids/[id]', { id: String(raid.id) }))}
-		oncancel={() => (scheduling = false)}
-	/>
-{/if}
 
 <ul class="zones" aria-label="Raids">
 	{#each data.zones as zone (zone.slug)}
@@ -151,11 +134,6 @@
 </section>
 
 <style>
-	.head-actions {
-		display: flex;
-		gap: var(--space-2);
-	}
-
 	.calendar {
 		gap: var(--space-2);
 		padding: var(--space-4) var(--space-6);

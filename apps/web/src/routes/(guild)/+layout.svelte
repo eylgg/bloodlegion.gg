@@ -10,8 +10,8 @@
 	const links = $derived([
 		{ href: resolve('/roster'), label: 'Roster' },
 		{ href: resolve('/raids'), label: 'Raids' },
+		...(data.officer ? [{ href: resolve('/planner'), label: 'Planner' }] : []),
 		{ href: resolve('/loot'), label: 'Loot' },
-		...(data.officer ? [{ href: resolve('/loot-plan'), label: 'Loot plan' }] : []),
 		{ href: resolve('/bosses'), label: 'Bosses' },
 		{ href: resolve('/items'), label: 'Items' },
 		{ href: resolve('/characters'), label: 'Characters' },
