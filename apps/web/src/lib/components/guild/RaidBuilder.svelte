@@ -80,7 +80,11 @@
 			`Auras: each of the ${n} ${n === 1 ? 'paladin' : 'paladins'} keeps one aura up for their group.`,
 		curse: (n, w) =>
 			`Curses: ${n} ${n === 1 ? 'warlock' : 'warlocks'}, so ${Math.min(n, w)} of the ${w} curses below on the target.`,
-		armor: () => "Sunder Armor and Expose Armor don't stack."
+		armor: () => "Sunder Armor and Expose Armor don't stack.",
+		'air-totem': (n, w) =>
+			`Air totems: ${n} ${n === 1 ? 'shaman' : 'shamans'}, so ${Math.min(n, w)} of the ${w} air totems below.`,
+		'earth-totem': (n, w) =>
+			`Earth totems: ${n} ${n === 1 ? 'shaman' : 'shamans'}, so ${Math.min(n, w)} of the ${w} earth totems below.`
 	};
 
 	/** covered: everyone has it; partial: a group-only buff some groups miss; missing: nobody. */
@@ -341,7 +345,9 @@
 						{#each byKind(kind) as c (c.effect.slug)}
 							<li
 								class={status(c)}
-								title={c.providers.length ? providerNames(c) : 'Nobody brings this'}
+								title={[c.providers.length ? providerNames(c) : 'Nobody brings this', c.effect.note]
+									.filter(Boolean)
+									.join('. ')}
 							>
 								<span class="dot" aria-hidden="true"></span>
 								<span class="name">

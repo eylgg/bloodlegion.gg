@@ -227,13 +227,13 @@ pub const EFFECTS: &[Effect] = &[
         ),
         "blessing",
     ),
-    // --- group-only buffs ---
+    // Raid wide in Forever (party only in Classic).
     improved(
         effect(
             "battle-shout",
             "Battle Shout",
             Buff,
-            Party,
+            Raid,
             "Attack power",
             &[class("warrior")],
         ),
@@ -243,26 +243,84 @@ pub const EFFECTS: &[Effect] = &[
         "trueshot-aura",
         "Trueshot Aura",
         Buff,
-        Party,
+        Raid,
         "Attack power",
         &[talent("hunter", "trueshot-aura")],
     ),
-    effect(
-        "leader-of-the-pack",
-        "Leader of the Pack",
-        Buff,
-        Party,
-        "Critical strike",
-        &[talent("druid", "leader-of-the-pack")],
+    noted(
+        effect(
+            "leader-of-the-pack",
+            "Leader of the Pack",
+            Buff,
+            Raid,
+            "Critical strike",
+            &[talent("druid", "leader-of-the-pack")],
+        ),
+        "Melee and ranged critical strike only.",
     ),
-    effect(
-        "moonkin-aura",
-        "Moonkin Aura",
-        Buff,
-        Party,
-        "Spell",
-        &[talent("druid", "moonkin-form")],
+    noted(
+        effect(
+            "moonkin-aura",
+            "Moonkin Aura",
+            Buff,
+            Raid,
+            "Critical strike",
+            &[talent("druid", "moonkin-form")],
+        ),
+        "Spell critical strike only.",
     ),
+    // A shaman keeps one totem of each element down.
+    exclusive(
+        improved(
+            effect(
+                "strength-of-earth",
+                "Strength of Earth Totem",
+                Buff,
+                Raid,
+                "Stats",
+                &[class("shaman")],
+            ),
+            &[talent("shaman", "enhancing-totems")],
+        ),
+        "earth-totem",
+    ),
+    exclusive(
+        improved(
+            effect(
+                "grace-of-air",
+                "Grace of Air Totem",
+                Buff,
+                Raid,
+                "Stats",
+                &[class("shaman")],
+            ),
+            &[talent("shaman", "enhancing-totems")],
+        ),
+        "air-totem",
+    ),
+    exclusive(
+        effect(
+            "windfury-totem",
+            "Windfury Totem",
+            Buff,
+            Raid,
+            "Attack speed",
+            &[class("shaman")],
+        ),
+        "air-totem",
+    ),
+    exclusive(
+        effect(
+            "flametongue-totem",
+            "Flametongue Totem",
+            Buff,
+            Raid,
+            "Weapon damage",
+            &[class("shaman")],
+        ),
+        "fire-totem",
+    ),
+    // --- group-only buffs ---
     improved(
         effect(
             "blood-pact",
@@ -274,36 +332,6 @@ pub const EFFECTS: &[Effect] = &[
         ),
         &[talent("warlock", "improved-imp")],
     ),
-    improved(
-        effect(
-            "strength-of-earth",
-            "Strength of Earth Totem",
-            Buff,
-            Party,
-            "Stats",
-            &[class("shaman")],
-        ),
-        &[talent("shaman", "enhancing-totems")],
-    ),
-    improved(
-        effect(
-            "grace-of-air",
-            "Grace of Air Totem",
-            Buff,
-            Party,
-            "Stats",
-            &[class("shaman")],
-        ),
-        &[talent("shaman", "enhancing-totems")],
-    ),
-    effect(
-        "windfury-totem",
-        "Windfury Totem",
-        Buff,
-        Party,
-        "Attack speed",
-        &[class("shaman")],
-    ),
     effect(
         "mana-spring-totem",
         "Mana Spring Totem",
@@ -312,13 +340,16 @@ pub const EFFECTS: &[Effect] = &[
         "Mana",
         &[class("shaman")],
     ),
-    effect(
-        "tranquil-air-totem",
-        "Tranquil Air Totem",
-        Buff,
-        Party,
-        "Threat",
-        &[class("shaman")],
+    exclusive(
+        effect(
+            "tranquil-air-totem",
+            "Tranquil Air Totem",
+            Buff,
+            Party,
+            "Threat",
+            &[class("shaman")],
+        ),
+        "air-totem",
     ),
     effect(
         "mana-tide-totem",
@@ -620,13 +651,16 @@ pub const EFFECTS: &[Effect] = &[
             class("mage"),
         ],
     ),
-    effect(
-        "tremor-totem",
-        "Tremor Totem",
-        Utility,
-        Party,
-        "Fear",
-        &[class("shaman")],
+    exclusive(
+        effect(
+            "tremor-totem",
+            "Tremor Totem",
+            Utility,
+            Party,
+            "Fear",
+            &[class("shaman")],
+        ),
+        "earth-totem",
     ),
     effect(
         "crowd-control",
