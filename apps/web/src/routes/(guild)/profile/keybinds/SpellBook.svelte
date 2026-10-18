@@ -12,6 +12,7 @@
 		custom,
 		placed,
 		ondrag,
+		onhover,
 		onadd,
 		onremove
 	}: {
@@ -20,6 +21,8 @@
 		custom: string[];
 		placed: Set<string>;
 		ondrag: (event: DragEvent, name: string) => void;
+		/** Over a spell, for its tooltip; null when the pointer leaves. */
+		onhover: (name: string | null, anchor?: HTMLElement) => void;
 		onadd: (name: string) => void;
 		onremove: (name: string) => void;
 	} = $props();
@@ -57,10 +60,12 @@
 					<li
 						class:placed={placed.has(spell.name)}
 						draggable="true"
-						ondragstart={(e) => ondrag(e, spell.name)}
-						title="{spell.name}{spell.talent
-							? ' (talent)'
-							: ` (level ${spell.level})`}{spell.ranks > 1 ? `, ${spell.ranks} ranks` : ''}"
+						ondragstart={(e) => {
+							onhover(null);
+							ondrag(e, spell.name);
+						}}
+						onmouseenter={(e) => onhover(spell.name, e.currentTarget)}
+						onmouseleave={() => onhover(null)}
 					>
 						<img src={spellIcon(spell.icon)} alt="" width="28" height="28" draggable="false" />
 						<span>{spell.name}</span>

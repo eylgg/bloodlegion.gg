@@ -7,7 +7,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6603,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": []
 		},
 		{
 			"id": 16857,
@@ -16,7 +20,17 @@
 			"level": 0,
 			"tree": "feral",
 			"talent": true,
-			"ranks": 4
+			"ranks": 4,
+			"max": 17392,
+			"rank": "Rank 4",
+			"tooltip": [
+				"30 yd range",
+				["Instant", "6 sec cooldown"],
+				"Requires Cat Form, Bear Form, Dire Bear Form"
+			],
+			"description": [
+				"Decrease the armor of the target by 505 for 40 sec. While affected, the target cannot stealth or turn invisible."
+			]
 		},
 		{
 			"id": 16979,
@@ -25,7 +39,17 @@
 			"level": 0,
 			"tree": "feral",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 16979,
+			"rank": "",
+			"tooltip": [
+				["5 Rage", "8 - 25 yd range"],
+				["Instant cast", "15 sec cooldown"],
+				"Requires Bear Form, Dire Bear Form"
+			],
+			"description": [
+				"Causes you to charge an enemy, immobilizing and interrupting any spell being cast for 4 sec."
+			]
 		},
 		{
 			"id": 5570,
@@ -34,7 +58,13 @@
 			"level": 0,
 			"tree": "restoration",
 			"talent": true,
-			"ranks": 5
+			"ranks": 5,
+			"max": 24977,
+			"rank": "Rank 5",
+			"tooltip": [["160 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"The enemy target is swarmed by insects, decreasing their chance to hit by 2% and causing 324 Nature damage over 12 sec."
+			]
 		},
 		{
 			"id": 24858,
@@ -43,7 +73,14 @@
 			"level": 0,
 			"tree": "balance",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 24858,
+			"rank": "Shapeshift",
+			"tooltip": ["35% of base mana", "Instant"],
+			"description": [
+				"Transforms the Druid into Moonkin Form. While in this form the armor contribution from items is increased by 360% and all party members within 30 yards have their spell critical chance increased by 3%. The Moonkin can only cast Balance spells while shapeshifted.",
+				"The act of shapeshifting frees the caster of Polymorph and Movement Impairing effects."
+			]
 		},
 		{
 			"id": 16689,
@@ -52,7 +89,14 @@
 			"level": 0,
 			"tree": "balance",
 			"talent": true,
-			"ranks": 6
+			"ranks": 6,
+			"max": 17329,
+			"rank": "Rank 6",
+			"tooltip": ["125 Mana", ["Instant", "1 min cooldown"]],
+			"description": [
+				"While active, any time an enemy strikes the caster they have a 35% chance to become afflicted by Entangling Roots (Rank 6). Only useable outdoors. 1 charge. Lasts 45 sec.",
+				"(Proc chance: 35%)"
+			]
 		},
 		{
 			"id": 17116,
@@ -61,7 +105,15 @@
 			"level": 0,
 			"tree": "restoration",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 17116,
+			"rank": "",
+			"tooltip": [["Instant", "3 min cooldown"]],
+			"description": [
+				"When activated, your next Nature spell becomes an instant cast spell.",
+				"Modifies Cast Time -100%:",
+				"Entangling Roots, Entangling Roots, Entangling Roots, Entangling Roots, Entangling Roots, Entangling Roots, Healing Touch, Healing Touch, Healing Touch, Healing Touch, Healing Touch, Healing Touch, Healing Touch, Healing Touch, Healing Touch, Healing Touch, Healing Touch, Hibernate, Hibernate, Hibernate, Nourish, Rebirth, Rebirth, Rebirth, Rebirth, Rebirth, Regrowth, Regrowth, Regrowth, Regrowth, Regrowth, Regrowth, Regrowth, Regrowth, Regrowth, Soothe Animal, Soothe Animal, Soothe Animal, Starsurge, Wrath, Wrath, Wrath, Wrath, Wrath, Wrath, Wrath, Wrath"
+			]
 		},
 		{
 			"id": 18562,
@@ -70,7 +122,16 @@
 			"level": 0,
 			"tree": "restoration",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 18562,
+			"rank": "",
+			"tooltip": [
+				["20% of base mana", "40 yd range"],
+				["Instant", "15 sec cooldown"]
+			],
+			"description": [
+				"Consumes a Rejuvenation or Regrowth effect on a friendly target to instantly heal them an amount equal to 12 sec. of Rejuvenation or 18 sec. of Regrowth."
+			]
 		},
 		{
 			"id": 5185,
@@ -79,7 +140,11 @@
 			"level": 1,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 11
+			"ranks": 11,
+			"max": 25297,
+			"rank": "Rank 11",
+			"tooltip": [["800 Mana", "40 yd range"], "3.5 sec cast"],
+			"description": ["Heals a friendly target for 2267 to 2677."]
 		},
 		{
 			"id": 1126,
@@ -88,7 +153,13 @@
 			"level": 1,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 9885,
+			"rank": "Rank 7",
+			"tooltip": [["445 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Increases the friendly target's armor by 285, all attributes by 12 and all resistances by 20 for 30 min."
+			]
 		},
 		{
 			"id": 5176,
@@ -97,7 +168,11 @@
 			"level": 1,
 			"tree": "balance",
 			"talent": false,
-			"ranks": 8
+			"ranks": 8,
+			"max": 9912,
+			"rank": "Rank 8",
+			"tooltip": [["180 Mana", "30 yd range"], "2 sec cast"],
+			"description": ["Causes 248 to 277 Nature damage to the target."]
 		},
 		{
 			"id": 8921,
@@ -106,7 +181,13 @@
 			"level": 4,
 			"tree": "balance",
 			"talent": false,
-			"ranks": 10
+			"ranks": 10,
+			"max": 9835,
+			"rank": "Rank 10",
+			"tooltip": [["375 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Burns the enemy for 195 to 228 Arcane damage and then an additional 384 Arcane damage over 12 sec."
+			]
 		},
 		{
 			"id": 774,
@@ -115,7 +196,11 @@
 			"level": 4,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 11
+			"ranks": 11,
+			"max": 25299,
+			"rank": "Rank 11",
+			"tooltip": [["360 Mana", "40 yd range"], "Instant"],
+			"description": ["Heals the target for 888 over 12 sec."]
 		},
 		{
 			"id": 467,
@@ -124,7 +209,13 @@
 			"level": 6,
 			"tree": "balance",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 9910,
+			"rank": "Rank 6",
+			"tooltip": [["320 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Thorns sprout from the friendly target causing 18 Nature damage to attackers when hit. Lasts 10 min."
+			]
 		},
 		{
 			"id": 339,
@@ -133,7 +224,13 @@
 			"level": 8,
 			"tree": "balance",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 9853,
+			"rank": "Rank 6",
+			"tooltip": [["125 Mana", "30 yd range"], "1.5 sec cast"],
+			"description": [
+				"Roots the target in place and causes 270 Nature damage over 27 sec. Damage caused may interrupt the effect. Only useable outdoors."
+			]
 		},
 		{
 			"id": 5487,
@@ -142,7 +239,14 @@
 			"level": 10,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5487,
+			"rank": "Shapeshift",
+			"tooltip": ["55% of base mana", "Instant"],
+			"description": [
+				"Shapeshift into a bear, increasing melee attack power by 120, armor contribution from items by 180%, and health by 560. Also protects the caster from Polymorph effects and allows the use of various bear abilities.",
+				"The act of shapeshifting frees the caster of Polymorph and Movement Impairing effects."
+			]
 		},
 		{
 			"id": 99,
@@ -151,7 +255,13 @@
 			"level": 10,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 9898,
+			"rank": "Rank 5",
+			"tooltip": ["10 Rage", "Instant cast", "Requires Bear Form, Dire Bear Form"],
+			"description": [
+				"The druid roars, decreasing nearby enemies' melee attack power by 138. Lasts 30 sec."
+			]
 		},
 		{
 			"id": 6795,
@@ -160,7 +270,17 @@
 			"level": 10,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6795,
+			"rank": "",
+			"tooltip": [
+				"Melee Range",
+				["Instant", "10 sec cooldown"],
+				"Requires Bear Form, Dire Bear Form"
+			],
+			"description": [
+				"Taunts the target to attack you, but has no effect if the target is already attacking you."
+			]
 		},
 		{
 			"id": 6807,
@@ -169,7 +289,11 @@
 			"level": 10,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 9881,
+			"rank": "Rank 7",
+			"tooltip": [["15 Rage", "Melee Range"], "Next Melee", "Requires Bear Form, Dire Bear Form"],
+			"description": ["Increases the druid's next attack by 128 damage."]
 		},
 		{
 			"id": 18960,
@@ -178,7 +302,11 @@
 			"level": 10,
 			"tree": "balance",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 18960,
+			"rank": "",
+			"tooltip": ["120 Mana", "10 sec cast"],
+			"description": ["Teleports the caster to the Moonglade."]
 		},
 		{
 			"id": 5229,
@@ -187,7 +315,13 @@
 			"level": 12,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5229,
+			"rank": "",
+			"tooltip": [["Instant", "1 min cooldown"], "Requires Bear Form, Dire Bear Form"],
+			"description": [
+				"Generates 20 rage over 10 sec, but reduces base armor by 27% in Bear Form and 16% in Dire Bear Form. The druid is considered in combat for the duration."
+			]
 		},
 		{
 			"id": 8936,
@@ -196,7 +330,11 @@
 			"level": 12,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 9
+			"ranks": 9,
+			"max": 9858,
+			"rank": "Rank 9",
+			"tooltip": [["880 Mana", "40 yd range"], "2 sec cast"],
+			"description": ["Heals a friendly target for 1003 to 1119 and another 1064 over 21 sec."]
 		},
 		{
 			"id": 5211,
@@ -205,7 +343,15 @@
 			"level": 14,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 8983,
+			"rank": "Rank 3",
+			"tooltip": [
+				["10 Rage", "Melee Range"],
+				["Instant cast", "1 min cooldown"],
+				"Requires Bear Form, Dire Bear Form"
+			],
+			"description": ["Stuns the target for 4 sec."]
 		},
 		{
 			"id": 8946,
@@ -214,7 +360,11 @@
 			"level": 14,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 8946,
+			"rank": "",
+			"tooltip": [["16% of base mana", "30 yd range"], "Instant"],
+			"description": ["Cures 1 poison effect on the target."]
 		},
 		{
 			"id": 1066,
@@ -223,7 +373,14 @@
 			"level": 16,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1066,
+			"rank": "Shapeshift",
+			"tooltip": ["20% of base mana", "Instant"],
+			"description": [
+				"Shapeshift into aquatic form, increasing swim speed by 50% and allowing the druid to breathe underwater. Also protects the caster from Polymorph effects.",
+				"The act of shapeshifting frees the caster of Polymorph and Movement Impairing effects."
+			]
 		},
 		{
 			"id": 779,
@@ -232,7 +389,11 @@
 			"level": 16,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 9908,
+			"rank": "Rank 5",
+			"tooltip": [["20 Rage", "Melee Range"], "Instant cast", "Requires Bear Form, Dire Bear Form"],
+			"description": ["Swipe 3 nearby enemies, inflicting 83 damage."]
 		},
 		{
 			"id": 770,
@@ -241,7 +402,13 @@
 			"level": 18,
 			"tree": "balance",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 9907,
+			"rank": "Rank 4",
+			"tooltip": [["115 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Decrease the armor of the target by 505 for 40 sec. While affected, the target cannot stealth or turn invisible."
+			]
 		},
 		{
 			"id": 2637,
@@ -250,7 +417,13 @@
 			"level": 18,
 			"tree": "balance",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 18658,
+			"rank": "Rank 3",
+			"tooltip": [["150 Mana", "30 yd range"], "1.5 sec cast"],
+			"description": [
+				"Forces the enemy target to sleep for up to 40 sec. Any damage will awaken the target. Only one target can be forced to hibernate at a time. Only works on Beasts and Dragonkin."
+			]
 		},
 		{
 			"id": 768,
@@ -259,7 +432,14 @@
 			"level": 20,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 768,
+			"rank": "Shapeshift",
+			"tooltip": ["55% of base mana", "Instant"],
+			"description": [
+				"Shapeshift into cat form, increasing melee attack power by 40 plus Agility. Also protects the caster from Polymorph effects and allows the use of various cat abilities.",
+				"The act of shapeshifting frees the caster of Polymorph and Movement Impairing effects."
+			]
 		},
 		{
 			"id": 1082,
@@ -268,7 +448,14 @@
 			"level": 20,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 9850,
+			"rank": "Rank 5",
+			"tooltip": [["45 Energy", "Melee Range"], "Instant", "Requires Cat Form"],
+			"description": [
+				"Claw the enemy, causing 115 additional damage. Awards 1 combo point.",
+				"(Proc chance: 40%)"
+			]
 		},
 		{
 			"id": 5215,
@@ -277,7 +464,13 @@
 			"level": 20,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 9913,
+			"rank": "Rank 3",
+			"tooltip": [["Instant", "10 sec cooldown"], "Requires Cat Form"],
+			"description": [
+				"Allows the Druid to prowl around, but reduces your movement speed by 30%. Lasts until cancelled."
+			]
 		},
 		{
 			"id": 20484,
@@ -286,7 +479,17 @@
 			"level": 20,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 20748,
+			"rank": "Rank 5",
+			"tooltip": [
+				["85% of base mana", "30 yd range"],
+				["2 sec cast", "30 min cooldown"],
+				"Reagents: Ironwood Seed"
+			],
+			"description": [
+				"Returns the spirit to the body, restoring a dead target to life with 2200 health and 2800 mana."
+			]
 		},
 		{
 			"id": 1079,
@@ -295,7 +498,18 @@
 			"level": 20,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 9896,
+			"rank": "Rank 6",
+			"tooltip": [["30 Energy", "Melee Range"], "Instant", "Requires Cat Form"],
+			"description": [
+				"Finishing move that causes damage over time. Damage increases per combo point and by your Attack Power:",
+				"1 point : 270 damage over 12 sec.",
+				"2 points: 438 damage over 12 sec.",
+				"3 points: 606 damage over 12 sec.",
+				"4 points: 774 damage over 12 sec.",
+				"5 points: 942 damage over 12 sec."
+			]
 		},
 		{
 			"id": 2912,
@@ -304,7 +518,11 @@
 			"level": 20,
 			"tree": "balance",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 25298,
+			"rank": "Rank 7",
+			"tooltip": [["340 Mana", "30 yd range"], "3.5 sec cast"],
+			"description": ["Causes 496 to 584 Arcane damage to the target."]
 		},
 		{
 			"id": 5221,
@@ -313,7 +531,13 @@
 			"level": 22,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 9830,
+			"rank": "Rank 5",
+			"tooltip": [["60 Energy", "Melee Range"], "Instant", "Requires Cat Form"],
+			"description": [
+				"Shred the target, causing 225% damage plus 180 to the target. Must be behind the target. Awards 1 combo point."
+			]
 		},
 		{
 			"id": 2908,
@@ -322,7 +546,13 @@
 			"level": 22,
 			"tree": "balance",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 9901,
+			"rank": "Rank 3",
+			"tooltip": [["100 Mana", "40 yd range"], "1.5 sec cast"],
+			"description": [
+				"Soothes the target beast, reducing the range at which it will attack you by 10 yards. Only affects Beast targets level 70 or lower. Lasts 15 sec."
+			]
 		},
 		{
 			"id": 1822,
@@ -331,7 +561,13 @@
 			"level": 24,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 9904,
+			"rank": "Rank 4",
+			"tooltip": [["40 Energy", "Melee Range"], "Instant", "Requires Cat Form"],
+			"description": [
+				"Rake the target for 58 damage and an additional 96 damage over 9 sec. Awards 1 combo point."
+			]
 		},
 		{
 			"id": 2782,
@@ -340,7 +576,11 @@
 			"level": 24,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2782,
+			"rank": "",
+			"tooltip": [["10% of base mana", "30 yd range"], "Instant"],
+			"description": ["Dispels 1 Curse from a friendly target."]
 		},
 		{
 			"id": 5217,
@@ -349,7 +589,11 @@
 			"level": 24,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 9846,
+			"rank": "Rank 4",
+			"tooltip": ["30 Energy", ["Instant", "1 sec cooldown"], "Requires Cat Form"],
+			"description": ["Increases damage done by 40 for 6 sec."]
 		},
 		{
 			"id": 2893,
@@ -358,7 +602,13 @@
 			"level": 26,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2893,
+			"rank": "",
+			"tooltip": [["16% of base mana", "30 yd range"], "Instant"],
+			"description": [
+				"Attempts to cure 1 poison effect on the target, and 1 more poison effect every 2 seconds for 8 sec."
+			]
 		},
 		{
 			"id": 1850,
@@ -367,7 +617,11 @@
 			"level": 26,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 9821,
+			"rank": "Rank 2",
+			"tooltip": [["Instant", "5 min cooldown"], "Requires Cat Form"],
+			"description": ["Increases movement speed by 60% for 15 sec. Does not break prowling."]
 		},
 		{
 			"id": 5209,
@@ -376,7 +630,15 @@
 			"level": 28,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5209,
+			"rank": "",
+			"tooltip": [
+				"15 Rage",
+				["Instant cast", "10 min cooldown"],
+				"Requires Bear Form, Dire Bear Form"
+			],
+			"description": ["Forces all nearby enemies to focus attacks on you for 6 sec."]
 		},
 		{
 			"id": 8998,
@@ -385,7 +647,17 @@
 			"level": 28,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 9892,
+			"rank": "Rank 3",
+			"tooltip": [
+				["20 Energy", "Melee Range"],
+				["Instant", "10 sec cooldown"],
+				"Requires Cat Form"
+			],
+			"description": [
+				"Cower, causing no damage but lowering your threat a large amount, making the enemy less likely to attack you."
+			]
 		},
 		{
 			"id": 740,
@@ -394,7 +666,13 @@
 			"level": 30,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 9863,
+			"rank": "Rank 4",
+			"tooltip": ["925 Mana", ["Channeled (10 sec cast)", "5 min cooldown"]],
+			"description": [
+				"Regenerates all nearby group members for 294 every 2 seconds for 10 sec. Druid must channel to maintain the spell."
+			]
 		},
 		{
 			"id": 783,
@@ -403,7 +681,14 @@
 			"level": 30,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 783,
+			"rank": "Shapeshift",
+			"tooltip": ["20% of base mana", "Instant"],
+			"description": [
+				"Transforms the druid into a travel form, increasing movement speed by 40%. Also protects the caster from Polymorph effects. Only useable outdoors.",
+				"The act of shapeshifting frees the caster of Polymorph and Movement Impairing effects."
+			]
 		},
 		{
 			"id": 22568,
@@ -412,7 +697,18 @@
 			"level": 32,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 31018,
+			"rank": "Rank 5",
+			"tooltip": [["35 Energy", "Melee Range"], "Instant", "Requires Cat Form"],
+			"description": [
+				"Finishing move that causes damage per combo point and converts each extra point of energy into 2.70000005 additional damage. Damage is increased by your Attack Power.",
+				"1 point : 199-259 damage",
+				"2 points: 346-406 damage",
+				"3 points: 493-553 damage",
+				"4 points: 640-700 damage",
+				"5 points: 787-847 damage"
+			]
 		},
 		{
 			"id": 6785,
@@ -421,7 +717,13 @@
 			"level": 32,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 9867,
+			"rank": "Rank 4",
+			"tooltip": [["60 Energy", "Melee Range"], "Instant", "Requires Cat Form"],
+			"description": [
+				"Ravage the target, causing 350% damage plus 343 to the target. Must be prowling and behind the target. Awards 1 combo point."
+			]
 		},
 		{
 			"id": 5225,
@@ -430,7 +732,13 @@
 			"level": 32,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5225,
+			"rank": "",
+			"tooltip": ["Instant", "Requires Cat Form"],
+			"description": [
+				"Shows the location of all nearby humanoids on the minimap. Only one type of thing can be tracked at a time."
+			]
 		},
 		{
 			"id": 22842,
@@ -439,7 +747,13 @@
 			"level": 36,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 22896,
+			"rank": "Rank 3",
+			"tooltip": [["Instant", "3 min cooldown"], "Requires Bear Form, Dire Bear Form"],
+			"description": [
+				"Converts up to 10 rage per second into health for 10 sec. Each point of rage is converted into 20 health."
+			]
 		},
 		{
 			"id": 9005,
@@ -448,7 +762,13 @@
 			"level": 36,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 9827,
+			"rank": "Rank 3",
+			"tooltip": [["50 Energy", "Melee Range"], "Instant", "Requires Cat Form"],
+			"description": [
+				"Pounce, stunning the target for 2 sec and causing 150 damage over 18 sec. Must be prowling and behind the target. Awards 1 combo point."
+			]
 		},
 		{
 			"id": 9634,
@@ -457,7 +777,14 @@
 			"level": 40,
 			"tree": "feral",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 9634,
+			"rank": "Shapeshift",
+			"tooltip": ["55% of base mana", "Instant"],
+			"description": [
+				"Shapeshift into a dire bear, increasing melee attack power by 180, armor contribution from items by 360%, and health by 1240. Also protects the caster from Polymorph effects and allows the use of various bear abilities.",
+				"The act of shapeshifting frees the caster of Polymorph and Movement Impairing effects."
+			]
 		},
 		{
 			"id": 16914,
@@ -466,7 +793,16 @@
 			"level": 40,
 			"tree": "balance",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 17402,
+			"rank": "Rank 3",
+			"tooltip": [
+				["1495 Mana", "30 yd range"],
+				["Channeled (10 sec cast)", "1 min cooldown"]
+			],
+			"description": [
+				"Creates a violent storm in the target area causing 134 Nature damage to enemies every 1 sec, and increasing the time between attacks by 25%. Lasts 10 sec. Druid must channel to maintain the spell."
+			]
 		},
 		{
 			"id": 29166,
@@ -475,7 +811,16 @@
 			"level": 40,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 29166,
+			"rank": "",
+			"tooltip": [
+				["5% of base mana", "30 yd range"],
+				["Instant", "6 min cooldown"]
+			],
+			"description": [
+				"Increases the target's Mana regeneration by 400% and allows 100% of the target's Mana regeneration to continue while casting. Lasts 20 sec."
+			]
 		},
 		{
 			"id": 22812,
@@ -484,7 +829,13 @@
 			"level": 44,
 			"tree": "balance",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 22812,
+			"rank": "",
+			"tooltip": ["15% of base mana", ["Instant", "1 min cooldown"]],
+			"description": [
+				"The druid's skin becomes as tough as bark. Physical damage taken is reduced by 20%. While protected, damaging attacks will not cause spellcasting delays but non-instant spells take 1 sec longer to cast and melee combat is slowed by 25%. Lasts 15 sec."
+			]
 		},
 		{
 			"id": 21849,
@@ -493,7 +844,13 @@
 			"level": 50,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 21850,
+			"rank": "Rank 2",
+			"tooltip": [["1200 Mana", "40 yd range"], "Instant", "Reagents: Wild Thornroot"],
+			"description": [
+				"Gives the Gift of the Wild to the target's party, increasing armor by 285, all attributes by 12 and all resistances by 20 for 1 hour."
+			]
 		}
 	],
 	"hunter": [
@@ -504,7 +861,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6603,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": []
 		},
 		{
 			"id": 19434,
@@ -513,7 +874,15 @@
 			"level": 0,
 			"tree": "marksmanship",
 			"talent": true,
-			"ranks": 6
+			"ranks": 6,
+			"max": 20904,
+			"rank": "Rank 6",
+			"tooltip": [
+				["310 Mana", "8 - 35 yd range"],
+				["3 sec cast", "6 sec cooldown"],
+				"Requires Ranged Weapon"
+			],
+			"description": ["An aimed shot that increases ranged damage by 600."]
 		},
 		{
 			"id": 19574,
@@ -522,7 +891,16 @@
 			"level": 0,
 			"tree": "beast-mastery",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19574,
+			"rank": "",
+			"tooltip": [
+				["12% of base mana", "100 yd range"],
+				["Instant", "2 min cooldown"]
+			],
+			"description": [
+				"Send your pet into a rage causing 50% additional damage for 18 sec. While enraged, the beast does not feel pity or remorse or fear and it cannot be stopped unless killed."
+			]
 		},
 		{
 			"id": 19306,
@@ -531,7 +909,16 @@
 			"level": 0,
 			"tree": "survival",
 			"talent": true,
-			"ranks": 3
+			"ranks": 3,
+			"max": 20910,
+			"rank": "Rank 3",
+			"tooltip": [
+				["85 Mana", "Melee Range"],
+				["Instant", "5 sec cooldown"]
+			],
+			"description": [
+				"A strike that becomes active after parrying an opponent's attack. This attack deals 110 damage and immobilizes the target for 5 sec. Counterattack cannot be blocked, dodged, or parried."
+			]
 		},
 		{
 			"id": 19263,
@@ -540,7 +927,11 @@
 			"level": 0,
 			"tree": "survival",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19263,
+			"rank": "",
+			"tooltip": [["Instant", "5 min cooldown"]],
+			"description": ["When activated, increases your Dodge and Parry chance by 25% for 10 sec."]
 		},
 		{
 			"id": 19577,
@@ -549,7 +940,16 @@
 			"level": 0,
 			"tree": "beast-mastery",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19577,
+			"rank": "",
+			"tooltip": [
+				["8% of base mana", "100 yd range"],
+				["Instant", "1 min cooldown"]
+			],
+			"description": [
+				"Command your pet to intimidate the target on the next successful melee attack, causing a high amount of threat and stunning the target for 3 sec."
+			]
 		},
 		{
 			"id": 19503,
@@ -558,7 +958,13 @@
 			"level": 0,
 			"tree": "marksmanship",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19503,
+			"rank": "",
+			"tooltip": [["8% of base mana", "15 yd range"], "30 sec cooldown", "Requires Ranged Weapon"],
+			"description": [
+				"A short-range shot that deals 50% weapon damage and disorients the target for 4 sec. Any damage caused will remove the effect. Turns off your attack when used."
+			]
 		},
 		{
 			"id": 19506,
@@ -567,7 +973,13 @@
 			"level": 0,
 			"tree": "marksmanship",
 			"talent": true,
-			"ranks": 3
+			"ranks": 3,
+			"max": 20906,
+			"rank": "Rank 3",
+			"tooltip": ["525 Mana", "Instant"],
+			"description": [
+				"Increases the attack power of party members within 45 yards by 100 . Lasts 30 min."
+			]
 		},
 		{
 			"id": 19386,
@@ -576,7 +988,17 @@
 			"level": 0,
 			"tree": "survival",
 			"talent": true,
-			"ranks": 3
+			"ranks": 3,
+			"max": 24133,
+			"rank": "Rank 3",
+			"tooltip": [
+				["205 Mana", "8 - 35 yd range"],
+				["Instant", "2 min cooldown"],
+				"Requires Ranged Weapon"
+			],
+			"description": [
+				"A stinging shot that puts the target to sleep for 12 sec. Any damage will cancel the effect. When the target wakes up, the Sting causes 600 Nature damage over 12 sec. Only usable out of combat. Only one Sting per Hunter can be active on the target at a time."
+			]
 		},
 		{
 			"id": 75,
@@ -585,7 +1007,11 @@
 			"level": 1,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 75,
+			"rank": "",
+			"tooltip": ["8 - 35 yd range", "Instant", "Requires Ranged Weapon"],
+			"description": ["Automatically shoots the target until cancelled."]
 		},
 		{
 			"id": 2973,
@@ -594,7 +1020,15 @@
 			"level": 1,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 8
+			"ranks": 8,
+			"max": 14266,
+			"rank": "Rank 8",
+			"tooltip": [
+				["100 Mana", "Melee Range"],
+				["Next Melee", "6 sec cooldown"],
+				"Requires Melee Weapon"
+			],
+			"description": ["A strong attack that increases melee damage by 140."]
 		},
 		{
 			"id": 1494,
@@ -603,7 +1037,13 @@
 			"level": 1,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1494,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": [
+				"Shows the location of all nearby beasts on the minimap. Only one form of tracking can be active at a time."
+			]
 		},
 		{
 			"id": 13163,
@@ -612,7 +1052,13 @@
 			"level": 4,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 13163,
+			"rank": "",
+			"tooltip": ["20 Mana", "Instant"],
+			"description": [
+				"The hunter takes on the aspects of a monkey, increasing chance to dodge by 8%. Only one Aspect can be active at a time."
+			]
 		},
 		{
 			"id": 1978,
@@ -621,7 +1067,13 @@
 			"level": 4,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 9
+			"ranks": 9,
+			"max": 25295,
+			"rank": "Rank 9",
+			"tooltip": [["250 Mana", "8 - 35 yd range"], "Requires Ranged Weapon"],
+			"description": [
+				"Stings the target, causing 555 Nature damage over 15 sec. Only one Sting per Hunter can be active on any one target."
+			]
 		},
 		{
 			"id": 3044,
@@ -630,7 +1082,11 @@
 			"level": 6,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 8
+			"ranks": 8,
+			"max": 14287,
+			"rank": "Rank 8",
+			"tooltip": [["190 Mana", "8 - 35 yd range"], "6 sec cooldown", "Requires Ranged Weapon"],
+			"description": ["An instant shot that causes 183 Arcane damage."]
 		},
 		{
 			"id": 1130,
@@ -639,7 +1095,13 @@
 			"level": 6,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 14325,
+			"rank": "Rank 4",
+			"tooltip": [["60 Mana", "100 yd range"], "Instant"],
+			"description": [
+				"Places the Hunter's Mark on the target, increasing the Ranged Attack Power of all attackers against that target by 110. In addition, the target of this ability can always be seen by the hunter whether it stealths or turns invisible. The target also appears on the mini-map. Lasts for 2 min."
+			]
 		},
 		{
 			"id": 5116,
@@ -648,7 +1110,15 @@
 			"level": 8,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5116,
+			"rank": "",
+			"tooltip": [
+				["8% of base mana", "8 - 35 yd range"],
+				"12 sec cooldown",
+				"Requires Ranged Weapon"
+			],
+			"description": ["Dazes the target, slowing movement speed by 50% for 4 sec."]
 		},
 		{
 			"id": 13165,
@@ -657,7 +1127,13 @@
 			"level": 10,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 25296,
+			"rank": "Rank 7",
+			"tooltip": ["120 Mana", "Instant"],
+			"description": [
+				"The hunter takes on the aspects of a hawk, increasing Ranged Attack Power by 120. Only one Aspect can be active at a time."
+			]
 		},
 		{
 			"id": 883,
@@ -666,7 +1142,11 @@
 			"level": 10,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 883,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": ["Summons your pet to you."]
 		},
 		{
 			"id": 2641,
@@ -675,7 +1155,11 @@
 			"level": 10,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2641,
+			"rank": "",
+			"tooltip": ["10 yd range", "5 sec cast"],
+			"description": ["Dismiss your pet. Dismissing your pet will reduce its happiness by 50."]
 		},
 		{
 			"id": 6991,
@@ -684,7 +1168,13 @@
 			"level": 10,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6991,
+			"rank": "",
+			"tooltip": ["10 yd range", "Instant"],
+			"description": [
+				"Feed your pet the selected item. Feeding your pet increases happiness. Using food close to the pet's level will have a better result."
+			]
 		},
 		{
 			"id": 982,
@@ -693,7 +1183,11 @@
 			"level": 10,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 982,
+			"rank": "",
+			"tooltip": ["100% of base mana", "10 sec cast"],
+			"description": ["Revive your pet, returning it to life with 15% of its health."]
 		},
 		{
 			"id": 1515,
@@ -702,7 +1196,13 @@
 			"level": 10,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1515,
+			"rank": "",
+			"tooltip": [["60% of base mana", "30 yd range"], "Channeled (20 sec cast)"],
+			"description": [
+				"Begins taming a beast to be your companion. Your armor is reduced by 100% while you focus on taming the beast for 20 sec. If you lose the beast's attention for any reason, the taming process will fail. Once tamed, the beast will be very unhappy and disloyal. Try feeding the pet immediately to make it happy."
+			]
 		},
 		{
 			"id": 19883,
@@ -711,7 +1211,13 @@
 			"level": 10,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19883,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": [
+				"Shows the location of all nearby humanoids on the minimap. Only one form of tracking can be active at a time."
+			]
 		},
 		{
 			"id": 20736,
@@ -720,7 +1226,13 @@
 			"level": 12,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 15632,
+			"rank": "Rank 6",
+			"tooltip": [["110 Mana", "8 - 35 yd range"], "8 sec cooldown", "Requires Ranged Weapon"],
+			"description": [
+				"Distract the target, causing threat. More effective than Distracting Shot (Rank 5)."
+			]
 		},
 		{
 			"id": 136,
@@ -729,7 +1241,11 @@
 			"level": 12,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 13544,
+			"rank": "Rank 7",
+			"tooltip": [["480 Mana", "20 yd range"], "Channeled (5 sec cast)"],
+			"description": ["Heals your pet 245 health every second while you focus. Lasts 5 sec."]
 		},
 		{
 			"id": 2974,
@@ -738,7 +1254,13 @@
 			"level": 12,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 14268,
+			"rank": "Rank 3",
+			"tooltip": [["80 Mana", "Melee Range"], "Instant", "Requires Melee Weapon"],
+			"description": [
+				"Inflicts 50 damage and reduces the enemy target's movement speed by 60% for 10 sec."
+			]
 		},
 		{
 			"id": 6197,
@@ -747,7 +1269,11 @@
 			"level": 14,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6197,
+			"rank": "",
+			"tooltip": [["25 Mana", "Unlimited range"], "Channeled (1 min cast)"],
+			"description": ["Zooms in the hunter's vision. Only usable outdoors. Lasts 1 min."]
 		},
 		{
 			"id": 1002,
@@ -756,7 +1282,11 @@
 			"level": 14,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1002,
+			"rank": "",
+			"tooltip": [["20 Mana", "Unlimited range"], "2 sec cast"],
+			"description": ["Take direct control of your pet and see through its eyes for 1 min."]
 		},
 		{
 			"id": 1513,
@@ -765,7 +1295,16 @@
 			"level": 14,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 14327,
+			"rank": "Rank 3",
+			"tooltip": [
+				["75 Mana", "10 yd range"],
+				["1.5 sec cast", "30 sec cooldown"]
+			],
+			"description": [
+				"Scares a beast, causing it to run in fear for up to 20 sec. Damage caused may interrupt the effect. Only one beast can be feared at a time."
+			]
 		},
 		{
 			"id": 13795,
@@ -774,7 +1313,13 @@
 			"level": 16,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 14305,
+			"rank": "Rank 5",
+			"tooltip": ["245 Mana", ["Instant", "15 sec cooldown"]],
+			"description": [
+				"Place a fire trap that will burn the first enemy to approach for 690 Fire damage over 15 sec. Trap will exist for 1 min. Traps can only be placed when out of combat. Only one trap can be active at a time."
+			]
 		},
 		{
 			"id": 1495,
@@ -783,7 +1328,16 @@
 			"level": 16,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 14271,
+			"rank": "Rank 4",
+			"tooltip": [
+				["65 Mana", "Melee Range"],
+				["Instant", "5 sec cooldown"]
+			],
+			"description": [
+				"Counterattack the enemy for 115 damage. Can only be performed after you dodge."
+			]
 		},
 		{
 			"id": 2643,
@@ -792,7 +1346,15 @@
 			"level": 18,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 25294,
+			"rank": "Rank 5",
+			"tooltip": [
+				["230 Mana", "8 - 35 yd range"],
+				["Instant", "10 sec cooldown"],
+				"Requires Ranged Weapon"
+			],
+			"description": ["Fires several missiles, hitting 3 targets for an additional 150 damage."]
 		},
 		{
 			"id": 19884,
@@ -801,7 +1363,13 @@
 			"level": 18,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19884,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": [
+				"Shows the location of all nearby undead on the minimap. Only one form of tracking can be active at a time."
+			]
 		},
 		{
 			"id": 5118,
@@ -810,7 +1378,13 @@
 			"level": 20,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5118,
+			"rank": "",
+			"tooltip": ["40 Mana", "Instant"],
+			"description": [
+				"The hunter takes on the aspects of a cheetah, increasing movement speed by 30%. If the hunter takes damage, he will be dazed for 4 sec. Only one Aspect can be active at a time."
+			]
 		},
 		{
 			"id": 781,
@@ -819,7 +1393,17 @@
 			"level": 20,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 14273,
+			"rank": "Rank 3",
+			"tooltip": [
+				["150 Mana", "Melee Range"],
+				["Instant", "5 sec cooldown"],
+				"Requires Melee Weapon"
+			],
+			"description": [
+				"Attempts to disengage from the target, reducing threat. More effective than Disengage (Rank 2). Character exits combat mode."
+			]
 		},
 		{
 			"id": 1499,
@@ -828,7 +1412,13 @@
 			"level": 20,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 14311,
+			"rank": "Rank 3",
+			"tooltip": ["100 Mana", ["Instant", "15 sec cooldown"]],
+			"description": [
+				"Place a frost trap that freezes the first enemy that approaches, preventing all action for up to 20 sec. Any damage caused will break the ice. Trap will exist for 1 min. Traps can only be placed when out of combat. Only one trap can be active at a time."
+			]
 		},
 		{
 			"id": 3043,
@@ -837,7 +1427,13 @@
 			"level": 22,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 14277,
+			"rank": "Rank 4",
+			"tooltip": [["165 Mana", "8 - 35 yd range"], "Requires Ranged Weapon"],
+			"description": [
+				"Stings the target, reducing Strength and Agility by 68 for 20 sec. Only one Sting per Hunter can be active on any one target."
+			]
 		},
 		{
 			"id": 1462,
@@ -846,7 +1442,13 @@
 			"level": 24,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1462,
+			"rank": "",
+			"tooltip": [["40 Mana", "40 yd range"], "Instant"],
+			"description": [
+				"Gather information about the target beast. The tooltip will display damage, health, armor, any special resistances, and diet."
+			]
 		},
 		{
 			"id": 19885,
@@ -855,7 +1457,13 @@
 			"level": 24,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19885,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": [
+				"Increases stealth detection and shows hidden units within detection range on the minimap. Only one form of tracking can be active at a time."
+			]
 		},
 		{
 			"id": 3045,
@@ -864,7 +1472,11 @@
 			"level": 26,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 3045,
+			"rank": "",
+			"tooltip": ["100 Mana", ["Instant", "5 min cooldown"]],
+			"description": ["Increases ranged attack speed by 40% for 15 sec."]
 		},
 		{
 			"id": 19880,
@@ -873,7 +1485,13 @@
 			"level": 26,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19880,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": [
+				"Shows the location of all nearby elementals on the minimap. Only one form of tracking can be active at a time."
+			]
 		},
 		{
 			"id": 13809,
@@ -882,7 +1500,13 @@
 			"level": 28,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 13809,
+			"rank": "",
+			"tooltip": ["60 Mana", ["Instant", "15 sec cooldown"]],
+			"description": [
+				"Place a frost trap that creates an ice slick around itself for 30 sec when the first enemy approaches it. All enemies within 10 yards will be slowed by 60% while in the area of effect. Trap will exist for 1 min. Traps can only be placed when out of combat. Only one trap can be active at a time."
+			]
 		},
 		{
 			"id": 13161,
@@ -891,7 +1515,13 @@
 			"level": 30,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 13161,
+			"rank": "",
+			"tooltip": ["50 Mana", "Instant"],
+			"description": [
+				"The hunter takes on the aspects of a beast, becoming untrackable. Only one Aspect can be active at a time."
+			]
 		},
 		{
 			"id": 5384,
@@ -900,7 +1530,11 @@
 			"level": 30,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5384,
+			"rank": "",
+			"tooltip": ["80 Mana", ["Instant", "30 sec cooldown"]],
+			"description": ["Feign death which may trick enemies into ignoring you. Lasts up to 6 min."]
 		},
 		{
 			"id": 1543,
@@ -909,7 +1543,16 @@
 			"level": 32,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1543,
+			"rank": "",
+			"tooltip": [
+				["50 Mana", "30 yd range"],
+				["Instant", "15 sec cooldown"]
+			],
+			"description": [
+				"Exposes all hidden and invisible enemies within 10 yards of the targeted area for 30 sec."
+			]
 		},
 		{
 			"id": 19878,
@@ -918,7 +1561,13 @@
 			"level": 32,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19878,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": [
+				"Shows the location of all nearby demons on the minimap. Only one form of tracking can be active at a time."
+			]
 		},
 		{
 			"id": 13813,
@@ -927,7 +1576,13 @@
 			"level": 34,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 14317,
+			"rank": "Rank 3",
+			"tooltip": ["520 Mana", ["Instant", "15 sec cooldown"]],
+			"description": [
+				"Place a fire trap that explodes when an enemy approaches, causing 208 to 265 Fire damage and 330 additional Fire damage over 20 sec to all within 10 yards. Trap will exist for 1 min. Traps can only be placed when out of combat. Only one trap can be active at a time."
+			]
 		},
 		{
 			"id": 3034,
@@ -936,7 +1591,13 @@
 			"level": 36,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 14280,
+			"rank": "Rank 3",
+			"tooltip": [["215 Mana", "8 - 35 yd range"], "Requires Ranged Weapon"],
+			"description": [
+				"Stings the target, draining 1108 mana over 8 sec. Only one Sting per Hunter can be active on any one target."
+			]
 		},
 		{
 			"id": 13159,
@@ -945,7 +1606,13 @@
 			"level": 40,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 13159,
+			"rank": "",
+			"tooltip": ["100 Mana", "Instant"],
+			"description": [
+				"The hunter and group members within 30 yards take on the aspects of a pack of cheetahs, increasing movement speed by 30%. If a pack member takes damage, they will be dazed for 4 sec. Only one Aspect can be active at a time."
+			]
 		},
 		{
 			"id": 19882,
@@ -954,7 +1621,13 @@
 			"level": 40,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19882,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": [
+				"Shows the location of all nearby giants on the minimap. Only one form of tracking can be active at a time."
+			]
 		},
 		{
 			"id": 1510,
@@ -963,7 +1636,17 @@
 			"level": 40,
 			"tree": "marksmanship",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 14295,
+			"rank": "Rank 3",
+			"tooltip": [
+				["490 Mana", "8 - 35 yd range"],
+				["Channeled (6 sec cast)", "1 min cooldown"],
+				"Requires Ranged Weapon"
+			],
+			"description": [
+				"Continuously fires a volley of ammo at the target area, causing 80 Arcane damage to enemy targets within 8 yards every second for 6 sec."
+			]
 		},
 		{
 			"id": 20043,
@@ -972,7 +1655,13 @@
 			"level": 46,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 20190,
+			"rank": "Rank 2",
+			"tooltip": ["115 Mana", "Instant"],
+			"description": [
+				"The hunter and group members within 30 yards take on the aspect of the wild, increasing Nature resistance by 60. Only one Aspect can be active at a time."
+			]
 		},
 		{
 			"id": 19879,
@@ -981,7 +1670,13 @@
 			"level": 50,
 			"tree": "survival",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19879,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": [
+				"Shows the location of all nearby dragonkin on the minimap. Only one form of tracking can be active at a time."
+			]
 		},
 		{
 			"id": 19801,
@@ -990,7 +1685,11 @@
 			"level": 60,
 			"tree": "beast-mastery",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19801,
+			"rank": "",
+			"tooltip": [["270 Mana", "8 - 35 yd range"], "20 sec cooldown", "Requires Ranged Weapon"],
+			"description": ["Attempts to remove 1 Frenzy effect from an enemy creature."]
 		}
 	],
 	"mage": [
@@ -1001,7 +1700,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6603,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": []
 		},
 		{
 			"id": 5019,
@@ -1010,7 +1713,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5019,
+			"rank": "",
+			"tooltip": ["30 yd range", "Instant"],
+			"description": ["Attack with an equipped wand."]
 		},
 		{
 			"id": 12042,
@@ -1019,7 +1726,13 @@
 			"level": 0,
 			"tree": "arcane",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 12042,
+			"rank": "",
+			"tooltip": [["Instant", "3 min cooldown"]],
+			"description": [
+				"When activated, your spells deal 30% more damage while costing 30% more mana to cast. This effect lasts 15 sec."
+			]
 		},
 		{
 			"id": 11113,
@@ -1028,7 +1741,13 @@
 			"level": 0,
 			"tree": "fire",
 			"talent": true,
-			"ranks": 5
+			"ranks": 5,
+			"max": 13021,
+			"rank": "Rank 5",
+			"tooltip": ["545 Mana", ["Instant", "45 sec cooldown"]],
+			"description": [
+				"A wave of flame radiates outward from the caster, damaging all enemies caught within the blast for 462 to 544 Fire damage, and dazing them for 6 sec."
+			]
 		},
 		{
 			"id": 12472,
@@ -1037,7 +1756,13 @@
 			"level": 0,
 			"tree": "frost",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 12472,
+			"rank": "",
+			"tooltip": [["Instant", "10 min cooldown"]],
+			"description": [
+				"When activated, this spell finishes the cooldown on all of your Frost spells."
+			]
 		},
 		{
 			"id": 11129,
@@ -1046,7 +1771,13 @@
 			"level": 0,
 			"tree": "fire",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 11129,
+			"rank": "",
+			"tooltip": [["Instant", "3 min cooldown"]],
+			"description": [
+				"When activated, this spell causes each of your Fire damage spell hits to increase your critical strike chance with Fire damage spells by 10%. This effect lasts until you have caused 3 critical strikes with Fire spells."
+			]
 		},
 		{
 			"id": 11426,
@@ -1055,7 +1786,13 @@
 			"level": 0,
 			"tree": "frost",
 			"talent": true,
-			"ranks": 4
+			"ranks": 4,
+			"max": 13033,
+			"rank": "Rank 4",
+			"tooltip": ["480 Mana", ["Instant", "30 sec cooldown"]],
+			"description": [
+				"Instantly shields you, absorbing 826 damage. Lasts 1 min. While the shield holds, spells will not be interrupted."
+			]
 		},
 		{
 			"id": 11958,
@@ -1064,7 +1801,13 @@
 			"level": 0,
 			"tree": "frost",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 11958,
+			"rank": "",
+			"tooltip": ["15 Mana", ["Instant", "5 min cooldown"]],
+			"description": [
+				"You become encased in a block of ice, protecting you from all physical attacks and spells for 10 sec, but during that time you cannot attack, move or cast spells."
+			]
 		},
 		{
 			"id": 12043,
@@ -1073,7 +1816,13 @@
 			"level": 0,
 			"tree": "arcane",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 12043,
+			"rank": "",
+			"tooltip": [["Instant", "3 min cooldown"]],
+			"description": [
+				"When activated, your next Mage spell with a casting time less than 10 sec becomes an instant cast spell."
+			]
 		},
 		{
 			"id": 11366,
@@ -1082,7 +1831,13 @@
 			"level": 0,
 			"tree": "fire",
 			"talent": true,
-			"ranks": 8
+			"ranks": 8,
+			"max": 18809,
+			"rank": "Rank 8",
+			"tooltip": [["440 Mana", "35 yd range"], "6 sec cast"],
+			"description": [
+				"Hurls an immense fiery boulder that causes 716 to 890 Fire damage and an additional 268 Fire damage over 12 sec."
+			]
 		},
 		{
 			"id": 1459,
@@ -1091,7 +1846,11 @@
 			"level": 1,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 10157,
+			"rank": "Rank 5",
+			"tooltip": [["1510 Mana", "30 yd range"], "Instant"],
+			"description": ["Increases the target's Intellect by 31 for 30 min."]
 		},
 		{
 			"id": 133,
@@ -1100,7 +1859,13 @@
 			"level": 1,
 			"tree": "fire",
 			"talent": false,
-			"ranks": 12
+			"ranks": 12,
+			"max": 25306,
+			"rank": "Rank 12",
+			"tooltip": [["410 Mana", "35 yd range"], "3.5 sec cast"],
+			"description": [
+				"Hurls a fiery ball that causes 596 to 760 Fire damage and an additional 76 Fire damage over 8 sec."
+			]
 		},
 		{
 			"id": 168,
@@ -1109,7 +1874,13 @@
 			"level": 1,
 			"tree": "frost",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 7301,
+			"rank": "Rank 3",
+			"tooltip": ["170 Mana", "Instant"],
+			"description": [
+				"Increases Armor by 200. If an enemy strikes the caster, they may have their movement slowed by 30% and the time between their attacks increased by 25% for 5 sec. Only one type of Armor spell can be active on the Mage at any time. Lasts 30 min."
+			]
 		},
 		{
 			"id": 5504,
@@ -1118,7 +1889,14 @@
 			"level": 4,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 10140,
+			"rank": "Rank 7",
+			"tooltip": ["780 Mana", "3 sec cast"],
+			"description": [
+				"Conjures 10 bottles of crystal water, providing the mage and his allies with something to drink.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 116,
@@ -1127,7 +1905,13 @@
 			"level": 4,
 			"tree": "frost",
 			"talent": false,
-			"ranks": 11
+			"ranks": 11,
+			"max": 25304,
+			"rank": "Rank 11",
+			"tooltip": [["290 Mana", "30 yd range"], "3 sec cast"],
+			"description": [
+				"Launches a bolt of frost at the enemy, causing 515 to 555 Frost damage and slowing movement speed by 40% for 9 sec."
+			]
 		},
 		{
 			"id": 587,
@@ -1136,7 +1920,14 @@
 			"level": 6,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 28612,
+			"rank": "Rank 7",
+			"tooltip": ["705 Mana", "3 sec cast"],
+			"description": [
+				"Conjures 10 cinnamon rolls, providing the mage and his allies with something to eat.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 2136,
@@ -1145,7 +1936,14 @@
 			"level": 6,
 			"tree": "fire",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 10199,
+			"rank": "Rank 7",
+			"tooltip": [
+				["340 Mana", "20 yd range"],
+				["Instant", "8 sec cooldown"]
+			],
+			"description": ["Blasts the enemy for 446 to 524 Fire damage."]
 		},
 		{
 			"id": 5143,
@@ -1154,7 +1952,13 @@
 			"level": 8,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 8
+			"ranks": 8,
+			"max": 25345,
+			"rank": "Rank 8",
+			"tooltip": [["655 Mana", "30 yd range"], "Channeled (5 sec cast)"],
+			"description": [
+				"Launches Arcane Missiles at the enemy, causing 230 Arcane damage each second for 5 sec."
+			]
 		},
 		{
 			"id": 118,
@@ -1163,7 +1967,13 @@
 			"level": 8,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 28272,
+			"rank": "Pig",
+			"tooltip": [["150 Mana", "30 yd range"], "1.5 sec cast"],
+			"description": [
+				"Transforms the enemy into a pig, forcing it to wander around for up to 50 sec. While wandering, the pig cannot attack or cast spells but will regenerate very quickly. Any damage will transform the target back into its normal form. Only one target can be polymorphed at a time. Only works on Beasts, Humanoids and Critters."
+			]
 		},
 		{
 			"id": 122,
@@ -1172,7 +1982,13 @@
 			"level": 10,
 			"tree": "frost",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 10230,
+			"rank": "Rank 4",
+			"tooltip": ["145 Mana", ["Instant", "25 sec cooldown"]],
+			"description": [
+				"Blasts enemies near the caster for 71 to 79 Frost damage and freezes them in place for up to 8 sec. Damage caused may interrupt the effect."
+			]
 		},
 		{
 			"id": 604,
@@ -1181,7 +1997,13 @@
 			"level": 12,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 10174,
+			"rank": "Rank 5",
+			"tooltip": [["500 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Dampens magic used against the targeted party member, decreasing damage taken from spells by up to 90 and healing spells by up to 180. Lasts 10 min."
+			]
 		},
 		{
 			"id": 130,
@@ -1190,7 +2012,11 @@
 			"level": 12,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 130,
+			"rank": "",
+			"tooltip": ["40 Mana", "Instant", "Reagents: Light Feather"],
+			"description": ["Slows falling speed for 30 sec."]
 		},
 		{
 			"id": 1449,
@@ -1199,7 +2025,13 @@
 			"level": 14,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10202,
+			"rank": "Rank 6",
+			"tooltip": ["390 Mana", "Instant"],
+			"description": [
+				"Causes an explosion of arcane magic around the caster, causing 249 to 270 Arcane damage to all targets within 10 yards."
+			]
 		},
 		{
 			"id": 2855,
@@ -1208,7 +2040,11 @@
 			"level": 16,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2855,
+			"rank": "",
+			"tooltip": [["35 Mana", "40 yd range"], "Instant"],
+			"description": ["Detects beneficial magic effects on the target for 2 min."]
 		},
 		{
 			"id": 2120,
@@ -1217,7 +2053,13 @@
 			"level": 16,
 			"tree": "fire",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10216,
+			"rank": "Rank 6",
+			"tooltip": [["990 Mana", "30 yd range"], "3 sec cast"],
+			"description": [
+				"Calls down a pillar of fire, burning all enemies within the area for 381 to 466 Fire damage and an additional 340 Fire damage over 8 sec."
+			]
 		},
 		{
 			"id": 1008,
@@ -1226,7 +2068,13 @@
 			"level": 18,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 10170,
+			"rank": "Rank 4",
+			"tooltip": [["450 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Amplifies magic used against the targeted party member, increasing damage taken from spells by up to 75 and healing spells by up to 150. Lasts 10 min."
+			]
 		},
 		{
 			"id": 475,
@@ -1235,7 +2083,11 @@
 			"level": 18,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 475,
+			"rank": "",
+			"tooltip": [["10% of base mana", "30 yd range"], "Instant"],
+			"description": ["Removes 1 Curse from a friendly target."]
 		},
 		{
 			"id": 1953,
@@ -1244,7 +2096,13 @@
 			"level": 20,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1953,
+			"rank": "",
+			"tooltip": ["35% of base mana", ["Instant", "15 sec cooldown"]],
+			"description": [
+				"Teleports the caster 20 yards forward, unless something is in the way. Also frees the caster from stuns and bonds."
+			]
 		},
 		{
 			"id": 10,
@@ -1253,7 +2111,11 @@
 			"level": 20,
 			"tree": "frost",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10187,
+			"rank": "Rank 6",
+			"tooltip": [["1400 Mana", "30 yd range"], "Channeled (8 sec cast)"],
+			"description": ["Ice shards pelt the target area doing 1192 Frost damage over 8 sec."]
 		},
 		{
 			"id": 12051,
@@ -1262,7 +2124,13 @@
 			"level": 20,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 12051,
+			"rank": "",
+			"tooltip": [["Channeled (8 sec cast)", "8 min cooldown"]],
+			"description": [
+				"While channeling this spell, your mana regeneration is active and increased by 1500%. Lasts 8 sec."
+			]
 		},
 		{
 			"id": 543,
@@ -1271,7 +2139,11 @@
 			"level": 20,
 			"tree": "fire",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 10225,
+			"rank": "Rank 5",
+			"tooltip": ["320 Mana", ["Instant", "30 sec cooldown"]],
+			"description": ["Absorbs 920 Fire damage. Lasts 30 sec."]
 		},
 		{
 			"id": 1463,
@@ -1280,7 +2152,13 @@
 			"level": 20,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10193,
+			"rank": "Rank 6",
+			"tooltip": ["140 Mana", "Instant"],
+			"description": [
+				"Absorbs 570 physical damage, draining mana instead. Drains 2 mana per damage absorbed. Lasts 1 min."
+			]
 		},
 		{
 			"id": 3562,
@@ -1289,7 +2167,11 @@
 			"level": 20,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 3562,
+			"rank": "",
+			"tooltip": ["120 Mana", "10 sec cast", "Reagents: Rune of Teleportation"],
+			"description": ["Teleports the caster to Ironforge."]
 		},
 		{
 			"id": 3567,
@@ -1298,7 +2180,11 @@
 			"level": 20,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 3567,
+			"rank": "",
+			"tooltip": ["120 Mana", "10 sec cast", "Reagents: Rune of Teleportation"],
+			"description": ["Teleports the caster to Orgrimmar."]
 		},
 		{
 			"id": 3561,
@@ -1307,7 +2193,11 @@
 			"level": 20,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 3561,
+			"rank": "",
+			"tooltip": ["120 Mana", "10 sec cast", "Reagents: Rune of Teleportation"],
+			"description": ["Teleports the caster to Stormwind."]
 		},
 		{
 			"id": 3563,
@@ -1316,7 +2206,11 @@
 			"level": 20,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 3563,
+			"rank": "",
+			"tooltip": ["120 Mana", "10 sec cast", "Reagents: Rune of Teleportation"],
+			"description": ["Teleports the caster to Undercity."]
 		},
 		{
 			"id": 6143,
@@ -1325,7 +2219,11 @@
 			"level": 22,
 			"tree": "frost",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 28609,
+			"rank": "Rank 5",
+			"tooltip": ["320 Mana", ["Instant", "30 sec cooldown"]],
+			"description": ["Absorbs 920 Frost damage. Lasts 30 sec."]
 		},
 		{
 			"id": 2948,
@@ -1334,7 +2232,11 @@
 			"level": 22,
 			"tree": "fire",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 10207,
+			"rank": "Rank 7",
+			"tooltip": [["150 Mana", "30 yd range"], "1.5 sec cast"],
+			"description": ["Scorch the enemy for 237 to 280 Fire damage."]
 		},
 		{
 			"id": 2139,
@@ -1343,7 +2245,16 @@
 			"level": 24,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2139,
+			"rank": "",
+			"tooltip": [
+				["100 Mana", "30 yd range"],
+				["Instant", "30 sec cooldown"]
+			],
+			"description": [
+				"Counters the enemy's spellcast, preventing any spell from that school of magic from being cast for 10 sec. Generates a high amount of threat."
+			]
 		},
 		{
 			"id": 120,
@@ -1352,7 +2263,13 @@
 			"level": 26,
 			"tree": "frost",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 10161,
+			"rank": "Rank 5",
+			"tooltip": ["555 Mana", ["Instant", "10 sec cooldown"]],
+			"description": [
+				"Targets in a cone in front of the caster take 335 to 365 Frost damage and are slowed by 50% for 8 sec."
+			]
 		},
 		{
 			"id": 759,
@@ -1361,7 +2278,14 @@
 			"level": 28,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 759,
+			"rank": "",
+			"tooltip": ["530 Mana", "3 sec cast"],
+			"description": [
+				"Conjures a mana agate that can be used to instantly restore 375 to 425 mana.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 7302,
@@ -1370,7 +2294,13 @@
 			"level": 30,
 			"tree": "frost",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 10220,
+			"rank": "Rank 4",
+			"tooltip": ["500 Mana", "Instant"],
+			"description": [
+				"Increases Armor by 560 and frost resistance by 15. If an enemy strikes the caster, they may have their movement slowed by 30% and the time between their attacks increased by 25% for 5 sec. Only one type of Armor spell can be active on the Mage at any time. Lasts 30 min."
+			]
 		},
 		{
 			"id": 3565,
@@ -1379,7 +2309,11 @@
 			"level": 30,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 3565,
+			"rank": "",
+			"tooltip": ["120 Mana", "10 sec cast", "Reagents: Rune of Teleportation"],
+			"description": ["Teleports the caster to Darnassus."]
 		},
 		{
 			"id": 3566,
@@ -1388,7 +2322,11 @@
 			"level": 30,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 3566,
+			"rank": "",
+			"tooltip": ["120 Mana", "10 sec cast", "Reagents: Rune of Teleportation"],
+			"description": ["Teleports the caster to Thunder Bluff."]
 		},
 		{
 			"id": 6117,
@@ -1397,7 +2335,13 @@
 			"level": 34,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 22783,
+			"rank": "Rank 3",
+			"tooltip": ["490 Mana", "Instant"],
+			"description": [
+				"Increases your resistance to all magic by 15 and allows 30% of your mana regeneration to continue while casting. Only one type of Armor spell can be active on the Mage at any time. Lasts 30 min."
+			]
 		},
 		{
 			"id": 3552,
@@ -1406,7 +2350,14 @@
 			"level": 38,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 3552,
+			"rank": "",
+			"tooltip": ["800 Mana", "3 sec cast"],
+			"description": [
+				"Conjures a mana jade that can be used to instantly restore 550 to 650 mana.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 11416,
@@ -1415,7 +2366,15 @@
 			"level": 40,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 11416,
+			"rank": "",
+			"tooltip": [
+				["850 Mana", "10 yd range"],
+				["10 sec cast", "1 min cooldown"],
+				"Reagents: Rune of Portals"
+			],
+			"description": ["Creates a portal, teleporting group members that use it to Ironforge."]
 		},
 		{
 			"id": 11417,
@@ -1424,7 +2383,15 @@
 			"level": 40,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 11417,
+			"rank": "",
+			"tooltip": [
+				["850 Mana", "10 yd range"],
+				["10 sec cast", "1 min cooldown"],
+				"Reagents: Rune of Portals"
+			],
+			"description": ["Creates a portal, teleporting group members that use it to Orgrimmar."]
 		},
 		{
 			"id": 10059,
@@ -1433,7 +2400,15 @@
 			"level": 40,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 10059,
+			"rank": "",
+			"tooltip": [
+				["850 Mana", "10 yd range"],
+				["10 sec cast", "1 min cooldown"],
+				"Reagents: Rune of Portals"
+			],
+			"description": ["Creates a portal, teleporting group members that use it to Stormwind."]
 		},
 		{
 			"id": 11418,
@@ -1442,7 +2417,15 @@
 			"level": 40,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 11418,
+			"rank": "",
+			"tooltip": [
+				["850 Mana", "10 yd range"],
+				["10 sec cast", "1 min cooldown"],
+				"Reagents: Rune of Portals"
+			],
+			"description": ["Creates a portal, teleporting group members that use it to Undercity."]
 		},
 		{
 			"id": 10053,
@@ -1451,7 +2434,14 @@
 			"level": 48,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 10053,
+			"rank": "",
+			"tooltip": ["1130 Mana", "3 sec cast"],
+			"description": [
+				"Conjures a mana citrine that can be used to instantly restore 775 to 925 mana.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 11419,
@@ -1460,7 +2450,15 @@
 			"level": 50,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 11419,
+			"rank": "",
+			"tooltip": [
+				["850 Mana", "10 yd range"],
+				["10 sec cast", "1 min cooldown"],
+				"Reagents: Rune of Portals"
+			],
+			"description": ["Creates a portal, teleporting group members that use it to Darnassus."]
 		},
 		{
 			"id": 11420,
@@ -1469,7 +2467,15 @@
 			"level": 50,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 11420,
+			"rank": "",
+			"tooltip": [
+				["850 Mana", "10 yd range"],
+				["10 sec cast", "1 min cooldown"],
+				"Reagents: Rune of Portals"
+			],
+			"description": ["Creates a portal, teleporting group members that use it to Thunder Bluff."]
 		},
 		{
 			"id": 23028,
@@ -1478,7 +2484,13 @@
 			"level": 56,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 23028,
+			"rank": "Rank 1",
+			"tooltip": [["3400 Mana", "40 yd range"], "Instant", "Reagents: Arcane Powder"],
+			"description": [
+				"Infuses the target's party with brilliance, increasing their Intellect by 31 for 1 hour."
+			]
 		},
 		{
 			"id": 10054,
@@ -1487,7 +2499,14 @@
 			"level": 58,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 10054,
+			"rank": "",
+			"tooltip": ["1470 Mana", "3 sec cast"],
+			"description": [
+				"Conjures a mana ruby that can be used to instantly restore 1000 to 1200 mana.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 28270,
@@ -1496,7 +2515,13 @@
 			"level": 60,
 			"tree": "arcane",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 28270,
+			"rank": "",
+			"tooltip": [["150 Mana", "30 yd range"], "1.5 sec cast"],
+			"description": [
+				"Transforms the enemy into a cow, forcing it to wander around for up to 50 sec. While wandering, the cow cannot attack or cast spells but will regenerate very quickly. Any damage will transform the target back into its normal form. Only one target can be polymorphed at a time. Only works on Beasts, Humanoids and Critters."
+			]
 		}
 	],
 	"paladin": [
@@ -1507,7 +2532,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6603,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": []
 		},
 		{
 			"id": 20217,
@@ -1516,7 +2545,13 @@
 			"level": 0,
 			"tree": "protection",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 20217,
+			"rank": "",
+			"tooltip": [["8% of base mana", "30 yd range"], "Instant"],
+			"description": [
+				"Places a Blessing on the friendly target, increasing total stats by 10% for 5 min. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 20911,
@@ -1525,7 +2560,13 @@
 			"level": 0,
 			"tree": "protection",
 			"talent": true,
-			"ranks": 4
+			"ranks": 4,
+			"max": 20914,
+			"rank": "Rank 4",
+			"tooltip": [["135 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Places a Blessing on the friendly target, reducing damage dealt from all sources by up to 24 for 5 min. In addition, when the target blocks a melee attack the attacker will take 35 Holy damage. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 20216,
@@ -1534,7 +2575,13 @@
 			"level": 0,
 			"tree": "holy",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 20216,
+			"rank": "",
+			"tooltip": ["4% of base mana", ["Instant", "2 min cooldown"]],
+			"description": [
+				"When activated, gives your next Flash of Light, Holy Light, or Holy Shock spell a 100% critical effect chance."
+			]
 		},
 		{
 			"id": 20925,
@@ -1543,7 +2590,13 @@
 			"level": 0,
 			"tree": "protection",
 			"talent": true,
-			"ranks": 3
+			"ranks": 3,
+			"max": 20928,
+			"rank": "Rank 3",
+			"tooltip": ["240 Mana", ["Instant", "10 sec cooldown"]],
+			"description": [
+				"Increases chance to block by 30% for 10 sec, and deals 130 Holy damage for each attack blocked while active. Damage caused by Holy Shield causes 20% additional threat. Each block expends a charge. 4 charges."
+			]
 		},
 		{
 			"id": 20473,
@@ -1552,7 +2605,16 @@
 			"level": 0,
 			"tree": "holy",
 			"talent": true,
-			"ranks": 3
+			"ranks": 3,
+			"max": 20930,
+			"rank": "Rank 3",
+			"tooltip": [
+				["325 Mana", "20 yd range"],
+				["Instant", "30 sec cooldown"]
+			],
+			"description": [
+				"Blasts the target with Holy energy, causing 365 to 395 Holy damage to an enemy, or 365 to 395 healing to an ally."
+			]
 		},
 		{
 			"id": 20066,
@@ -1561,7 +2623,16 @@
 			"level": 0,
 			"tree": "retribution",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 20066,
+			"rank": "",
+			"tooltip": [
+				["60 Mana", "20 yd range"],
+				["Instant", "1 min cooldown"]
+			],
+			"description": [
+				"Puts the enemy target in a state of meditation, incapacitating them for up to 6 sec. Any damage caused will awaken the target. Only works against Humanoids."
+			]
 		},
 		{
 			"id": 20375,
@@ -1570,7 +2641,15 @@
 			"level": 0,
 			"tree": "retribution",
 			"talent": true,
-			"ranks": 5
+			"ranks": 5,
+			"max": 20920,
+			"rank": "Rank 5",
+			"tooltip": ["210 Mana", "Instant"],
+			"description": [
+				"Gives the Paladin a chance to deal additional Holy damage equal to 70% of normal weapon damage. Only one Seal can be active on the Paladin at any one time. Lasts 30 sec.",
+				"Unleashing this Seal's energy will judge an enemy, instantly causing 169 to 186 Holy damage, 339 to 373 if the target is stunned or incapacitated.",
+				"(1s cooldown)"
+			]
 		},
 		{
 			"id": 465,
@@ -1579,7 +2658,13 @@
 			"level": 1,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 10293,
+			"rank": "Rank 7",
+			"tooltip": ["Instant"],
+			"description": [
+				"Gives 735 additional armor to party members within 30 yards. Players may only have one Aura on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 635,
@@ -1588,7 +2673,11 @@
 			"level": 1,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 9
+			"ranks": 9,
+			"max": 25292,
+			"rank": "Rank 9",
+			"tooltip": [["660 Mana", "40 yd range"], "2.5 sec cast"],
+			"description": ["Heals a friendly target for 1590 to 1770."]
 		},
 		{
 			"id": 20154,
@@ -1597,7 +2686,14 @@
 			"level": 1,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 9
+			"ranks": 9,
+			"max": 20293,
+			"rank": "Rank 8",
+			"tooltip": ["200 Mana", "Instant"],
+			"description": [
+				"Fills the Paladin with holy spirit for 30 sec, granting each melee attack an additional 22 to 75 Holy damage. Slower weapons cause more Holy damage per swing. Only one Seal can be active on the Paladin at any one time.",
+				"Unleashing this Seal's energy will cause 170 to 187 Holy damage to an enemy."
+			]
 		},
 		{
 			"id": 19740,
@@ -1606,7 +2702,13 @@
 			"level": 4,
 			"tree": "retribution",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 25291,
+			"rank": "Rank 7",
+			"tooltip": [["130 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Places a Blessing on the friendly target, increasing melee attack power by 185 for 5 min. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 20271,
@@ -1615,7 +2717,16 @@
 			"level": 4,
 			"tree": "retribution",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 20271,
+			"rank": "",
+			"tooltip": [
+				["6% of base mana", "10 yd range"],
+				["Instant", "10 sec cooldown"]
+			],
+			"description": [
+				"Unleashes the energy of a Seal spell upon an enemy. Refer to individual Seals for Judgement effect."
+			]
 		},
 		{
 			"id": 498,
@@ -1624,7 +2735,13 @@
 			"level": 6,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 5573,
+			"rank": "Rank 2",
+			"tooltip": ["35 Mana", ["Instant", "5 min cooldown"]],
+			"description": [
+				"You are protected from all physical attacks and spells for 8 sec, but during that time you cannot attack or use physical abilities yourself. Once protected, the target cannot be made invulnerable by Divine Shield, Divine Protection or Blessing of Protection again for 1 min."
+			]
 		},
 		{
 			"id": 21082,
@@ -1633,7 +2750,14 @@
 			"level": 6,
 			"tree": "retribution",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 20308,
+			"rank": "Rank 6",
+			"tooltip": ["160 Mana", "Instant"],
+			"description": [
+				"Fills the Paladin with the spirit of a crusader for 30 sec, granting 326 melee attack power. The Paladin also attacks 40% faster, but deals less damage with each attack. Only one Seal can be active on the Paladin at any one time.",
+				"Unleashing this Seal's energy will judge an enemy for 10 sec, increasing Holy damage taken by up to 140. Your melee strikes will refresh the spell's duration. Only one Judgement per Paladin can be active at any one time."
+			]
 		},
 		{
 			"id": 853,
@@ -1642,7 +2766,14 @@
 			"level": 8,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 10308,
+			"rank": "Rank 4",
+			"tooltip": [
+				["100 Mana", "10 yd range"],
+				["Instant", "1 min cooldown"]
+			],
+			"description": ["Stuns the target for 6 sec."]
 		},
 		{
 			"id": 1152,
@@ -1651,7 +2782,13 @@
 			"level": 8,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1152,
+			"rank": "",
+			"tooltip": [["8% of base mana", "30 yd range"], "Instant"],
+			"description": [
+				"Purifies the friendly target, removing 1 disease effect and 1 poison effect."
+			]
 		},
 		{
 			"id": 1022,
@@ -1660,7 +2797,16 @@
 			"level": 10,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10278,
+			"rank": "Rank 3",
+			"tooltip": [
+				["7% of base mana", "30 yd range"],
+				["Instant", "5 min cooldown"]
+			],
+			"description": [
+				"A targeted party member is protected from all physical attacks for 10 sec, but during that time they cannot attack or use physical abilities. Players may only have one Blessing on them per Paladin at any one time. Once protected, the target cannot be made invulnerable by Divine Shield, Divine Protection or Blessing of Protection again for 1 min."
+			]
 		},
 		{
 			"id": 633,
@@ -1669,7 +2815,13 @@
 			"level": 10,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10310,
+			"rank": "Rank 3",
+			"tooltip": ["40 yd range", ["Instant", "1 hour cooldown"]],
+			"description": [
+				"Heals a friendly target for an amount equal to the Paladin's maximum health and restores 550 of their mana. Drains all of the Paladin's remaining mana when used."
+			]
 		},
 		{
 			"id": 7328,
@@ -1678,7 +2830,13 @@
 			"level": 12,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 20773,
+			"rank": "Rank 5",
+			"tooltip": [["80% of base mana", "30 yd range"], "10 sec cast"],
+			"description": [
+				"Brings a dead player back to life with 600 health and 800 mana. Cannot be cast when in combat."
+			]
 		},
 		{
 			"id": 19742,
@@ -1687,7 +2845,13 @@
 			"level": 14,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 25290,
+			"rank": "Rank 6",
+			"tooltip": [["125 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Places a Blessing on the friendly target, restoring 33 mana every 5 seconds for 5 min. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 7294,
@@ -1696,7 +2860,13 @@
 			"level": 16,
 			"tree": "retribution",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 10301,
+			"rank": "Rank 5",
+			"tooltip": ["Instant"],
+			"description": [
+				"Causes 20 Holy damage to any creature that strikes a party member within 30 yards. Players may only have one Aura on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 25780,
@@ -1705,7 +2875,11 @@
 			"level": 16,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 25780,
+			"rank": "",
+			"tooltip": ["30% of base mana", "Instant"],
+			"description": ["Increases the threat generated by your Holy attacks by 60%. Lasts 30 min."]
 		},
 		{
 			"id": 1044,
@@ -1714,7 +2888,16 @@
 			"level": 18,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1044,
+			"rank": "",
+			"tooltip": [
+				["10% of base mana", "30 yd range"],
+				["Instant", "20 sec cooldown"]
+			],
+			"description": [
+				"Places a Blessing on the friendly target, granting immunity to movement impairing effects for 10 sec. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 879,
@@ -1723,7 +2906,14 @@
 			"level": 20,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10314,
+			"rank": "Rank 6",
+			"tooltip": [
+				["345 Mana", "30 yd range"],
+				["Instant", "15 sec cooldown"]
+			],
+			"description": ["Causes 505 to 563 Holy damage to an Undead or Demon target."]
 		},
 		{
 			"id": 19750,
@@ -1732,7 +2922,11 @@
 			"level": 20,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 19943,
+			"rank": "Rank 6",
+			"tooltip": [["140 Mana", "40 yd range"], "1.5 sec cast"],
+			"description": ["Heals a friendly target for 348 to 389."]
 		},
 		{
 			"id": 5502,
@@ -1741,7 +2935,13 @@
 			"level": 20,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5502,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": [
+				"Shows the location of all nearby undead on the minimap until cancelled. Only one type of tracking can be used at a time."
+			]
 		},
 		{
 			"id": 19746,
@@ -1750,7 +2950,13 @@
 			"level": 22,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19746,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": [
+				"Gives a 35% chance of ignoring spell interruption when damaged to all party members within 30 yards. Players may only have one Aura on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 20164,
@@ -1759,7 +2965,14 @@
 			"level": 22,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 20164,
+			"rank": "",
+			"tooltip": ["13% of base mana", "Instant"],
+			"description": [
+				"Fills the Paladin with the spirit of justice for 30 sec, giving each melee attack a chance to stun for 2 sec. Only one Seal can be active on the Paladin at any one time.",
+				"Unleashing this Seal's energy will judge an enemy for 10 sec, preventing them from fleeing. Your melee strikes will refresh the spell's duration. Only one Judgement per Paladin can be active at any one time."
+			]
 		},
 		{
 			"id": 2878,
@@ -1768,7 +2981,16 @@
 			"level": 24,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10326,
+			"rank": "Rank 3",
+			"tooltip": [
+				["75 Mana", "20 yd range"],
+				["1.5 sec cast", "30 sec cooldown"]
+			],
+			"description": [
+				"The targeted undead enemy will be compelled to flee for up to 20 sec. Damage caused may interrupt the effect. Only one target can be turned at a time."
+			]
 		},
 		{
 			"id": 1038,
@@ -1777,7 +2999,13 @@
 			"level": 26,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1038,
+			"rank": "",
+			"tooltip": [["8% of base mana", "30 yd range"], "Instant"],
+			"description": [
+				"Places a Blessing on the party member, reducing the amount of all threat generated by 30% for 5 min. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 19876,
@@ -1786,7 +3014,13 @@
 			"level": 28,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 19896,
+			"rank": "Rank 3",
+			"tooltip": ["Instant"],
+			"description": [
+				"Gives 60 additional Shadow resistance to all party members within 30 yards. Players may only have one Aura on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 19752,
@@ -1795,7 +3029,13 @@
 			"level": 30,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19752,
+			"rank": "",
+			"tooltip": ["40 yd range", ["Instant", "1 hour cooldown"], "Reagents: Symbol of Divinity"],
+			"description": [
+				"The paladin sacrifices himself to remove the targeted party member from harms way. Enemies will stop attacking the protected party member, who will be immune to all harmful attacks but cannot take any action for 3 min."
+			]
 		},
 		{
 			"id": 20165,
@@ -1804,7 +3044,14 @@
 			"level": 30,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 20349,
+			"rank": "Rank 4",
+			"tooltip": ["210 Mana", "Instant"],
+			"description": [
+				"Fills the Paladin with divine light for 30 sec, giving each melee attack a chance to heal the Paladin for 94. Only one Seal can be active on the Paladin at any one time.",
+				"Unleashing this Seal's energy will judge an enemy for 10 sec, granting melee attacks made against the judged enemy a chance of healing the attacker for 61. Your melee strikes will refresh the spell's duration. Only one Judgement per Paladin can be active at any one time."
+			]
 		},
 		{
 			"id": 19888,
@@ -1813,7 +3060,13 @@
 			"level": 32,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 19898,
+			"rank": "Rank 3",
+			"tooltip": ["Instant"],
+			"description": [
+				"Gives 60 additional Frost resistance to all party members within 30 yards. Players may only have one Aura on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 642,
@@ -1822,7 +3075,13 @@
 			"level": 34,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 1020,
+			"rank": "Rank 2",
+			"tooltip": ["110 Mana", ["Instant", "5 min cooldown"]],
+			"description": [
+				"Protects the paladin from all damage and spells for 12 sec, but increases the time between your attacks by 100%. Once protected, the target cannot be made invulnerable by Divine Shield, Divine Protection or Blessing of Protection again for 1 min."
+			]
 		},
 		{
 			"id": 19891,
@@ -1831,7 +3090,13 @@
 			"level": 36,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 19900,
+			"rank": "Rank 3",
+			"tooltip": ["Instant"],
+			"description": [
+				"Gives 60 additional Fire resistance to all party members within 30 yards. Players may only have one Aura on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 20166,
@@ -1840,7 +3105,14 @@
 			"level": 38,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 20357,
+			"rank": "Rank 3",
+			"tooltip": ["200 Mana", "Instant"],
+			"description": [
+				"Fills the Paladin with divine wisdom for 30 sec, giving each melee attack a chance to restore 90 of the Paladin's mana. Only one Seal can be active on the Paladin at any one time.",
+				"Unleashing this Seal's energy will judge an enemy for 10 sec, granting attacks and spells used against the judged enemy a chance to restore 59 mana to the attacker. Your melee strikes will refresh the spell's duration. Only one Judgement per Paladin can be active at any one time."
+			]
 		},
 		{
 			"id": 19977,
@@ -1849,7 +3121,13 @@
 			"level": 40,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 19979,
+			"rank": "Rank 3",
+			"tooltip": [["135 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Places a Blessing on the friendly target, increasing the effects of Holy Light spells used on the target by up to 400 and the effect Flash of Light spells used on the target by up to 115. Lasts 5 min. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 13819,
@@ -1858,7 +3136,11 @@
 			"level": 40,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 13819,
+			"rank": "Summon",
+			"tooltip": ["100 Mana", "3 sec cast"],
+			"description": ["Summons a warhorse, which serves as a mount. Speed is increased by 60%."]
 		},
 		{
 			"id": 4987,
@@ -1867,7 +3149,13 @@
 			"level": 42,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 4987,
+			"rank": "",
+			"tooltip": [["8% of base mana", "30 yd range"], "Instant"],
+			"description": [
+				"Cleanses a friendly target, removing 1 poison effect, 1 disease effect, and 1 magic effect."
+			]
 		},
 		{
 			"id": 24275,
@@ -1876,7 +3164,16 @@
 			"level": 44,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 24239,
+			"rank": "Rank 3",
+			"tooltip": [
+				["425 Mana", "30 yd range"],
+				["1 sec cast", "6 sec cooldown"]
+			],
+			"description": [
+				"Hurls a hammer that strikes an enemy for 504 to 556 Holy damage. Only usable on enemies that have 20% or less health."
+			]
 		},
 		{
 			"id": 6940,
@@ -1885,7 +3182,13 @@
 			"level": 46,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 20729,
+			"rank": "Rank 2",
+			"tooltip": [["100 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Places a Blessing on the party member, transfering 55 damage taken per hit to the caster. Lasts 30 sec. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 2812,
@@ -1894,7 +3197,13 @@
 			"level": 50,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 10318,
+			"rank": "Rank 2",
+			"tooltip": ["805 Mana", ["2 sec cast", "1 min cooldown"]],
+			"description": [
+				"Sends bolts of holy power in all directions, causing 490 to 576 Holy damage to all Undead and Demon targets within 20 yds."
+			]
 		},
 		{
 			"id": 25782,
@@ -1903,7 +3212,13 @@
 			"level": 52,
 			"tree": "retribution",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 25916,
+			"rank": "Rank 2",
+			"tooltip": [["260 Mana", "40 yd range"], "Instant", "Reagents: Symbol of Kings"],
+			"description": [
+				"Gives all members of the raid or group that share the same class with the target the Greater Blessing of Might, increasing melee attack power by 185 for 15 min. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 25894,
@@ -1912,7 +3227,13 @@
 			"level": 54,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 25918,
+			"rank": "Rank 2",
+			"tooltip": [["250 Mana", "40 yd range"], "Instant", "Reagents: Symbol of Kings"],
+			"description": [
+				"Gives all members of the raid or group that share the same class with the target the Greater Blessing of Wisdom, restoring 33 mana every 5 seconds for 15 min. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 25898,
@@ -1921,7 +3242,13 @@
 			"level": 60,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 25898,
+			"rank": "",
+			"tooltip": [["150 Mana", "40 yd range"], "Instant", "Reagents: Symbol of Kings"],
+			"description": [
+				"Gives all members of the raid or group that share the same class with the target the Greater Blessing of Kings, increasing total stats by 10% for 15 min. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 25890,
@@ -1930,7 +3257,13 @@
 			"level": 60,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 25890,
+			"rank": "Rank 1",
+			"tooltip": [["260 Mana", "40 yd range"], "Instant", "Reagents: Symbol of Kings"],
+			"description": [
+				"Gives all members of the raid or group that share the same class with the target the Greater Blessing of Light, increasing the effects of Holy Light spells used on the target by up to 400 and the effect Flash of Light spells used on the target by up to 115. Lasts 15 min. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 25895,
@@ -1939,7 +3272,13 @@
 			"level": 60,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 25895,
+			"rank": "",
+			"tooltip": [["16% of base mana", "40 yd range"], "Instant", "Reagents: Symbol of Kings"],
+			"description": [
+				"Gives all members of the raid or group that share the same class with the target the Greater Blessing of Salvation, reducing the amount of all threat generated by 30% for 15 min. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 25899,
@@ -1948,7 +3287,13 @@
 			"level": 60,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 25899,
+			"rank": "Rank 1",
+			"tooltip": [["270 Mana", "40 yd range"], "Instant", "Reagents: Symbol of Kings"],
+			"description": [
+				"Gives all members of the raid or group that share the same class with the target the Greater Blessing of Sanctuary, reducing damage dealt from all sources by up to 24 for 15 min. In addition, when the target blocks a melee attack the attacker will take 35 Holy damage. Players may only have one Blessing on them per Paladin at any one time."
+			]
 		},
 		{
 			"id": 23214,
@@ -1957,7 +3302,11 @@
 			"level": 60,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 23214,
+			"rank": "Summon",
+			"tooltip": ["150 Mana", "3 sec cast"],
+			"description": ["Summons a Charger, which serves as a mount. Speed is increased by 100%."]
 		}
 	],
 	"priest": [
@@ -1968,7 +3317,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6603,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": []
 		},
 		{
 			"id": 5019,
@@ -1977,7 +3330,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5019,
+			"rank": "",
+			"tooltip": ["30 yd range", "Instant"],
+			"description": ["Attack with an equipped wand."]
 		},
 		{
 			"id": 15237,
@@ -1986,7 +3343,13 @@
 			"level": 0,
 			"tree": "holy",
 			"talent": true,
-			"ranks": 6
+			"ranks": 6,
+			"max": 27801,
+			"rank": "Rank 6",
+			"tooltip": ["750 Mana", "Instant"],
+			"description": [
+				"Causes an explosion of holy light around the caster, causing 181 to 209 Holy damage to all enemy targets within 10 yards and healing all party members within 10 yards for 302 to 350. These effects cause no threat."
+			]
 		},
 		{
 			"id": 14751,
@@ -1995,7 +3358,13 @@
 			"level": 0,
 			"tree": "discipline",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 14751,
+			"rank": "",
+			"tooltip": [["Instant", "3 min cooldown"]],
+			"description": [
+				"When activated, reduces the Mana cost of your next spell by 100% and increases its critical effect chance by 25% if it is capable of a critical effect."
+			]
 		},
 		{
 			"id": 724,
@@ -2004,7 +3373,13 @@
 			"level": 0,
 			"tree": "holy",
 			"talent": true,
-			"ranks": 3
+			"ranks": 3,
+			"max": 27871,
+			"rank": "Rank 3",
+			"tooltip": ["365 Mana", ["1.5 sec cast", "10 min cooldown"]],
+			"description": [
+				"Creates a holy Lightwell near the priest. Members of your raid or party can click the Lightwell to restore 1600 health over 10 sec. Being attacked cancels the effect. Lightwell lasts for 3 min or 5 charges."
+			]
 		},
 		{
 			"id": 15407,
@@ -2013,7 +3388,13 @@
 			"level": 0,
 			"tree": "shadow",
 			"talent": true,
-			"ranks": 6
+			"ranks": 6,
+			"max": 18807,
+			"rank": "Rank 6",
+			"tooltip": [["205 Mana", "20 yd range"], "Channeled (3 sec cast)"],
+			"description": [
+				"Assault the target's mind with Shadow energy, causing 426 Shadow damage over 3 sec and slowing their movement speed by 50%."
+			]
 		},
 		{
 			"id": 10060,
@@ -2022,7 +3403,16 @@
 			"level": 0,
 			"tree": "discipline",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 10060,
+			"rank": "",
+			"tooltip": [
+				["20% of base mana", "30 yd range"],
+				["Instant", "3 min cooldown"]
+			],
+			"description": [
+				"Infuses the target with power, increasing their spell damage and healing by 20%. Lasts 15 sec."
+			]
 		},
 		{
 			"id": 15473,
@@ -2031,7 +3421,13 @@
 			"level": 0,
 			"tree": "shadow",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 15473,
+			"rank": "",
+			"tooltip": ["40% of base mana", ["Instant", "1.5 sec cooldown"]],
+			"description": [
+				"Assume a Shadowform, increasing your Shadow damage by 15% and reducing Physical damage done to you by 15%. However, you may not cast Holy spells while in this form."
+			]
 		},
 		{
 			"id": 15487,
@@ -2040,7 +3436,14 @@
 			"level": 0,
 			"tree": "shadow",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 15487,
+			"rank": "",
+			"tooltip": [
+				["225 Mana", "20 yd range"],
+				["Instant", "45 sec cooldown"]
+			],
+			"description": ["Silences the target, preventing them from casting spells for 5 sec."]
 		},
 		{
 			"id": 15286,
@@ -2049,7 +3452,16 @@
 			"level": 0,
 			"tree": "shadow",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 15286,
+			"rank": "",
+			"tooltip": [
+				["40 Mana", "30 yd range"],
+				["Instant", "10 sec cooldown"]
+			],
+			"description": [
+				"Afflicts your target with Shadow energy that causes all party members to be healed for 20% of any Shadow spell damage you deal for 1 min."
+			]
 		},
 		{
 			"id": 2050,
@@ -2058,7 +3470,11 @@
 			"level": 1,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 2053,
+			"rank": "Rank 3",
+			"tooltip": [["75 Mana", "40 yd range"], "2.5 sec cast"],
+			"description": ["Heal your target for 143 to 165."]
 		},
 		{
 			"id": 1243,
@@ -2067,7 +3483,11 @@
 			"level": 1,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10938,
+			"rank": "Rank 6",
+			"tooltip": [["1695 Mana", "30 yd range"], "Instant"],
+			"description": ["Power infuses the target, increasing their Stamina by 54 for 30 min."]
 		},
 		{
 			"id": 585,
@@ -2076,7 +3496,11 @@
 			"level": 1,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 8
+			"ranks": 8,
+			"max": 10934,
+			"rank": "Rank 8",
+			"tooltip": [["280 Mana", "30 yd range"], "2.5 sec cast"],
+			"description": ["Smite an enemy for 384 to 429 Holy damage."]
 		},
 		{
 			"id": 589,
@@ -2085,7 +3509,11 @@
 			"level": 4,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 8
+			"ranks": 8,
+			"max": 10894,
+			"rank": "Rank 8",
+			"tooltip": [["470 Mana", "30 yd range"], "Instant"],
+			"description": ["A word of darkness that causes 852 Shadow damage over 18 sec."]
 		},
 		{
 			"id": 17,
@@ -2094,7 +3522,16 @@
 			"level": 6,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 10
+			"ranks": 10,
+			"max": 10901,
+			"rank": "Rank 10",
+			"tooltip": [
+				["500 Mana", "40 yd range"],
+				["Instant", "4 sec cooldown"]
+			],
+			"description": [
+				"Draws on the soul of the party member to shield them, absorbing 942 damage. Lasts 30 sec. While the shield holds, spellcasting will not be interrupted by damage. Once shielded, the target cannot be shielded again for 15 sec."
+			]
 		},
 		{
 			"id": 586,
@@ -2103,7 +3540,13 @@
 			"level": 8,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10942,
+			"rank": "Rank 6",
+			"tooltip": ["275 Mana", ["Instant", "30 sec cooldown"]],
+			"description": [
+				"Fade out, discouraging enemies from attacking you for 10 sec. More effective than Fade (rank 5)."
+			]
 		},
 		{
 			"id": 139,
@@ -2112,7 +3555,11 @@
 			"level": 8,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 10
+			"ranks": 10,
+			"max": 25315,
+			"rank": "Rank 10",
+			"tooltip": [["410 Mana", "40 yd range"], "Instant"],
+			"description": ["Heals the target of 970 damage over 15 sec."]
 		},
 		{
 			"id": 13908,
@@ -2121,7 +3568,11 @@
 			"level": 10,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 19243,
+			"rank": "Rank 7",
+			"tooltip": [["Instant", "10 min cooldown"]],
+			"description": ["Instantly heals the caster for 1340 to 1579."]
 		},
 		{
 			"id": 9035,
@@ -2130,7 +3581,13 @@
 			"level": 10,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 19285,
+			"rank": "Rank 6",
+			"tooltip": [["240 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Weakens the target enemy, reducing damage caused by 20 and reducing the effectiveness of any healing by 20%. Lasts 2 min."
+			]
 		},
 		{
 			"id": 8092,
@@ -2139,7 +3596,16 @@
 			"level": 10,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 9
+			"ranks": 9,
+			"max": 10947,
+			"rank": "Rank 9",
+			"tooltip": [
+				["350 Mana", "30 yd range"],
+				["1.5 sec cast", "8 sec cooldown"]
+			],
+			"description": [
+				"Blasts the target for 508 to 537 Shadow damage, but causes a high amount of threat."
+			]
 		},
 		{
 			"id": 2006,
@@ -2148,7 +3614,13 @@
 			"level": 10,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 20770,
+			"rank": "Rank 5",
+			"tooltip": [["75% of base mana", "30 yd range"], "10 sec cast"],
+			"description": [
+				"Brings a dead player back to life with 750 health and 1000 mana. Cannot be cast when in combat."
+			]
 		},
 		{
 			"id": 10797,
@@ -2157,7 +3629,13 @@
 			"level": 10,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 19305,
+			"rank": "Rank 7",
+			"tooltip": [["350 Mana", "30 yd range"], "Channeled (6 sec cast)"],
+			"description": [
+				"Rains starshards down on the enemy target's head, causing 936 Arcane damage over 6 sec."
+			]
 		},
 		{
 			"id": 2652,
@@ -2166,7 +3644,13 @@
 			"level": 10,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 19266,
+			"rank": "Rank 6",
+			"tooltip": ["195 Mana", "Instant"],
+			"description": [
+				"The next melee attack on the caster will cause 64 Shadow damage and reduce the damage caused by the attacker by 20 for 2 min."
+			]
 		},
 		{
 			"id": 588,
@@ -2175,7 +3659,13 @@
 			"level": 12,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10952,
+			"rank": "Rank 6",
+			"tooltip": ["315 Mana", "Instant"],
+			"description": [
+				"A burst of Holy energy fills the caster, increasing armor by 1395. Each melee or ranged damage hit against the priest will remove one charge. Lasts 10 min or until 20 charges are used."
+			]
 		},
 		{
 			"id": 528,
@@ -2184,7 +3674,11 @@
 			"level": 14,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 528,
+			"rank": "",
+			"tooltip": [["15% of base mana", "30 yd range"], "Instant"],
+			"description": ["Removes 1 disease from the friendly target."]
 		},
 		{
 			"id": 8122,
@@ -2193,7 +3687,13 @@
 			"level": 14,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 10890,
+			"rank": "Rank 4",
+			"tooltip": ["210 Mana", ["Instant", "30 sec cooldown"]],
+			"description": [
+				"The caster lets out a psychic scream, causing 5 enemies within 8 yards to flee for 8 sec. Damage caused may interrupt the effect."
+			]
 		},
 		{
 			"id": 2054,
@@ -2202,7 +3702,11 @@
 			"level": 16,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 6064,
+			"rank": "Rank 4",
+			"tooltip": [["305 Mana", "40 yd range"], "3 sec cast"],
+			"description": ["Heal your target for 734 to 827."]
 		},
 		{
 			"id": 527,
@@ -2211,7 +3715,13 @@
 			"level": 18,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 988,
+			"rank": "Rank 2",
+			"tooltip": [["18% of base mana", "30 yd range"], "Instant"],
+			"description": [
+				"Dispels magic on the target, removing 2 harmful spells from a friend or 2 beneficial spells from an enemy."
+			]
 		},
 		{
 			"id": 2944,
@@ -2220,7 +3730,16 @@
 			"level": 20,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 19280,
+			"rank": "Rank 6",
+			"tooltip": [
+				["985 Mana", "30 yd range"],
+				["Instant", "3 min cooldown"]
+			],
+			"description": [
+				"Afflicts the target with a disease that causes 904 Shadow damage over 24 sec. Damage caused by the Devouring Plague heals the caster."
+			]
 		},
 		{
 			"id": 2651,
@@ -2229,7 +3748,13 @@
 			"level": 20,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 19293,
+			"rank": "Rank 5",
+			"tooltip": ["240 Mana", ["Instant", "5 min cooldown"]],
+			"description": [
+				"Reduces ranged damage taken by 95 and increases chance to dodge by 10% for 15 sec."
+			]
 		},
 		{
 			"id": 6346,
@@ -2238,7 +3763,16 @@
 			"level": 20,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6346,
+			"rank": "",
+			"tooltip": [
+				["100 Mana", "30 yd range"],
+				["Instant", "30 sec cooldown"]
+			],
+			"description": [
+				"Wards the friendly target against Fear. The next Fear effect used against the target will fail, using up the ward. Lasts 10 min."
+			]
 		},
 		{
 			"id": 13896,
@@ -2247,7 +3781,13 @@
 			"level": 20,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 19275,
+			"rank": "Rank 5",
+			"tooltip": ["580 Mana", ["Instant", "3 min cooldown"]],
+			"description": [
+				"The priest becomes surrounded with anti-magic energy. Any successful spell cast against the priest will burn 105 of the attacker's Mana, causing 1 Shadow damage for each point of Mana burned. Lasts 15 sec."
+			]
 		},
 		{
 			"id": 2061,
@@ -2256,7 +3796,11 @@
 			"level": 20,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 10917,
+			"rank": "Rank 7",
+			"tooltip": [["380 Mana", "40 yd range"], "1.5 sec cast"],
+			"description": ["Heals a friendly target for 828 to 975."]
 		},
 		{
 			"id": 14914,
@@ -2265,7 +3809,13 @@
 			"level": 20,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 8
+			"ranks": 8,
+			"max": 15261,
+			"rank": "Rank 8",
+			"tooltip": [["255 Mana", "30 yd range"], "3.5 sec cast"],
+			"description": [
+				"Consumes the enemy in holy flames that cause 355 to 449 Holy damage and an additional 145 Holy damage over 10 sec."
+			]
 		},
 		{
 			"id": 453,
@@ -2274,7 +3824,13 @@
 			"level": 20,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10953,
+			"rank": "Rank 3",
+			"tooltip": [["90 Mana", "40 yd range"], "Instant"],
+			"description": [
+				"Soothes the target, reducing the range at which it will attack you by 10 yards. Only affects Humanoid targets level 70 or lower. Lasts 15 sec."
+			]
 		},
 		{
 			"id": 9484,
@@ -2283,7 +3839,13 @@
 			"level": 20,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10955,
+			"rank": "Rank 3",
+			"tooltip": [["150 Mana", "30 yd range"], "1.5 sec cast"],
+			"description": [
+				"Shackles the target undead enemy for up to 50 sec. The shackled unit is unable to move, attack or cast spells. Any damage caused will release the target. Only one target can be shackled at a time."
+			]
 		},
 		{
 			"id": 18137,
@@ -2292,7 +3854,14 @@
 			"level": 20,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 19312,
+			"rank": "Rank 6",
+			"tooltip": ["250 Mana", "Instant"],
+			"description": [
+				"The caster is surrounded by shadows. When a spell, melee or ranged attack hits the caster, the attacker will be struck for 116 Shadow damage. Attackers can only be damaged once every few seconds. This damage causes no threat. 3 charges. Lasts 10 min.",
+				"(3.5s cooldown)"
+			]
 		},
 		{
 			"id": 2096,
@@ -2301,7 +3870,13 @@
 			"level": 22,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 10909,
+			"rank": "Rank 2",
+			"tooltip": [["150 Mana", "Unlimited range"], "Channeled (1 min cast)"],
+			"description": [
+				"Allows the caster to see through the target's eyes for 1 min. Will not work if the target is in another instance or on another continent."
+			]
 		},
 		{
 			"id": 8129,
@@ -2310,7 +3885,13 @@
 			"level": 24,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 10876,
+			"rank": "Rank 5",
+			"tooltip": [["270 Mana", "30 yd range"], "3 sec cast"],
+			"description": [
+				"Drains 746 to 789 mana from a target. For each mana drained in this way, the target takes 0.5 Shadow damage."
+			]
 		},
 		{
 			"id": 605,
@@ -2319,7 +3900,13 @@
 			"level": 30,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10912,
+			"rank": "Rank 3",
+			"tooltip": [["750 Mana", "20 yd range"], "3 sec cast"],
+			"description": [
+				"Controls a humanoid mind up to level 64, but increases the time between attacks by 25%. Lasts up to 1 min."
+			]
 		},
 		{
 			"id": 596,
@@ -2328,7 +3915,11 @@
 			"level": 30,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 25316,
+			"rank": "Rank 5",
+			"tooltip": ["1070 Mana", "3 sec cast"],
+			"description": ["A powerful prayer heals party members within 30 yards for 1041 to 1099."]
 		},
 		{
 			"id": 976,
@@ -2337,7 +3928,11 @@
 			"level": 30,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10958,
+			"rank": "Rank 3",
+			"tooltip": [["650 Mana", "30 yd range"], "Instant"],
+			"description": ["Increases the target's resistance to Shadow spells by 60 for 10 min."]
 		},
 		{
 			"id": 552,
@@ -2346,7 +3941,13 @@
 			"level": 32,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 552,
+			"rank": "",
+			"tooltip": [["15% of base mana", "30 yd range"], "Instant"],
+			"description": [
+				"Attempts to cure 1 disease effect on the target, and 1 more disease effect every 5 seconds for 20 sec."
+			]
 		},
 		{
 			"id": 1706,
@@ -2355,7 +3956,13 @@
 			"level": 34,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1706,
+			"rank": "",
+			"tooltip": ["100 Mana", "Instant", "Reagents: Light Feather"],
+			"description": [
+				"Allows the caster to levitate, floating a few feet above the ground. While levitating, you will fall at a reduced speed and travel over water-like surfaces. Any damage will cancel the effect. Lasts 2 min."
+			]
 		},
 		{
 			"id": 2060,
@@ -2364,7 +3971,11 @@
 			"level": 40,
 			"tree": "holy",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 25314,
+			"rank": "Rank 5",
+			"tooltip": [["710 Mana", "40 yd range"], "3 sec cast"],
+			"description": ["A slow casting spell that heals a single target for 1966 to 2194."]
 		},
 		{
 			"id": 21562,
@@ -2373,7 +3984,13 @@
 			"level": 48,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 21564,
+			"rank": "Rank 2",
+			"tooltip": [["3400 Mana", "40 yd range"], "Instant", "Reagents: Sacred Candle"],
+			"description": [
+				"Power infuses the target's party, increasing their Stamina by 54 for 1 hour."
+			]
 		},
 		{
 			"id": 27683,
@@ -2382,7 +3999,13 @@
 			"level": 56,
 			"tree": "shadow",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 27683,
+			"rank": "Rank 1",
+			"tooltip": [["1300 Mana", "40 yd range"], "Instant", "Reagents: Sacred Candle"],
+			"description": [
+				"Power infuses the target's party, increasing their Shadow resistance by 60 for 20 min."
+			]
 		},
 		{
 			"id": 27681,
@@ -2391,7 +4014,11 @@
 			"level": 60,
 			"tree": "discipline",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 27681,
+			"rank": "Rank 1",
+			"tooltip": [["1940 Mana", "40 yd range"], "Instant", "Reagents: Sacred Candle"],
+			"description": ["Power infuses the target's party, increasing their Spirit by 40 for 1 hour."]
 		}
 	],
 	"rogue": [
@@ -2402,7 +4029,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6603,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": []
 		},
 		{
 			"id": 2480,
@@ -2411,7 +4042,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2480,
+			"rank": "",
+			"tooltip": ["8 - 30 yd range", "1 sec cast"],
+			"description": []
 		},
 		{
 			"id": 7918,
@@ -2420,7 +4055,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 7918,
+			"rank": "",
+			"tooltip": ["8 - 30 yd range", "1 sec cast"],
+			"description": []
 		},
 		{
 			"id": 7919,
@@ -2429,7 +4068,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 7919,
+			"rank": "",
+			"tooltip": ["8 - 30 yd range", "1 sec cast"],
+			"description": []
 		},
 		{
 			"id": 2764,
@@ -2438,7 +4081,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2764,
+			"rank": "",
+			"tooltip": ["8 - 30 yd range", "Instant"],
+			"description": ["Hurl a thrown weapon at the target."]
 		},
 		{
 			"id": 13750,
@@ -2447,7 +4094,11 @@
 			"level": 0,
 			"tree": "combat",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 13750,
+			"rank": "",
+			"tooltip": [["Instant", "5 min cooldown"]],
+			"description": ["Increases your Energy regeneration rate by 100% for 15 sec."]
 		},
 		{
 			"id": 13877,
@@ -2456,7 +4107,13 @@
 			"level": 0,
 			"tree": "combat",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 13877,
+			"rank": "",
+			"tooltip": ["25 Energy", ["Instant", "2 min cooldown"]],
+			"description": [
+				"Increases your attack speed by 20%. In addition, attacks strike an additional nearby opponent. Lasts 15 sec."
+			]
 		},
 		{
 			"id": 14177,
@@ -2465,7 +4122,13 @@
 			"level": 0,
 			"tree": "assassination",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 14177,
+			"rank": "",
+			"tooltip": [["Instant", "3 min cooldown"]],
+			"description": [
+				"When activated, increases the critical strike chance of your next Sinister Strike, Backstab, Ambush, or Eviscerate by 100%."
+			]
 		},
 		{
 			"id": 14278,
@@ -2474,7 +4137,17 @@
 			"level": 0,
 			"tree": "subtlety",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 14278,
+			"rank": "",
+			"tooltip": [
+				["40 Energy", "Melee Range"],
+				["Instant", "20 sec cooldown"],
+				"Requires Melee Weapon"
+			],
+			"description": [
+				"A strike that deals 125% weapon damage and increases your chance to dodge by 15% for 7 sec. Awards 1 combo point."
+			]
 		},
 		{
 			"id": 16511,
@@ -2483,7 +4156,13 @@
 			"level": 0,
 			"tree": "subtlety",
 			"talent": true,
-			"ranks": 3
+			"ranks": 3,
+			"max": 17348,
+			"rank": "Rank 3",
+			"tooltip": [["35 Energy", "Melee Range"], "Instant", "Requires Melee Weapon"],
+			"description": [
+				"An instant strike that damages the opponent and causes the target to hemorrhage, increasing any Physical damage dealt to the target by up to 7. Lasts 30 charges or 15 sec. Awards 1 combo point."
+			]
 		},
 		{
 			"id": 14183,
@@ -2492,7 +4171,13 @@
 			"level": 0,
 			"tree": "subtlety",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 14183,
+			"rank": "",
+			"tooltip": ["20 yd range", ["Instant", "2 min cooldown"], "Requires Stealth"],
+			"description": [
+				"When used, adds 2 combo points to your target. You must add to or use those combo points within 10 sec or the combo points are lost."
+			]
 		},
 		{
 			"id": 14185,
@@ -2501,7 +4186,13 @@
 			"level": 0,
 			"tree": "subtlety",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 14185,
+			"rank": "",
+			"tooltip": [["Instant", "10 min cooldown"]],
+			"description": [
+				"When activated, this ability immediately finishes the cooldown on your other Rogue abilities."
+			]
 		},
 		{
 			"id": 14251,
@@ -2510,7 +4201,16 @@
 			"level": 0,
 			"tree": "combat",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 14251,
+			"rank": "",
+			"tooltip": [
+				["10 Energy", "Melee Range"],
+				["Instant", "6 sec cooldown"]
+			],
+			"description": [
+				"A strike that becomes active after parrying an opponent's attack. This attack deals 150% weapon damage and disarms the target for 6 sec."
+			]
 		},
 		{
 			"id": 2098,
@@ -2519,7 +4219,18 @@
 			"level": 1,
 			"tree": "assassination",
 			"talent": false,
-			"ranks": 9
+			"ranks": 9,
+			"max": 31016,
+			"rank": "Rank 9",
+			"tooltip": [["35 Energy", "Melee Range"], "Instant", "Requires Melee Weapon"],
+			"description": [
+				"Finishing move that causes damage per combo point, increased by Attack Power:",
+				"1 point : 224-332 damage",
+				"2 points: 394-502 damage",
+				"3 points: 564-672 damage",
+				"4 points: 734-842 damage",
+				"5 points: 904-1012 damage"
+			]
 		},
 		{
 			"id": 1804,
@@ -2528,7 +4239,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1804,
+			"rank": "",
+			"tooltip": ["5 yd range", "5 sec cast", "Tools: Thieves' Tools"],
+			"description": ["Allows opening of locked chests and doors."]
 		},
 		{
 			"id": 1752,
@@ -2537,7 +4252,13 @@
 			"level": 1,
 			"tree": "combat",
 			"talent": false,
-			"ranks": 8
+			"ranks": 8,
+			"max": 11294,
+			"rank": "Rank 8",
+			"tooltip": [["45 Energy", "Melee Range"], "Instant", "Requires Melee Weapon"],
+			"description": [
+				"An instant strike that causes 68 damage in addition to your normal weapon damage. Awards 1 combo point."
+			]
 		},
 		{
 			"id": 1784,
@@ -2546,7 +4267,13 @@
 			"level": 1,
 			"tree": "subtlety",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 1787,
+			"rank": "Rank 4",
+			"tooltip": [["Instant", "10 sec cooldown"]],
+			"description": [
+				"Allows the rogue to sneak around, but reduces your speed by 30%. Lasts until cancelled."
+			]
 		},
 		{
 			"id": 53,
@@ -2555,7 +4282,13 @@
 			"level": 4,
 			"tree": "combat",
 			"talent": false,
-			"ranks": 9
+			"ranks": 9,
+			"max": 25300,
+			"rank": "Rank 9",
+			"tooltip": [["60 Energy", "Melee Range"], "Instant"],
+			"description": [
+				"Backstab the target, causing 150% weapon damage plus 225 to the target. Must be behind the target. Requires a dagger in the main hand. Awards 1 combo point."
+			]
 		},
 		{
 			"id": 921,
@@ -2564,7 +4297,11 @@
 			"level": 4,
 			"tree": "subtlety",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 921,
+			"rank": "",
+			"tooltip": ["Melee Range", "Instant", "Requires Stealth"],
+			"description": ["Pick the target's pocket."]
 		},
 		{
 			"id": 1776,
@@ -2573,7 +4310,17 @@
 			"level": 6,
 			"tree": "combat",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 11286,
+			"rank": "Rank 5",
+			"tooltip": [
+				["45 Energy", "Melee Range"],
+				["Instant", "10 sec cooldown"],
+				"Requires Melee Weapon"
+			],
+			"description": [
+				"Causes 75 damage, incapacitating the opponent for 4 sec, and turns off your attack. Target must be facing you. Any damage caused will revive the target. Awards 1 combo point."
+			]
 		},
 		{
 			"id": 5277,
@@ -2582,7 +4329,11 @@
 			"level": 8,
 			"tree": "combat",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5277,
+			"rank": "",
+			"tooltip": [["Instant", "5 min cooldown"]],
+			"description": ["The rogue's dodge chance will increase by 50% for 15 sec."]
 		},
 		{
 			"id": 6770,
@@ -2591,7 +4342,18 @@
 			"level": 10,
 			"tree": "subtlety",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 11297,
+			"rank": "Rank 3",
+			"tooltip": [
+				["65 Energy", "Melee Range"],
+				"Instant",
+				"Requires Melee Weapon",
+				"Requires Stealth"
+			],
+			"description": [
+				"Incapacitates the target for up to 45 sec. Must be stealthed. Only works on Humanoids that are not in combat. Any damage caused will revive the target. Only 1 target may be sapped at a time."
+			]
 		},
 		{
 			"id": 5171,
@@ -2600,7 +4362,18 @@
 			"level": 10,
 			"tree": "assassination",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 6774,
+			"rank": "Rank 2",
+			"tooltip": [["25 Energy", "100 yd range"], "Instant"],
+			"description": [
+				"Finishing move that increases melee attack speed by 30%. Lasts longer per combo point:",
+				"1 point : 9 seconds",
+				"2 points: 12 seconds",
+				"3 points: 15 seconds",
+				"4 points: 18 seconds",
+				"5 points: 21 seconds"
+			]
 		},
 		{
 			"id": 2983,
@@ -2609,7 +4382,13 @@
 			"level": 10,
 			"tree": "combat",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 11305,
+			"rank": "Rank 3",
+			"tooltip": [["Instant", "5 min cooldown"]],
+			"description": [
+				"Increases the rogue's movement speed by 70% for 15 sec. Does not break stealth."
+			]
 		},
 		{
 			"id": 1766,
@@ -2618,7 +4397,16 @@
 			"level": 12,
 			"tree": "combat",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 1769,
+			"rank": "Rank 4",
+			"tooltip": [
+				["25 Energy", "Melee Range"],
+				["Instant", "10 sec cooldown"]
+			],
+			"description": [
+				"A quick kick that injures a single foe for 80 damage. It also interrupts spellcasting and prevents any spell in that school from being cast for 5 sec."
+			]
 		},
 		{
 			"id": 8647,
@@ -2627,7 +4415,18 @@
 			"level": 14,
 			"tree": "assassination",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 11198,
+			"rank": "Rank 5",
+			"tooltip": [["25 Energy", "Melee Range"], "Instant", "Requires Melee Weapon"],
+			"description": [
+				"Finishing move that exposes the target for 30 sec, reducing armor per combo point:",
+				"1 point : 340 armor",
+				"2 points: 680 armor",
+				"3 points: 1020 armor",
+				"4 points: 1360 armor",
+				"5 points: 1700 armor"
+			]
 		},
 		{
 			"id": 703,
@@ -2636,7 +4435,13 @@
 			"level": 14,
 			"tree": "assassination",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 11290,
+			"rank": "Rank 6",
+			"tooltip": [["50 Energy", "Melee Range"], "Instant", "Requires Stealth"],
+			"description": [
+				"Garrote the enemy, causing 552 damage over 18 sec, increased by your Attack Power. Must be stealthed and behind the target. Awards 1 combo point."
+			]
 		},
 		{
 			"id": 1966,
@@ -2645,7 +4450,16 @@
 			"level": 16,
 			"tree": "combat",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 25302,
+			"rank": "Rank 5",
+			"tooltip": [
+				["20 Energy", "Melee Range"],
+				["Instant", "10 sec cooldown"]
+			],
+			"description": [
+				"Performs a feint, causing no damage but lowering your threat by a large amount, making the enemy less likely to attack you."
+			]
 		},
 		{
 			"id": 8676,
@@ -2654,7 +4468,13 @@
 			"level": 18,
 			"tree": "assassination",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 11269,
+			"rank": "Rank 6",
+			"tooltip": [["60 Energy", "Melee Range"], "Instant", "Requires Stealth"],
+			"description": [
+				"Ambush the target, causing 250% weapon damage plus 290 to the target. Must be stealthed and behind the target. Requires a dagger in the main hand. Awards 1 combo point."
+			]
 		},
 		{
 			"id": 1943,
@@ -2663,7 +4483,18 @@
 			"level": 20,
 			"tree": "assassination",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 11275,
+			"rank": "Rank 6",
+			"tooltip": [["25 Energy", "Melee Range"], "Instant", "Requires Melee Weapon"],
+			"description": [
+				"Finishing move that causes damage over time, increased by your Attack Power. Lasts longer per combo point:",
+				"1 point : 272 damage over 8 secs",
+				"2 points: 380 damage over 10 secs",
+				"3 points: 504 damage over 12 secs",
+				"4 points: 644 damage over 14 secs",
+				"5 points: 800 damage over 16 secs"
+			]
 		},
 		{
 			"id": 1725,
@@ -2672,7 +4503,16 @@
 			"level": 22,
 			"tree": "subtlety",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1725,
+			"rank": "",
+			"tooltip": [
+				["30 Energy", "30 yd range"],
+				["Instant", "30 sec cooldown"]
+			],
+			"description": [
+				"Throws a distraction, attracting the attention of all nearby monsters for 10 seconds. Does not break stealth."
+			]
 		},
 		{
 			"id": 1856,
@@ -2681,7 +4521,13 @@
 			"level": 22,
 			"tree": "subtlety",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 1857,
+			"rank": "Rank 2",
+			"tooltip": [["Instant", "5 min cooldown"], "Reagents: Flash Powder"],
+			"description": [
+				"Allows the rogue to vanish from sight, entering an improved stealth mode for 10 sec. Also breaks movement impairing effects. More effective than Vanish (Rank 1)."
+			]
 		},
 		{
 			"id": 1833,
@@ -2690,7 +4536,16 @@
 			"level": 26,
 			"tree": "assassination",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1833,
+			"rank": "",
+			"tooltip": [
+				["60 Energy", "Melee Range"],
+				"Instant",
+				"Requires Melee Weapon",
+				"Requires Stealth"
+			],
+			"description": ["Stuns the target for 4 sec. Must be stealthed. Awards 2 combo points."]
 		},
 		{
 			"id": 1842,
@@ -2699,7 +4554,13 @@
 			"level": 30,
 			"tree": "subtlety",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1842,
+			"rank": "",
+			"tooltip": ["5 yd range", "2 sec cast", "Tools: Thieves' Tools"],
+			"description": [
+				"Sneak up on the trap in order to disarm it. Don't get too close or the trap will go off."
+			]
 		},
 		{
 			"id": 408,
@@ -2708,7 +4569,22 @@
 			"level": 30,
 			"tree": "assassination",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 8643,
+			"rank": "Rank 2",
+			"tooltip": [
+				["25 Energy", "Melee Range"],
+				["Instant", "20 sec cooldown"],
+				"Requires Melee Weapon"
+			],
+			"description": [
+				"Finishing move that stuns the target. Lasts longer per combo point:",
+				"1 point : 2 seconds",
+				"2 points: 3 seconds",
+				"3 points: 4 seconds",
+				"4 points: 5 seconds",
+				"5 points: 6 seconds"
+			]
 		},
 		{
 			"id": 2094,
@@ -2717,7 +4593,17 @@
 			"level": 34,
 			"tree": "subtlety",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2094,
+			"rank": "",
+			"tooltip": [
+				["30 Energy", "10 yd range"],
+				["Instant", "5 min cooldown"],
+				"Reagents: Blinding Powder"
+			],
+			"description": [
+				"Blinds the target, causing it to wander disoriented for up to 10 sec. Any damage caused will remove the effect."
+			]
 		}
 	],
 	"shaman": [
@@ -2728,7 +4614,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6603,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": []
 		},
 		{
 			"id": 16166,
@@ -2737,7 +4627,13 @@
 			"level": 0,
 			"tree": "elemental",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 16166,
+			"rank": "",
+			"tooltip": [["Instant", "3 min cooldown"]],
+			"description": [
+				"When activated, this spell gives your next Fire, Frost, or Nature damage spell a 100% critical strike chance and reduces the mana cost by 100%."
+			]
 		},
 		{
 			"id": 16190,
@@ -2746,7 +4642,13 @@
 			"level": 0,
 			"tree": "restoration",
 			"talent": true,
-			"ranks": 3
+			"ranks": 3,
+			"max": 17359,
+			"rank": "Rank 3",
+			"tooltip": ["60 Mana", ["Instant", "5 min cooldown"], "Tools: Water Totem"],
+			"description": [
+				"Summons a Mana Tide Totem with 5 health at the feet of the caster for 12 sec that restores 290 mana every 3 seconds to group members within 20 yards."
+			]
 		},
 		{
 			"id": 16188,
@@ -2755,7 +4657,13 @@
 			"level": 0,
 			"tree": "restoration",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 16188,
+			"rank": "",
+			"tooltip": [["Instant", "3 min cooldown"]],
+			"description": [
+				"When activated, your next Nature spell with a casting time less than 10 sec. becomes an instant cast spell."
+			]
 		},
 		{
 			"id": 17364,
@@ -2764,7 +4672,16 @@
 			"level": 0,
 			"tree": "enhancement",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 17364,
+			"rank": "Rank 1",
+			"tooltip": [
+				["21% of base mana", "Melee Range"],
+				["Instant", "20 sec cooldown"]
+			],
+			"description": [
+				"Gives you an extra attack. In addition, the next 2 sources of Nature damage dealt to the target are increased by 20%. Lasts 12 sec."
+			]
 		},
 		{
 			"id": 331,
@@ -2773,7 +4690,11 @@
 			"level": 1,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 10
+			"ranks": 10,
+			"max": 25357,
+			"rank": "Rank 10",
+			"tooltip": [["620 Mana", "40 yd range"], "3 sec cast"],
+			"description": ["Heals a friendly target for 1620 to 1850."]
 		},
 		{
 			"id": 403,
@@ -2782,7 +4703,11 @@
 			"level": 1,
 			"tree": "elemental",
 			"talent": false,
-			"ranks": 10
+			"ranks": 10,
+			"max": 15208,
+			"rank": "Rank 10",
+			"tooltip": [["265 Mana", "30 yd range"], "3 sec cast"],
+			"description": ["Casts a bolt of lightning at the target for 428 to 477 Nature damage."]
 		},
 		{
 			"id": 8017,
@@ -2791,7 +4716,13 @@
 			"level": 1,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 16316,
+			"rank": "Rank 7",
+			"tooltip": ["150 Mana", "Instant", "Requires Melee Weapon"],
+			"description": [
+				"Imbue the Shaman's weapon, increasing melee attack power by 653 and allowing melee attacks to cause additional threat when using that weapon. Lasts for 5 minutes."
+			]
 		},
 		{
 			"id": 8042,
@@ -2800,7 +4731,16 @@
 			"level": 4,
 			"tree": "elemental",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 10414,
+			"rank": "Rank 7",
+			"tooltip": [
+				["450 Mana", "20 yd range"],
+				["Instant", "6 sec cooldown"]
+			],
+			"description": [
+				"Instantly shocks the target with concussive force, causing 517 to 545 Nature damage. It also interrupts spellcasting and prevents any spell in that school from being cast for 2 sec. Causes a high amount of threat."
+			]
 		},
 		{
 			"id": 8071,
@@ -2809,7 +4749,13 @@
 			"level": 4,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10408,
+			"rank": "Rank 6",
+			"tooltip": ["210 Mana", "Instant", "Tools: Earth Totem"],
+			"description": [
+				"Summons a Stoneskin Totem with 5 health at the feet of the caster. The totem protects party members within 20 yards, reducing melee damage taken by 30. Lasts 2 min."
+			]
 		},
 		{
 			"id": 2484,
@@ -2818,7 +4764,13 @@
 			"level": 6,
 			"tree": "elemental",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2484,
+			"rank": "",
+			"tooltip": ["6% of base mana", ["Instant", "15 sec cooldown"], "Tools: Earth Totem"],
+			"description": [
+				"Summons an Earthbind Totem with 5 health at the feet of the caster for 45 sec that slows the movement speed of enemies within 10 yards."
+			]
 		},
 		{
 			"id": 324,
@@ -2827,7 +4779,14 @@
 			"level": 8,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 10432,
+			"rank": "Rank 7",
+			"tooltip": ["370 Mana", "Instant"],
+			"description": [
+				"The caster is surrounded by 3 balls of lightning. When a spell, melee or ranged attack hits the caster, the attacker will be struck for 198 Nature damage. This expends one lightning ball. Only one ball will fire every few seconds. Lasts 10 min.",
+				"(3.5s cooldown)"
+			]
 		},
 		{
 			"id": 5730,
@@ -2836,7 +4795,13 @@
 			"level": 8,
 			"tree": "elemental",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10428,
+			"rank": "Rank 6",
+			"tooltip": ["140 Mana", ["Instant", "30 sec cooldown"], "Tools: Earth Totem"],
+			"description": [
+				"Summons a Stoneclaw Totem with 480 health at the feet of the caster for 15 sec that taunts creatures within 8 yards to attack it."
+			]
 		},
 		{
 			"id": 8050,
@@ -2845,7 +4810,16 @@
 			"level": 10,
 			"tree": "elemental",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 29228,
+			"rank": "Rank 6",
+			"tooltip": [
+				["410 Mana", "20 yd range"],
+				["Instant", "6 sec cooldown"]
+			],
+			"description": [
+				"Instantly sears the target with fire, causing 292 Fire damage immediately and 320 Fire damage over 12 sec."
+			]
 		},
 		{
 			"id": 8024,
@@ -2854,7 +4828,13 @@
 			"level": 10,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 16342,
+			"rank": "Rank 6",
+			"tooltip": ["155 Mana", "Instant", "Requires Melee Weapon"],
+			"description": [
+				"Imbue the Shaman's weapon with fire. Each hit causes 37 to 112 additional Fire damage, based on the speed of the weapon. Slower weapons cause more fire damage per swing. Lasts for 5 minutes."
+			]
 		},
 		{
 			"id": 3599,
@@ -2863,7 +4843,13 @@
 			"level": 10,
 			"tree": "elemental",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10438,
+			"rank": "Rank 6",
+			"tooltip": ["170 Mana", "Instant", "Tools: Fire Totem"],
+			"description": [
+				"Summons a Searing Totem with 5 health at your feet for 55 sec that repeatedly attacks an enemy within 20 yards for 40 to 54 Fire damage."
+			]
 		},
 		{
 			"id": 8075,
@@ -2872,7 +4858,13 @@
 			"level": 10,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 25361,
+			"rank": "Rank 5",
+			"tooltip": ["275 Mana", "Instant", "Tools: Earth Totem"],
+			"description": [
+				"Summons a Strength of Earth Totem with 5 health at the feet of the caster. The totem increases the strength of party members within 20 yards by 77. Lasts 2 min."
+			]
 		},
 		{
 			"id": 2008,
@@ -2881,7 +4873,13 @@
 			"level": 12,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 20777,
+			"rank": "Rank 5",
+			"tooltip": [["90% of base mana", "30 yd range"], "10 sec cast"],
+			"description": [
+				"Returns the spirit to the body, restoring a dead target to life with 600 health and 800 mana. Cannot be cast when in combat."
+			]
 		},
 		{
 			"id": 1535,
@@ -2890,7 +4888,13 @@
 			"level": 12,
 			"tree": "elemental",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 11315,
+			"rank": "Rank 5",
+			"tooltip": ["520 Mana", ["Instant", "15 sec cooldown"], "Tools: Fire Totem"],
+			"description": [
+				"Summons a Fire Nova Totem that has 5 health and lasts 5 sec. Unless it is destroyed within 4 sec., the totem inflicts 413 to 459 fire damage to enemies within 10 yd."
+			]
 		},
 		{
 			"id": 370,
@@ -2899,7 +4903,11 @@
 			"level": 12,
 			"tree": "elemental",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 8012,
+			"rank": "Rank 2",
+			"tooltip": [["10% of base mana", "30 yd range"], "Instant"],
+			"description": ["Purges the enemy target, removing 2 beneficial magic effects."]
 		},
 		{
 			"id": 526,
@@ -2908,7 +4916,11 @@
 			"level": 16,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 526,
+			"rank": "",
+			"tooltip": [["9% of base mana", "30 yd range"], "Instant"],
+			"description": ["Cures 1 poison effect on the target."]
 		},
 		{
 			"id": 8143,
@@ -2917,7 +4929,13 @@
 			"level": 18,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 8143,
+			"rank": "",
+			"tooltip": ["60 Mana", "Instant", "Tools: Earth Totem"],
+			"description": [
+				"Summons a Tremor Totem with 5 health at the feet of the caster that shakes the ground around it, removing Fear, Charm and Sleep effects from party members within 30 yards. Lasts 2 min."
+			]
 		},
 		{
 			"id": 8056,
@@ -2926,7 +4944,16 @@
 			"level": 20,
 			"tree": "elemental",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 10473,
+			"rank": "Rank 4",
+			"tooltip": [
+				["430 Mana", "20 yd range"],
+				["Instant", "6 sec cooldown"]
+			],
+			"description": [
+				"Instantly shocks the target with frost, causing 492 to 520 Frost damage and slowing movement speed by 50%. Lasts 8 sec."
+			]
 		},
 		{
 			"id": 8033,
@@ -2935,7 +4962,13 @@
 			"level": 20,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 16356,
+			"rank": "Rank 5",
+			"tooltip": ["160 Mana", "Instant", "Requires Melee Weapon"],
+			"description": [
+				"Imbue the Shaman's weapon with frost. Each hit has a chance of causing 187 additional Frost damage and slowing the target's movement speed by 25% for 8 sec. Lasts for 5 minutes."
+			]
 		},
 		{
 			"id": 2645,
@@ -2944,7 +4977,13 @@
 			"level": 20,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2645,
+			"rank": "",
+			"tooltip": ["100 Mana", "3 sec cast"],
+			"description": [
+				"Turns the Shaman into a Ghost Wolf, increasing speed by 40%. Only useable outdoors."
+			]
 		},
 		{
 			"id": 5394,
@@ -2953,7 +4992,13 @@
 			"level": 20,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 10463,
+			"rank": "Rank 5",
+			"tooltip": ["80 Mana", "Instant", "Tools: Water Totem"],
+			"description": [
+				"Summons a Healing Stream Totem with 5 health at the feet of the caster for 1 min that heals group members within 20 yards for 14 every 2 seconds."
+			]
 		},
 		{
 			"id": 8004,
@@ -2962,7 +5007,11 @@
 			"level": 20,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 10468,
+			"rank": "Rank 6",
+			"tooltip": [["380 Mana", "40 yd range"], "1.5 sec cast"],
+			"description": ["Heals a friendly target for 832 to 928."]
 		},
 		{
 			"id": 2870,
@@ -2971,7 +5020,11 @@
 			"level": 22,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2870,
+			"rank": "",
+			"tooltip": [["9% of base mana", "30 yd range"], "Instant"],
+			"description": ["Cures 1 disease on the target."]
 		},
 		{
 			"id": 8166,
@@ -2980,7 +5033,13 @@
 			"level": 22,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 8166,
+			"rank": "",
+			"tooltip": ["10% of base mana", "Instant", "Tools: Water Totem"],
+			"description": [
+				"Summons a Poison Cleansing Totem with 5 health at the feet of the caster that attempts to remove 1 poison effect from party members within 20 yards every 5 seconds. Lasts 2 min."
+			]
 		},
 		{
 			"id": 131,
@@ -2989,7 +5048,11 @@
 			"level": 22,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 131,
+			"rank": "",
+			"tooltip": [["50 Mana", "30 yd range"], "Instant", "Reagents: Shiny Fish Scales"],
+			"description": ["Allows the target to breathe underwater for 10 min."]
 		},
 		{
 			"id": 8181,
@@ -2998,7 +5061,13 @@
 			"level": 24,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10479,
+			"rank": "Rank 3",
+			"tooltip": ["180 Mana", "Instant", "Tools: Fire Totem"],
+			"description": [
+				"Summons a Frost Resistance Totem with 5 health at the feet of the caster for 2 min. The totem increases party members' frost resistance by 60, if within 20 yards."
+			]
 		},
 		{
 			"id": 6196,
@@ -3007,7 +5076,13 @@
 			"level": 26,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6196,
+			"rank": "",
+			"tooltip": [["80 Mana", "Unlimited range"], "2 sec cast"],
+			"description": [
+				"Changes the caster's viewpoint to the targeted location. Lasts 1 min. Only useable outdoors."
+			]
 		},
 		{
 			"id": 8190,
@@ -3016,7 +5091,13 @@
 			"level": 26,
 			"tree": "elemental",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 10587,
+			"rank": "Rank 4",
+			"tooltip": ["650 Mana", "Instant", "Tools: Fire Totem"],
+			"description": [
+				"Summons a Magma Totem with 5 health at the feet of the caster for 20 sec that causes 75 Fire damage to creatures within 8 yards every 2 seconds."
+			]
 		},
 		{
 			"id": 5675,
@@ -3025,7 +5106,13 @@
 			"level": 26,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 10497,
+			"rank": "Rank 4",
+			"tooltip": ["100 Mana", "Instant", "Tools: Water Totem"],
+			"description": [
+				"Summons a Mana Spring Totem with 5 health at the feet of the caster for 1 min that restores 10 mana every 2 seconds to group members within 20 yards."
+			]
 		},
 		{
 			"id": 8184,
@@ -3034,7 +5121,13 @@
 			"level": 28,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10538,
+			"rank": "Rank 3",
+			"tooltip": ["180 Mana", "Instant", "Tools: Water Totem"],
+			"description": [
+				"Summons a Fire Resistance Totem with 5 health at the feet of the caster for 2 min that increases the fire resistance of party members within 20 yards by 60."
+			]
 		},
 		{
 			"id": 8227,
@@ -3043,7 +5136,13 @@
 			"level": 28,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 16387,
+			"rank": "Rank 4",
+			"tooltip": ["275 Mana", "Instant", "Tools: Fire Totem"],
+			"description": [
+				"Summons a Flametongue Totem with 5 health at the feet of the caster. The totem enchants all party members' main-hand weapons with fire if they are within 20 yards. Each hit causes (1217 / 77 * 1) to (1217 / 25 * 1) additional Fire damage, based on the speed of the weapon. Slower weapons cause more fire damage per swing. Lasts 2 min."
+			]
 		},
 		{
 			"id": 546,
@@ -3052,7 +5151,13 @@
 			"level": 28,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 546,
+			"rank": "",
+			"tooltip": [["95 Mana", "30 yd range"], "Instant", "Reagents: Fish Oil"],
+			"description": [
+				"Allows the friendly target to walk across water for 10 min. Any damage will cancel the effect."
+			]
 		},
 		{
 			"id": 556,
@@ -3061,7 +5166,13 @@
 			"level": 30,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 556,
+			"rank": "",
+			"tooltip": ["150 Mana", ["10 sec cast", "15 min cooldown"]],
+			"description": [
+				"Yanks the caster through the twisting nether back to Hearthstone Location. Speak to an Innkeeper in a different place to change your home location."
+			]
 		},
 		{
 			"id": 8177,
@@ -3070,7 +5181,13 @@
 			"level": 30,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 8177,
+			"rank": "",
+			"tooltip": ["6% of base mana", ["Instant", "15 sec cooldown"], "Tools: Air Totem"],
+			"description": [
+				"Summons a Grounding Totem with 5 health at the feet of the caster that will redirect one harmful spell cast on a nearby party member to itself every 10 seconds. Will not redirect area of effect spells. Lasts 45 sec."
+			]
 		},
 		{
 			"id": 10595,
@@ -3079,7 +5196,13 @@
 			"level": 30,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10601,
+			"rank": "Rank 3",
+			"tooltip": ["180 Mana", "Instant", "Tools: Air Totem"],
+			"description": [
+				"Summons a Nature Resistance Totem with 5 health at the feet of the caster for 2 min that increases the nature resistance of party members within 20 yards by 60."
+			]
 		},
 		{
 			"id": 20608,
@@ -3088,7 +5211,11 @@
 			"level": 30,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 20608,
+			"rank": "Passive",
+			"tooltip": ["1 hour cooldown", "Reagents: Ankh"],
+			"description": ["Allows you to resurrect yourself upon death with 20% health and mana."]
 		},
 		{
 			"id": 8232,
@@ -3097,7 +5224,13 @@
 			"level": 30,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 16362,
+			"rank": "Rank 4",
+			"tooltip": ["165 Mana", "Instant", "Requires Melee Weapon"],
+			"description": [
+				"Imbue the Shaman's weapon with wind. Each hit has a 20% chance of granting you 2 extra attacks with 333 extra melee attack power. Lasts for 5 minutes."
+			]
 		},
 		{
 			"id": 421,
@@ -3106,7 +5239,16 @@
 			"level": 32,
 			"tree": "elemental",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 10605,
+			"rank": "Rank 4",
+			"tooltip": [
+				["605 Mana", "30 yd range"],
+				["2.5 sec cast", "6 sec cooldown"]
+			],
+			"description": [
+				"Hurls a lightning bolt at the enemy, dealing 505 to 564 Nature damage and then jumping to additional nearby enemies. Each jump reduces the damage by 30%. Affects 3 total targets."
+			]
 		},
 		{
 			"id": 8512,
@@ -3115,7 +5257,13 @@
 			"level": 32,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10614,
+			"rank": "Rank 3",
+			"tooltip": ["250 Mana", "Instant", "Tools: Air Totem"],
+			"description": [
+				"Summons a Windfury Totem with 5 health at the feet of the caster. The totem enchants all party members main-hand weapons with wind, if they are within 20 yards. Each hit has a 20% chance of granting the attacker 1 extra attack with (315 * 1) extra melee attack power. Lasts 2 min."
+			]
 		},
 		{
 			"id": 6495,
@@ -3124,7 +5272,13 @@
 			"level": 34,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6495,
+			"rank": "",
+			"tooltip": ["65 Mana", "Instant", "Tools: Air Totem"],
+			"description": [
+				"Summons an immobile Sentry Totem with 100 health at your feet for 5 min that allows vision of nearby area and warns of enemies that attack it. Right-Click on buff to switch back and forth between totem sight and shaman sight."
+			]
 		},
 		{
 			"id": 15107,
@@ -3133,7 +5287,13 @@
 			"level": 36,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 15112,
+			"rank": "Rank 3",
+			"tooltip": ["225 Mana", "Instant", "Tools: Air Totem"],
+			"description": [
+				"Summons a Windwall Totem with 5 health at the feet of the caster. The totem protects party members within 20 yards, reducing ranged damage taken by 64. Lasts 2 min."
+			]
 		},
 		{
 			"id": 8170,
@@ -3142,7 +5302,13 @@
 			"level": 38,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 8170,
+			"rank": "",
+			"tooltip": ["10% of base mana", "Instant", "Tools: Water Totem"],
+			"description": [
+				"Summons a Disease Cleansing Totem with 5 health at the feet of the caster that attempts to remove 1 disease effect from party members within 20 yards every 5 seconds. Lasts 2 min."
+			]
 		},
 		{
 			"id": 1064,
@@ -3151,7 +5317,13 @@
 			"level": 40,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 10623,
+			"rank": "Rank 3",
+			"tooltip": [["405 Mana", "40 yd range"], "2.5 sec cast"],
+			"description": [
+				"Heals the friendly target for 567 to 646, then jumps to heal additional nearby targets. If cast on a party member, the heal will only jump to other party members. Each jump is 50% as effective as the previous target. Heals 3 total targets."
+			]
 		},
 		{
 			"id": 8835,
@@ -3160,7 +5332,13 @@
 			"level": 42,
 			"tree": "enhancement",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 25359,
+			"rank": "Rank 3",
+			"tooltip": ["310 Mana", "Instant", "Tools: Air Totem"],
+			"description": [
+				"Summons a Grace of Air Totem with 5 health at the feet of the caster. The totem increases the agility of party members within 20 yards by 77. Lasts 2 min."
+			]
 		},
 		{
 			"id": 25908,
@@ -3169,7 +5347,13 @@
 			"level": 50,
 			"tree": "restoration",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 25908,
+			"rank": "",
+			"tooltip": ["8% of base mana", "Instant", "Tools: Air Totem"],
+			"description": [
+				"Summons a Tranquil Air Totem with 5 health at the feet of the caster. The totem reduces the threat caused by all party members within 20 yards by 20%. Lasts 2 min."
+			]
 		}
 	],
 	"warlock": [
@@ -3180,7 +5364,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6603,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": []
 		},
 		{
 			"id": 5019,
@@ -3189,7 +5377,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5019,
+			"rank": "",
+			"tooltip": ["30 yd range", "Instant"],
+			"description": ["Attack with an equipped wand."]
 		},
 		{
 			"id": 18288,
@@ -3198,7 +5390,13 @@
 			"level": 0,
 			"tree": "affliction",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 18288,
+			"rank": "",
+			"tooltip": [["Instant", "3 min cooldown"]],
+			"description": [
+				"Increases the effect of your next Curse of Weakness or Curse of Agony by 50%, or your next Curse of Exhaustion by 20%. Lasts 30 sec."
+			]
 		},
 		{
 			"id": 17962,
@@ -3207,7 +5405,16 @@
 			"level": 0,
 			"tree": "destruction",
 			"talent": true,
-			"ranks": 4
+			"ranks": 4,
+			"max": 18932,
+			"rank": "Rank 4",
+			"tooltip": [
+				["255 Mana", "30 yd range"],
+				["Instant", "10 sec cooldown"]
+			],
+			"description": [
+				"Ignites a target that is already afflicted by Immolate, dealing 447 to 557 Fire damage and consuming the Immolate spell."
+			]
 		},
 		{
 			"id": 18223,
@@ -3216,7 +5423,13 @@
 			"level": 0,
 			"tree": "affliction",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 18223,
+			"rank": "",
+			"tooltip": [["8% of base mana", "30 yd range"], "Instant"],
+			"description": [
+				"Reduces the target's movement speed by 10% for 12 sec. Only one Curse per Warlock can be active on any one target."
+			]
 		},
 		{
 			"id": 18220,
@@ -3225,7 +5438,11 @@
 			"level": 0,
 			"tree": "affliction",
 			"talent": true,
-			"ranks": 3
+			"ranks": 3,
+			"max": 18938,
+			"rank": "Rank 3",
+			"tooltip": ["20 yd range", "Instant"],
+			"description": ["Drains 250 of your pet's Mana, returning 100% to you."]
 		},
 		{
 			"id": 18788,
@@ -3234,7 +5451,17 @@
 			"level": 0,
 			"tree": "demonology",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 18788,
+			"rank": "",
+			"tooltip": ["100 yd range", "Instant"],
+			"description": [
+				"When activated, sacrifices your summoned demon to grant you an effect that lasts 30 min. The effect is canceled if any Demon is summoned.",
+				"Imp: Increases your Fire damage by 15%.",
+				"Voidwalker: Restores 3% of total Health every 4 sec.",
+				"Succubus/Incubus: Increases your Shadow damage by 15%.",
+				"Felhunter: Restores 2% of total Mana every 4 sec."
+			]
 		},
 		{
 			"id": 18708,
@@ -3243,7 +5470,13 @@
 			"level": 0,
 			"tree": "demonology",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 18708,
+			"rank": "",
+			"tooltip": [["Instant", "15 min cooldown"]],
+			"description": [
+				"Your next Imp, Voidwalker, Succubus, Incubus, or Felhunter Summon spell has its casting time reduced by 5.5 sec and its Mana cost reduced by 50%."
+			]
 		},
 		{
 			"id": 17877,
@@ -3252,7 +5485,17 @@
 			"level": 0,
 			"tree": "destruction",
 			"talent": true,
-			"ranks": 6
+			"ranks": 6,
+			"max": 18871,
+			"rank": "Rank 6",
+			"tooltip": [
+				["365 Mana", "20 yd range"],
+				["Instant", "15 sec cooldown"],
+				"Reagents: Soul Shard"
+			],
+			"description": [
+				"Instantly blasts the target for 462 to 514 Shadow damage. If the target dies within 5 sec of Shadowburn, and yields experience or honor, the caster gains a Soul Shard."
+			]
 		},
 		{
 			"id": 18265,
@@ -3261,7 +5504,13 @@
 			"level": 0,
 			"tree": "affliction",
 			"talent": true,
-			"ranks": 4
+			"ranks": 4,
+			"max": 18881,
+			"rank": "Rank 4",
+			"tooltip": [["365 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Transfers 45 health from the target to the caster every 3 sec. Lasts 30 sec."
+			]
 		},
 		{
 			"id": 19028,
@@ -3270,7 +5519,13 @@
 			"level": 0,
 			"tree": "demonology",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 19028,
+			"rank": "",
+			"tooltip": [["20% of base mana", "100 yd range"], "Instant"],
+			"description": [
+				"When active, 30% of all damage taken by the caster is taken by your Imp, Voidwalker, Succubus, Incubus, or Felhunter demon instead. In addition, both the demon and master will inflict 3% more damage. Lasts as long as the demon is active."
+			]
 		},
 		{
 			"id": 687,
@@ -3279,7 +5534,13 @@
 			"level": 1,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 696,
+			"rank": "Rank 2",
+			"tooltip": ["120 Mana", "Instant"],
+			"description": [
+				"Protects the caster, increasing armor by 120 and restores 5 Health per 5 sec. for 30 min."
+			]
 		},
 		{
 			"id": 348,
@@ -3288,7 +5549,13 @@
 			"level": 1,
 			"tree": "destruction",
 			"talent": false,
-			"ranks": 8
+			"ranks": 8,
+			"max": 25309,
+			"rank": "Rank 8",
+			"tooltip": [["380 Mana", "30 yd range"], "2 sec cast"],
+			"description": [
+				"Burns the enemy for 279 Fire damage and then an additional 510 Fire damage over 15 sec."
+			]
 		},
 		{
 			"id": 686,
@@ -3297,7 +5564,11 @@
 			"level": 1,
 			"tree": "destruction",
 			"talent": false,
-			"ranks": 10
+			"ranks": 10,
+			"max": 25307,
+			"rank": "Rank 10",
+			"tooltip": [["380 Mana", "30 yd range"], "3 sec cast"],
+			"description": ["Sends a shadowy bolt at the enemy, causing 482 to 538 Shadow damage."]
 		},
 		{
 			"id": 688,
@@ -3306,7 +5577,11 @@
 			"level": 1,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 688,
+			"rank": "Summon",
+			"tooltip": ["80% of base mana", "10 sec cast"],
+			"description": ["Summons an Imp under the command of the Warlock."]
 		},
 		{
 			"id": 172,
@@ -3315,7 +5590,11 @@
 			"level": 4,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 25311,
+			"rank": "Rank 7",
+			"tooltip": [["340 Mana", "30 yd range"], "2 sec cast"],
+			"description": ["Corrupts the target, causing 822 Shadow damage over 18 sec."]
 		},
 		{
 			"id": 702,
@@ -3324,7 +5603,13 @@
 			"level": 4,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 11708,
+			"rank": "Rank 6",
+			"tooltip": [["175 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Damage caused by the target is reduced by 31 for 2 min. Only one Curse per Warlock can be active on any one target."
+			]
 		},
 		{
 			"id": 1454,
@@ -3333,7 +5618,11 @@
 			"level": 6,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 11689,
+			"rank": "Rank 6",
+			"tooltip": ["Instant"],
+			"description": ["Converts 424 health into 424 mana"]
 		},
 		{
 			"id": 980,
@@ -3342,7 +5631,13 @@
 			"level": 8,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 11713,
+			"rank": "Rank 6",
+			"tooltip": [["215 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Curses the target with agony, causing 1044 Shadow damage over 24 sec. This damage is dealt slowly at first, and builds up as the Curse reaches its full duration. Only one Curse per Warlock can be active on any one target."
+			]
 		},
 		{
 			"id": 5782,
@@ -3351,7 +5646,13 @@
 			"level": 8,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 6215,
+			"rank": "Rank 3",
+			"tooltip": [["15% of base mana", "20 yd range"], "1.5 sec cast"],
+			"description": [
+				"Strikes fear in the enemy, causing it to run in fear for up to 20 sec. Damage caused may interrupt the effect. Only 1 target can be feared at a time."
+			]
 		},
 		{
 			"id": 6201,
@@ -3360,7 +5661,14 @@
 			"level": 10,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6201,
+			"rank": "",
+			"tooltip": ["95 Mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Minor Healthstone that can be used to instantly restore 100 health.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 1120,
@@ -3369,7 +5677,13 @@
 			"level": 10,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 11675,
+			"rank": "Rank 4",
+			"tooltip": [["290 Mana", "30 yd range"], "Channeled (15 sec cast)"],
+			"description": [
+				"Drains the soul of the target, causing 455 Shadow damage over 15 sec. If the target dies while being drained, and yields experience or honor, the caster gains a Soul Shard. Soul Shards are required for other spells."
+			]
 		},
 		{
 			"id": 697,
@@ -3378,7 +5692,11 @@
 			"level": 10,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 697,
+			"rank": "Summon",
+			"tooltip": ["100% of base mana", "10 sec cast", "Reagents: Soul Shard"],
+			"description": ["Summons a Voidwalker under the command of the Warlock."]
 		},
 		{
 			"id": 755,
@@ -3387,7 +5705,13 @@
 			"level": 12,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 11695,
+			"rank": "Rank 7",
+			"tooltip": [["79 Health, plus 52 per sec", "20 yd range"], "Channeled (10 sec cast)"],
+			"description": [
+				"Gives 153 health to the caster's pet every second for 10 sec as long as the caster channels."
+			]
 		},
 		{
 			"id": 704,
@@ -3396,7 +5720,13 @@
 			"level": 14,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 11717,
+			"rank": "Rank 4",
+			"tooltip": [["115 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Curses the target with recklessness, increasing melee attack power by 90 but reducing armor by 640 for 2 min. Cursed enemies will not flee and will ignore Fear and Horror effects. Only one Curse per Warlock can be active on any one target."
+			]
 		},
 		{
 			"id": 689,
@@ -3405,7 +5735,13 @@
 			"level": 14,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 11700,
+			"rank": "Rank 6",
+			"tooltip": [["300 Mana", "20 yd range"], "Channeled (5 sec cast)"],
+			"description": [
+				"Transfers 71 health every second from the target to the caster. Lasts 5 sec."
+			]
 		},
 		{
 			"id": 5697,
@@ -3414,7 +5750,11 @@
 			"level": 16,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5697,
+			"rank": "",
+			"tooltip": [["50 Mana", "30 yd range"], "Instant"],
+			"description": ["Allows the target to breathe underwater for 10 min."]
 		},
 		{
 			"id": 693,
@@ -3423,7 +5763,14 @@
 			"level": 18,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 693,
+			"rank": "",
+			"tooltip": ["85% of base mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Minor Soulstone. The Soulstone can be used to store one target's soul. If the target dies while their soul is stored, they will be able to resurrect with 400 health and 700 mana.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 5676,
@@ -3432,7 +5779,13 @@
 			"level": 18,
 			"tree": "destruction",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 17923,
+			"rank": "Rank 6",
+			"tooltip": [["168 Mana", "30 yd range"], "1.5 sec cast"],
+			"description": [
+				"Inflict searing pain on the enemy target, causing 208 to 244 Fire damage. Causes a high amount of threat."
+			]
 		},
 		{
 			"id": 706,
@@ -3441,7 +5794,13 @@
 			"level": 20,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 11735,
+			"rank": "Rank 5",
+			"tooltip": ["1580 Mana", "Instant"],
+			"description": [
+				"Protects the caster, increasing armor by 570, Shadow resistance by 15 and restores 15 health every 5 sec. for 30 min."
+			]
 		},
 		{
 			"id": 5740,
@@ -3450,7 +5809,13 @@
 			"level": 20,
 			"tree": "destruction",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 11678,
+			"rank": "Rank 4",
+			"tooltip": [["1185 Mana", "30 yd range"], "Channeled (8 sec cast)"],
+			"description": [
+				"Calls down a fiery rain to burn enemies in the area of effect for 904 Fire damage over 8 sec."
+			]
 		},
 		{
 			"id": 698,
@@ -3459,7 +5824,13 @@
 			"level": 20,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 698,
+			"rank": "",
+			"tooltip": [["300 Mana", "30 yd range"], "5 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Begins a ritual that summons the targeted group member. Requires the caster and 2 additional party members to complete the ritual. In order to participate, all players must be out of combat and right-click the portal and not move until the ritual is complete."
+			]
 		},
 		{
 			"id": 713,
@@ -3468,7 +5839,11 @@
 			"level": 20,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 713,
+			"rank": "Summon",
+			"tooltip": ["100% of base mana", "10 sec cast", "Reagents: Soul Shard"],
+			"description": ["Summons an Incubus under the command of the Warlock."]
 		},
 		{
 			"id": 712,
@@ -3477,7 +5852,11 @@
 			"level": 20,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 712,
+			"rank": "Summon",
+			"tooltip": ["100% of base mana", "10 sec cast", "Reagents: Soul Shard"],
+			"description": ["Summons a Succubus under the command of the Warlock."]
 		},
 		{
 			"id": 6202,
@@ -3486,7 +5865,14 @@
 			"level": 22,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6202,
+			"rank": "",
+			"tooltip": ["240 Mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Lesser Healthstone that can be used to instantly restore 250 health.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 126,
@@ -3495,7 +5881,13 @@
 			"level": 22,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 126,
+			"rank": "Summon",
+			"tooltip": [["100 Mana", "Unlimited range"], "5 sec cast"],
+			"description": [
+				"Summons an Eye of Kilrogg and binds your vision to it. The eye moves quickly but is very fragile."
+			]
 		},
 		{
 			"id": 5138,
@@ -3504,7 +5896,11 @@
 			"level": 24,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 11704,
+			"rank": "Rank 4",
+			"tooltip": [["310 Mana", "20 yd range"], "Channeled (5 sec cast)"],
+			"description": ["Transfers 140 Mana every 1 sec from the target to the caster. Lasts 5 sec."]
 		},
 		{
 			"id": 5500,
@@ -3513,7 +5909,13 @@
 			"level": 24,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5500,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": [
+				"Shows the location of all nearby demons on the minimap until cancelled. Only one type of tracking can be used at a time."
+			]
 		},
 		{
 			"id": 1714,
@@ -3522,7 +5924,13 @@
 			"level": 26,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 11719,
+			"rank": "Rank 2",
+			"tooltip": [["110 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Forces the target to speak in Demonic, slowing the casting time of all spells by 60%. Only one Curse per Warlock can be active on any one target. Lasts 30 sec."
+			]
 		},
 		{
 			"id": 132,
@@ -3531,7 +5939,11 @@
 			"level": 26,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 132,
+			"rank": "",
+			"tooltip": [["50 Mana", "30 yd range"], "Instant"],
+			"description": ["Allows the friendly target to detect lesser invisibility for 10 min."]
 		},
 		{
 			"id": 710,
@@ -3540,7 +5952,13 @@
 			"level": 28,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 18647,
+			"rank": "Rank 2",
+			"tooltip": [["200 Mana", "30 yd range"], "1.5 sec cast"],
+			"description": [
+				"Banishes the enemy target, preventing all action but making it invulnerable for up to 30 sec. Only one target can be banished at a time. Only works on Demons and Elementals."
+			]
 		},
 		{
 			"id": 6366,
@@ -3549,7 +5967,14 @@
 			"level": 28,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6366,
+			"rank": "",
+			"tooltip": ["500 Mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Lesser Firestone which can be equipped in the off hand. When equipped, enchants the main hand weapon with fire, granting each attack a chance to deal 25 to 35 additional Fire damage. In addition, equipping the Lesser Firestone increases the damage done by fire spells by 10.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 20752,
@@ -3558,7 +5983,14 @@
 			"level": 30,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 20752,
+			"rank": "",
+			"tooltip": ["85% of base mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Lesser Soulstone. The Soulstone can be used to store one target's soul. If the target dies while their soul is stored, they will be able to resurrect with 750 health and 1200 mana.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 1949,
@@ -3567,7 +5999,13 @@
 			"level": 30,
 			"tree": "destruction",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 11684,
+			"rank": "Rank 3",
+			"tooltip": ["1300 Mana", "Channeled (15 sec cast)"],
+			"description": [
+				"Ignites the area surrounding the caster, causing 213 Fire damage to himself and 213 Fire damage to all nearby enemies every 1 sec. Lasts 15 sec."
+			]
 		},
 		{
 			"id": 1098,
@@ -3576,7 +6014,13 @@
 			"level": 30,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 11726,
+			"rank": "Rank 3",
+			"tooltip": [["700 Mana", "30 yd range"], "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Subjugates the target demon, up to level 64, forcing it to do your bidding. While subjugated, the time between the demon's attacks is increased by 40% and its casting speed is slowed by 30%. Lasts up to 5 min. If you repeatedly subjugate the same demon, it will become more difficult to control with each attempt."
+			]
 		},
 		{
 			"id": 691,
@@ -3585,7 +6029,11 @@
 			"level": 30,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 691,
+			"rank": "Summon",
+			"tooltip": ["100% of base mana", "10 sec cast", "Reagents: Soul Shard"],
+			"description": ["Summons a Felhunter under the command of the Warlock."]
 		},
 		{
 			"id": 1490,
@@ -3594,7 +6042,13 @@
 			"level": 32,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 11722,
+			"rank": "Rank 3",
+			"tooltip": [["200 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Curses the target for 5 min, reducing Fire and Frost resistances by 75 and increasing Fire and Frost damage taken by 10%. Only one Curse per Warlock can be active on any one target."
+			]
 		},
 		{
 			"id": 6229,
@@ -3603,7 +6057,11 @@
 			"level": 32,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 28610,
+			"rank": "Rank 4",
+			"tooltip": ["320 Mana", ["Instant", "30 sec cooldown"]],
+			"description": ["Absorbs 920 shadow damage. Lasts 30 sec."]
 		},
 		{
 			"id": 5699,
@@ -3612,7 +6070,14 @@
 			"level": 34,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5699,
+			"rank": "",
+			"tooltip": ["475 Mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Healthstone that can be used to instantly restore 500 health.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 17951,
@@ -3621,7 +6086,14 @@
 			"level": 36,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 17951,
+			"rank": "",
+			"tooltip": ["700 Mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Firestone which can be equipped in the off hand. When equipped, enchants the main hand weapon with fire, granting each attack a chance to deal 40 to 60 additional Fire damage. In addition, equipping the Firestone increases the damage done by fire spells by 14.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 2362,
@@ -3630,7 +6102,14 @@
 			"level": 36,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2362,
+			"rank": "",
+			"tooltip": ["500 Mana", "5 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Spellstone for the caster. When equipped and used, the Spellstone removes all magic effects from the caster and will absorb 400 magic damage for 1 min. In addition, equipping the Spellstone improves your chance to get a critical strike with spells by 1%.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 2970,
@@ -3639,7 +6118,11 @@
 			"level": 38,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2970,
+			"rank": "",
+			"tooltip": [["90 Mana", "30 yd range"], "Instant"],
+			"description": ["Allows the friendly target to detect invisibility for 10 min."]
 		},
 		{
 			"id": 20755,
@@ -3648,7 +6131,14 @@
 			"level": 40,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 20755,
+			"rank": "",
+			"tooltip": ["85% of base mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Soulstone. The Soulstone can be used to store one target's soul. If the target dies while their soul is stored, they will be able to resurrect with 1100 health and 1700 mana.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 5484,
@@ -3657,7 +6147,13 @@
 			"level": 40,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 17928,
+			"rank": "Rank 2",
+			"tooltip": ["200 Mana", ["2 sec cast", "40 sec cooldown"]],
+			"description": [
+				"Howl, causing 5 enemies within 10 yds to flee in terror for 15 sec. Damage caused may interrupt the effect."
+			]
 		},
 		{
 			"id": 5784,
@@ -3666,7 +6162,13 @@
 			"level": 40,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5784,
+			"rank": "Summon",
+			"tooltip": ["100 Mana", "3 sec cast"],
+			"description": [
+				"Summons a Felsteed, which serves as a mount for the caster. Speed is increased by 60%."
+			]
 		},
 		{
 			"id": 6789,
@@ -3675,7 +6177,16 @@
 			"level": 42,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 17926,
+			"rank": "Rank 3",
+			"tooltip": [
+				["565 Mana", "30 yd range"],
+				["Instant", "2 min cooldown"]
+			],
+			"description": [
+				"Causes the enemy target to run in horror for 3 sec and causes 476 Shadow damage. The caster gains 100% of the damage caused in health."
+			]
 		},
 		{
 			"id": 17862,
@@ -3684,7 +6195,13 @@
 			"level": 44,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 17937,
+			"rank": "Rank 2",
+			"tooltip": [["200 Mana", "30 yd range"], "Instant"],
+			"description": [
+				"Curses the target for 5 min, reducing Shadow and Arcane resistances by 75 and increasing Shadow and Arcane damage taken by 10%. Only one Curse per Warlock can be active on any one target."
+			]
 		},
 		{
 			"id": 17952,
@@ -3693,7 +6210,14 @@
 			"level": 46,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 17952,
+			"rank": "",
+			"tooltip": ["900 Mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Greater Firestone which can be equipped in the off hand. When equipped, enchants the main hand weapon with fire, granting each attack a chance to deal 60 to 90 additional Fire damage. In addition, equipping the Greater Firestone increases the damage done by fire spells by 17.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 11729,
@@ -3702,7 +6226,14 @@
 			"level": 46,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 11729,
+			"rank": "",
+			"tooltip": ["750 Mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Greater Healthstone that can be used to instantly restore 800 health.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 17727,
@@ -3711,7 +6242,14 @@
 			"level": 48,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 17727,
+			"rank": "",
+			"tooltip": ["750 Mana", "5 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Greater Spellstone for the caster. When equipped and used, the Greater Spellstone removes all magic effects from the caster and will absorb 650 magic damage for 1 min. In addition, equipping the Greater Spellstone improves your chance to get a critical strike with spells by 1%.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 6353,
@@ -3720,7 +6258,15 @@
 			"level": 48,
 			"tree": "destruction",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 17924,
+			"rank": "Rank 2",
+			"tooltip": [
+				["335 Mana", "30 yd range"],
+				["6 sec cast", "1 min cooldown"],
+				"Reagents: Soul Shard"
+			],
+			"description": ["Burn the enemy's soul, causing 715 to 894 Fire damage."]
 		},
 		{
 			"id": 20756,
@@ -3729,7 +6275,14 @@
 			"level": 50,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 20756,
+			"rank": "",
+			"tooltip": ["85% of base mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Greater Soulstone. The Soulstone can be used to store one target's soul. If the target dies while their soul is stored, they will be able to resurrect with 1600 health and 2200 mana.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 11743,
@@ -3738,7 +6291,11 @@
 			"level": 50,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 11743,
+			"rank": "",
+			"tooltip": [["140 Mana", "30 yd range"], "Instant"],
+			"description": ["Allows the friendly target to detect greater invisibility for 10 min."]
 		},
 		{
 			"id": 1122,
@@ -3747,7 +6304,17 @@
 			"level": 50,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1122,
+			"rank": "Summon",
+			"tooltip": [
+				["100% of base mana", "30 yd range"],
+				["2 sec cast", "1 hour cooldown"],
+				"Reagents: Infernal Stone"
+			],
+			"description": [
+				"Summons a meteor from the Twisting Nether, causing 200 Fire damage and stunning all enemy targets in the area for 2 sec. An Infernal rises from the crater, under the command of the caster for 5 min. Once control is lost, the Infernal must be Subjugated to maintain control. Can only be used outdoors."
+			]
 		},
 		{
 			"id": 17953,
@@ -3756,7 +6323,14 @@
 			"level": 56,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 17953,
+			"rank": "",
+			"tooltip": ["1100 Mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Major Firestone which can be equipped in the off hand. When equipped, enchants the main hand weapon with fire, granting each attack a chance to deal 80 to 120 additional Fire damage. In addition, equipping the Major Firestone increases the damage done by fire spells by 21.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 11730,
@@ -3765,7 +6339,14 @@
 			"level": 58,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 11730,
+			"rank": "",
+			"tooltip": ["1120 Mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Major Healthstone that can be used to instantly restore 1200 health.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 20757,
@@ -3774,7 +6355,14 @@
 			"level": 60,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 20757,
+			"rank": "",
+			"tooltip": ["85% of base mana", "3 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Major Soulstone. The Soulstone can be used to store one target's soul. If the target dies while their soul is stored, they will be able to resurrect with 2200 health and 2800 mana.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 17728,
@@ -3783,7 +6371,14 @@
 			"level": 60,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 17728,
+			"rank": "",
+			"tooltip": ["1000 Mana", "5 sec cast", "Reagents: Soul Shard"],
+			"description": [
+				"Creates a Major Spellstone for the caster. When equipped and used, the Major Spellstone removes all magic effects from the caster and will absorb 900 magic damage for 1 min. In addition, equipping the Major Spellstone improves your chance to get a critical strike with spells by 1%.",
+				"Conjured items disappear if logged out for more than 15 minutes."
+			]
 		},
 		{
 			"id": 603,
@@ -3792,7 +6387,16 @@
 			"level": 60,
 			"tree": "affliction",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 603,
+			"rank": "",
+			"tooltip": [
+				["300 Mana", "30 yd range"],
+				["Instant", "1 min cooldown"]
+			],
+			"description": [
+				"Curses the target with impending doom, causing 3200 Shadow damage after 1 min. If the target dies from this damage, there is a chance that a Doomguard will be summoned. Cannot be cast on players."
+			]
 		},
 		{
 			"id": 18540,
@@ -3801,7 +6405,17 @@
 			"level": 60,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 18540,
+			"rank": "",
+			"tooltip": [
+				["100% of base mana", "30 yd range"],
+				["10 sec cast", "1 hour cooldown"],
+				"Reagents: Demonic Figurine"
+			],
+			"description": [
+				"Begins a ritual that sacrifices a random participant to summon a doomguard. The doomguard must be immediately subjugated or it will attack the ritual participants. Requires the caster and 4 additional party members to complete the ritual. In order to participate, all players must right-click the portal and not move until the ritual is complete."
+			]
 		},
 		{
 			"id": 23161,
@@ -3810,7 +6424,13 @@
 			"level": 60,
 			"tree": "demonology",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 23161,
+			"rank": "Summon",
+			"tooltip": [["150 Mana", "10 yd range"], "3 sec cast"],
+			"description": [
+				"Summons a Dreadsteed, which serves as a mount for the caster. Speed is increased by 100%."
+			]
 		}
 	],
 	"warrior": [
@@ -3821,7 +6441,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 6603,
+			"rank": "",
+			"tooltip": ["Instant"],
+			"description": []
 		},
 		{
 			"id": 2480,
@@ -3830,7 +6454,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2480,
+			"rank": "",
+			"tooltip": ["8 - 30 yd range", "1 sec cast"],
+			"description": []
 		},
 		{
 			"id": 7918,
@@ -3839,7 +6467,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 7918,
+			"rank": "",
+			"tooltip": ["8 - 30 yd range", "1 sec cast"],
+			"description": []
 		},
 		{
 			"id": 7919,
@@ -3848,7 +6480,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 7919,
+			"rank": "",
+			"tooltip": ["8 - 30 yd range", "1 sec cast"],
+			"description": []
 		},
 		{
 			"id": 2764,
@@ -3857,7 +6493,11 @@
 			"level": 1,
 			"tree": null,
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2764,
+			"rank": "",
+			"tooltip": ["8 - 30 yd range", "Instant"],
+			"description": ["Hurl a thrown weapon at the target."]
 		},
 		{
 			"id": 23881,
@@ -3866,7 +6506,16 @@
 			"level": 0,
 			"tree": "fury",
 			"talent": true,
-			"ranks": 4
+			"ranks": 4,
+			"max": 23894,
+			"rank": "Rank 4",
+			"tooltip": [
+				["30 Rage", "Melee Range"],
+				["Instant cast", "6 sec cooldown"]
+			],
+			"description": [
+				"Instantly attack the target causing damage equal to 45% of your attack power. In addition, the next 5 successful melee attacks will restore 20 health. This effect lasts 8 sec."
+			]
 		},
 		{
 			"id": 12809,
@@ -3875,7 +6524,15 @@
 			"level": 0,
 			"tree": "protection",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 12809,
+			"rank": "",
+			"tooltip": [
+				["15 Rage", "Melee Range"],
+				["Instant cast", "45 sec cooldown"],
+				"Requires Melee Weapon"
+			],
+			"description": ["Stuns the opponent for 5 sec."]
 		},
 		{
 			"id": 12328,
@@ -3884,7 +6541,13 @@
 			"level": 0,
 			"tree": "fury",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 12328,
+			"rank": "",
+			"tooltip": ["10 Rage", ["Instant cast", "3 min cooldown"]],
+			"description": [
+				"When activated, increases your physical damage by 20% and makes you immune to Fear effects, but lowers your armor and all resistances by 20%. Lasts 30 sec."
+			]
 		},
 		{
 			"id": 12975,
@@ -3893,7 +6556,13 @@
 			"level": 0,
 			"tree": "protection",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 12975,
+			"rank": "",
+			"tooltip": [["Instant", "10 min cooldown"]],
+			"description": [
+				"When activated, this ability temporarily grants you 30% of your maximum hit points for 20 seconds. After the effect expires, the hit points are lost."
+			]
 		},
 		{
 			"id": 12294,
@@ -3902,7 +6571,17 @@
 			"level": 0,
 			"tree": "arms",
 			"talent": true,
-			"ranks": 4
+			"ranks": 4,
+			"max": 21553,
+			"rank": "Rank 4",
+			"tooltip": [
+				["30 Rage", "Melee Range"],
+				["Instant cast", "6 sec cooldown"],
+				"Requires Melee Weapon"
+			],
+			"description": [
+				"A vicious strike that deals weapon damage plus 160 and wounds the target, reducing the effectiveness of any healing by 50% for 10 sec."
+			]
 		},
 		{
 			"id": 12323,
@@ -3911,7 +6590,13 @@
 			"level": 0,
 			"tree": "fury",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 12323,
+			"rank": "",
+			"tooltip": ["10 Rage", "Instant cast"],
+			"description": [
+				"Causes all enemies near the warrior to be dazed, reducing movement speed by 50% for 6 sec."
+			]
 		},
 		{
 			"id": 23922,
@@ -3920,7 +6605,16 @@
 			"level": 0,
 			"tree": "protection",
 			"talent": true,
-			"ranks": 4
+			"ranks": 4,
+			"max": 23925,
+			"rank": "Rank 4",
+			"tooltip": [
+				["20 Rage", "Melee Range"],
+				["Instant cast", "6 sec cooldown"]
+			],
+			"description": [
+				"Slam the target with your shield, causing 342 to 358 damage, modified by your shield block value, and has a 50% chance of dispelling 1 magic effect on the target. Also causes a high amount of threat."
+			]
 		},
 		{
 			"id": 12292,
@@ -3929,7 +6623,11 @@
 			"level": 0,
 			"tree": "arms",
 			"talent": true,
-			"ranks": 1
+			"ranks": 1,
+			"max": 12292,
+			"rank": "",
+			"tooltip": ["30 Rage", ["Instant cast", "30 sec cooldown"], "Requires Battle Stance"],
+			"description": ["Your next 5 melee attacks strike an additional nearby opponent."]
 		},
 		{
 			"id": 6673,
@@ -3938,7 +6636,13 @@
 			"level": 1,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 25289,
+			"rank": "Rank 7",
+			"tooltip": ["10 Rage", "Instant cast"],
+			"description": [
+				"The warrior shouts, increasing the melee attack power of all party members within 20 yards by 232. Lasts 2 min."
+			]
 		},
 		{
 			"id": 2457,
@@ -3947,7 +6651,11 @@
 			"level": 1,
 			"tree": "arms",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2457,
+			"rank": "",
+			"tooltip": [["Instant", "1 sec cooldown"]],
+			"description": ["A balanced combat stance."]
 		},
 		{
 			"id": 78,
@@ -3956,7 +6664,13 @@
 			"level": 1,
 			"tree": "arms",
 			"talent": false,
-			"ranks": 9
+			"ranks": 9,
+			"max": 25286,
+			"rank": "Rank 9",
+			"tooltip": [["15 Rage", "Melee Range"], "Next Melee", "Requires Melee Weapon"],
+			"description": [
+				"A strong attack that increases melee damage by 157 and causes a high amount of threat."
+			]
 		},
 		{
 			"id": 100,
@@ -3965,7 +6679,13 @@
 			"level": 4,
 			"tree": "arms",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 11578,
+			"rank": "Rank 3",
+			"tooltip": ["8 - 25 yd range", ["Instant", "15 sec cooldown"], "Requires Battle Stance"],
+			"description": [
+				"Charge an enemy, generate 15 rage, and stun it for 1 sec. Cannot be used in combat."
+			]
 		},
 		{
 			"id": 772,
@@ -3974,7 +6694,16 @@
 			"level": 4,
 			"tree": "arms",
 			"talent": false,
-			"ranks": 7
+			"ranks": 7,
+			"max": 11574,
+			"rank": "Rank 7",
+			"tooltip": [
+				["10 Rage", "Melee Range"],
+				"Instant cast",
+				"Requires Melee Weapon",
+				"Requires Battle Stance, Defensive Stance"
+			],
+			"description": ["Wounds the target causing them to bleed for 147 damage over 21 sec."]
 		},
 		{
 			"id": 6343,
@@ -3983,7 +6712,13 @@
 			"level": 6,
 			"tree": "arms",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 11581,
+			"rank": "Rank 6",
+			"tooltip": ["20 Rage", ["Instant cast", "4 sec cooldown"], "Requires Battle Stance"],
+			"description": [
+				"Blasts nearby enemies with thunder increasing the time between their attacks by 10% for 30 sec and doing 103 damage to them. Will affect up to 4 targets."
+			]
 		},
 		{
 			"id": 1715,
@@ -3992,7 +6727,18 @@
 			"level": 8,
 			"tree": "arms",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 7373,
+			"rank": "Rank 3",
+			"tooltip": [
+				["10 Rage", "Melee Range"],
+				"Instant cast",
+				"Requires Melee Weapon",
+				"Requires Battle Stance, Berserker Stance"
+			],
+			"description": [
+				"Maims the enemy, causing 45 damage and slowing the enemy's movement by 50% for 15 sec."
+			]
 		},
 		{
 			"id": 2687,
@@ -4001,7 +6747,13 @@
 			"level": 10,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2687,
+			"rank": "",
+			"tooltip": ["20% of base health", ["Instant cast", "1 min cooldown"]],
+			"description": [
+				"Generates 10 rage at the cost of health, and then generates an additional 10 rage over 10 sec. The warrior is considered in combat for the duration."
+			]
 		},
 		{
 			"id": 71,
@@ -4010,7 +6762,13 @@
 			"level": 10,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 71,
+			"rank": "",
+			"tooltip": [["Instant", "1 sec cooldown"]],
+			"description": [
+				"A defensive combat stance. Decreases damage taken by 10% and damage caused by 10%. Increases threat generated."
+			]
 		},
 		{
 			"id": 7386,
@@ -4019,7 +6777,13 @@
 			"level": 10,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 11597,
+			"rank": "Rank 5",
+			"tooltip": [["15 Rage", "Melee Range"], "Instant cast", "Requires Melee Weapon"],
+			"description": [
+				"Sunders the target's armor, reducing it by 450 per Sunder Armor and causes a high amount of threat. Can be applied up to 5 times. Lasts 30 sec."
+			]
 		},
 		{
 			"id": 355,
@@ -4028,7 +6792,13 @@
 			"level": 10,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 355,
+			"rank": "",
+			"tooltip": ["Melee Range", ["Instant", "10 sec cooldown"], "Requires Defensive Stance"],
+			"description": [
+				"Taunts the target to attack you, but has no effect if the target is already attacking you."
+			]
 		},
 		{
 			"id": 7384,
@@ -4037,7 +6807,18 @@
 			"level": 12,
 			"tree": "arms",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 11585,
+			"rank": "Rank 4",
+			"tooltip": [
+				["5 Rage", "Melee Range"],
+				["Instant cast", "5 sec cooldown"],
+				"Requires Melee Weapon",
+				"Requires Battle Stance"
+			],
+			"description": [
+				"Instantly overpower the enemy, causing weapon damage plus 35. Only useable after the target dodges. The Overpower cannot be blocked, dodged or parried."
+			]
 		},
 		{
 			"id": 72,
@@ -4046,7 +6827,17 @@
 			"level": 12,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 1672,
+			"rank": "Rank 3",
+			"tooltip": [
+				["10 Rage", "Melee Range"],
+				["Instant cast", "12 sec cooldown"],
+				"Requires Battle Stance, Defensive Stance"
+			],
+			"description": [
+				"Bashes the target with your shield for 45 damage. It also interrupts spellcasting and prevents any spell in that school from being cast for 6 sec."
+			]
 		},
 		{
 			"id": 1160,
@@ -4055,7 +6846,13 @@
 			"level": 14,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 11556,
+			"rank": "Rank 5",
+			"tooltip": ["10 Rage", "Instant cast"],
+			"description": [
+				"Reduces the melee attack power of all enemies within 10 yards by 146 for 30 sec."
+			]
 		},
 		{
 			"id": 6572,
@@ -4064,7 +6861,18 @@
 			"level": 14,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 6
+			"ranks": 6,
+			"max": 25288,
+			"rank": "Rank 6",
+			"tooltip": [
+				["5 Rage", "Melee Range"],
+				["Instant cast", "5 sec cooldown"],
+				"Requires Melee Weapon",
+				"Requires Defensive Stance"
+			],
+			"description": [
+				"Instantly counterattack an enemy for 81 to 99 damage and a high amount of threat. Revenge must follow a block, dodge or parry."
+			]
 		},
 		{
 			"id": 694,
@@ -4073,7 +6881,18 @@
 			"level": 16,
 			"tree": "arms",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 20560,
+			"rank": "Rank 5",
+			"tooltip": [
+				["10 Rage", "Melee Range"],
+				["Instant cast", "2 min cooldown"],
+				"Requires Melee Weapon",
+				"Requires Battle Stance"
+			],
+			"description": [
+				"A mocking attack that causes 93 damage, a moderate amount of threat and forces the target to focus attacks on you for 6 sec."
+			]
 		},
 		{
 			"id": 2565,
@@ -4082,7 +6901,11 @@
 			"level": 16,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2565,
+			"rank": "",
+			"tooltip": ["10 Rage", ["Instant cast", "5 sec cooldown"], "Requires Defensive Stance"],
+			"description": ["Increases chance to block by 75% for 5 sec, but will only block 1 attack."]
 		},
 		{
 			"id": 676,
@@ -4091,7 +6914,15 @@
 			"level": 18,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 676,
+			"rank": "",
+			"tooltip": [
+				["20 Rage", "Melee Range"],
+				["Instant cast", "1 min cooldown"],
+				"Requires Defensive Stance"
+			],
+			"description": ["Disarm the enemy's weapon for 10 sec."]
 		},
 		{
 			"id": 845,
@@ -4100,7 +6931,13 @@
 			"level": 20,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 20569,
+			"rank": "Rank 5",
+			"tooltip": [["20 Rage", "Melee Range"], "Next Melee", "Requires Melee Weapon"],
+			"description": [
+				"A sweeping attack that does your weapon damage plus 50 to the target and his nearest ally."
+			]
 		},
 		{
 			"id": 20230,
@@ -4109,7 +6946,13 @@
 			"level": 20,
 			"tree": "arms",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 20230,
+			"rank": "",
+			"tooltip": [["Instant", "30 min cooldown"], "Requires Battle Stance"],
+			"description": [
+				"Instantly counterattack any enemy that strikes you in melee for 15 sec. Melee attacks made from behind cannot be counterattacked. A maximum of 30 attacks will cause retaliation."
+			]
 		},
 		{
 			"id": 5246,
@@ -4118,7 +6961,16 @@
 			"level": 22,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 5246,
+			"rank": "",
+			"tooltip": [
+				["25 Rage", "10 yd range"],
+				["Instant cast", "3 min cooldown"]
+			],
+			"description": [
+				"The warrior shouts, causing the targeted enemy to cower in fear. Up to 5 total nearby enemies will flee in fear. Lasts 8 sec."
+			]
 		},
 		{
 			"id": 5308,
@@ -4127,7 +6979,18 @@
 			"level": 24,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 5
+			"ranks": 5,
+			"max": 20662,
+			"rank": "Rank 5",
+			"tooltip": [
+				["15 Rage", "Melee Range"],
+				"Instant cast",
+				"Requires Melee Weapon",
+				"Requires Battle Stance, Berserker Stance"
+			],
+			"description": [
+				"Attempt to finish off a wounded foe, causing 600 damage and converting each extra point of rage into 15 additional damage. Only usable on enemies that have 20% or less health."
+			]
 		},
 		{
 			"id": 1161,
@@ -4136,7 +6999,11 @@
 			"level": 26,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1161,
+			"rank": "",
+			"tooltip": ["5 Rage", ["Instant cast", "10 min cooldown"]],
+			"description": ["Forces all nearby enemies to focus attacks on you for 6 sec."]
 		},
 		{
 			"id": 871,
@@ -4145,7 +7012,13 @@
 			"level": 28,
 			"tree": "protection",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 871,
+			"rank": "",
+			"tooltip": [["Instant", "30 min cooldown"], "Requires Defensive Stance"],
+			"description": [
+				"Reduces the damage taken from melee attacks, ranged attacks and spells by 75% for 10 sec."
+			]
 		},
 		{
 			"id": 2458,
@@ -4154,7 +7027,13 @@
 			"level": 30,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 2458,
+			"rank": "",
+			"tooltip": [["Instant", "1 sec cooldown"]],
+			"description": [
+				"An aggressive stance. Critical hit chance is increased by 3% and all damage taken is increased by 10%."
+			]
 		},
 		{
 			"id": 20252,
@@ -4163,7 +7042,15 @@
 			"level": 30,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 3
+			"ranks": 3,
+			"max": 20617,
+			"rank": "Rank 3",
+			"tooltip": [
+				["10 Rage", "8 - 25 yd range"],
+				["Instant cast", "30 sec cooldown"],
+				"Requires Berserker Stance"
+			],
+			"description": ["Charge an enemy, causing 65 damage and stunning it for 3 sec."]
 		},
 		{
 			"id": 1464,
@@ -4172,7 +7059,11 @@
 			"level": 30,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 4
+			"ranks": 4,
+			"max": 11605,
+			"rank": "Rank 4",
+			"tooltip": [["15 Rage", "Melee Range"], "1.5 sec cast", "Requires Melee Weapon"],
+			"description": ["Slams the opponent, causing weapon damage plus 87."]
 		},
 		{
 			"id": 18499,
@@ -4181,7 +7072,13 @@
 			"level": 32,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 18499,
+			"rank": "",
+			"tooltip": [["Instant", "30 sec cooldown"], "Requires Berserker Stance"],
+			"description": [
+				"The warrior enters a berserker rage, becoming immune to Fear and Incapacitate effects and generating extra rage when taking damage. Lasts 10 sec."
+			]
 		},
 		{
 			"id": 1680,
@@ -4190,7 +7087,18 @@
 			"level": 36,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1680,
+			"rank": "",
+			"tooltip": [
+				"25 Rage",
+				["Instant cast", "10 sec cooldown"],
+				"Requires Melee Weapon",
+				"Requires Berserker Stance"
+			],
+			"description": [
+				"In a whirlwind of steel you attack up to 4 enemies within 8 yards, causing weapon damage to each enemy."
+			]
 		},
 		{
 			"id": 6552,
@@ -4199,7 +7107,17 @@
 			"level": 38,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 2
+			"ranks": 2,
+			"max": 6554,
+			"rank": "Rank 2",
+			"tooltip": [
+				["10 Rage", "Melee Range"],
+				["Instant cast", "10 sec cooldown"],
+				"Requires Berserker Stance"
+			],
+			"description": [
+				"Pummel the target for 50 damage. It also interrupts spellcasting and prevents any spell in that school from being cast for 4 sec."
+			]
 		},
 		{
 			"id": 1719,
@@ -4208,7 +7126,13 @@
 			"level": 50,
 			"tree": "fury",
 			"talent": false,
-			"ranks": 1
+			"ranks": 1,
+			"max": 1719,
+			"rank": "",
+			"tooltip": [["Instant", "30 min cooldown"], "Requires Berserker Stance"],
+			"description": [
+				"The warrior will cause critical hits with most attacks and will be immune to Fear effects for the next 15 sec, but all damage taken is increased by 20%."
+			]
 		}
 	]
 }

@@ -4,6 +4,7 @@
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import SpellTooltip from '$lib/components/guild/SpellTooltip.svelte';
 	import {
 		buttonCommand,
 		commandLabel,
@@ -45,6 +46,13 @@
 	/** The key being set, waiting for a key press: a command's first or second key. */
 	let capturing = $state<{ command: string; index: number } | null>(null);
 	let notice = $state('');
+	/** The spell under the pointer and where its tooltip goes, fixed to the window. */
+	let hovered = $state<{
+		name: string;
+		left: number;
+		top: string;
+		bottom: string;
+	} | null>(null);
 	let exported = $state('');
 
 	// The plan lives in this browser, one per character: load on a switch, save on any edit.
@@ -78,6 +86,23 @@
 			slots.forEach((n, i) => n === name && (slots[i] = null));
 	}
 
+	/** Shows a spell's tooltip beside `anchor`: below it, or above when it sits low on screen. */
+	function hover(name: string | null, anchor?: HTMLElement) {
+		if (!name || !anchor || !spellByName.has(name) || dragging) {
+			hovered = null;
+			return;
+		}
+		const box = anchor.getBoundingClientRect();
+		const gap = 6;
+		const above = box.top > window.innerHeight * 0.55;
+		hovered = {
+			name,
+			left: Math.max(8, Math.min(box.left, window.innerWidth - 400)),
+			top: above ? 'auto' : `${box.bottom + gap}px`,
+			bottom: above ? `${window.innerHeight - box.top + gap}px` : 'auto'
+		};
+	}
+
 	/* --- dragging: from the spellbook onto a button, between buttons, and off a bar to clear --- */
 
 	type Payload = { ability: string } | { from: string; slot: number };
@@ -85,6 +110,7 @@
 
 	function dragStart(event: DragEvent, payload: Payload) {
 		window.getSelection()?.removeAllRanges();
+		hovered = null;
 		dragging = payload;
 		if (event.dataTransfer) {
 			event.dataTransfer.effectAllowed = 'move';
@@ -241,7 +267,9 @@
 			class="slot"
 			class:filled={ability}
 			role="listitem"
-			title={ability ?? `Empty (${BAR_LABEL[bar]} ${slot + 1})`}
+			title={spell ? undefined : (ability ?? `Empty (${BAR_LABEL[bar]} ${slot + 1})`)}
+			onmouseenter={(e) => ability && hover(ability, e.currentTarget)}
+			onmouseleave={() => hover(null)}
 			draggable={ability ? 'true' : 'false'}
 			ondragstart={(e) => ability && dragStart(e, { from: key, slot })}
 			ondragend={() => (dragging = null)}
@@ -291,6 +319,7 @@
 				custom={plan.custom}
 				{placed}
 				ondrag={(e, name) => dragStart(e, { ability: name })}
+				onhover={hover}
 				onadd={addCustom}
 				onremove={removeCustom}
 			/>
@@ -333,6 +362,21 @@
 				>
 			</div>
 		</div>
+	{/if}
+
+	{#if hovered}
+		{@const spell = spellByName.get(hovered.name)}
+		{#if spell}
+			<div
+				class="popover"
+				role="tooltip"
+				style:left="{hovered.left}px"
+				style:top={hovered.top}
+				style:bottom={hovered.bottom}
+			>
+				<SpellTooltip {spell} />
+			</div>
+		{/if}
 	{/if}
 
 	<h2>Key bindings</h2>
@@ -511,6 +555,13 @@
 		color: var(--accent-text);
 		background: color-mix(in srgb, var(--accent-solid) 30%, transparent);
 		border-radius: var(--radius-sm);
+	}
+
+	.popover {
+		position: fixed;
+		z-index: 30;
+		width: max-content;
+		pointer-events: none;
 	}
 
 	.tools {
