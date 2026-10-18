@@ -2,40 +2,57 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
+	import Alert from '$lib/components/Alert.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import {
+		buttonCommand,
+		commandLabel,
+		defaultBindings,
+		keyFromEvent,
+		keyFromMouse,
+		keyFromWheel,
+		shortKey
+	} from '$lib/wow/bindings';
 	import {
 		BAR_LABEL,
 		SLOTS,
 		emptyKeybinds,
-		keyLabel,
+		exportString,
 		loadKeybinds,
-		mouseLabel,
 		rowKey,
 		saveKeybinds,
 		stancesOf,
-		wheelLabel,
 		type Bar,
 		type Keybinds
 	} from '$lib/wow/keybinds';
-	import Button from '$lib/components/Button.svelte';
+	import { spellIcon, spellsOf } from '$lib/wow/spells';
+	import KeyBindings from './KeyBindings.svelte';
+	import SpellBook from './SpellBook.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	const character = $derived(data.character);
 	const characterId = $derived(character?.id ?? 0);
-	const stances = $derived(stancesOf(character?.class ?? ''));
+	const classSlug = $derived(character?.class ?? '');
+	const stances = $derived(stancesOf(classSlug));
+	const spells = $derived(spellsOf(classSlug));
+	const spellByName = $derived(new Map(spells.map((s) => [s.name, s])));
+	const specs = $derived(data.classes.find((c) => c.slug === classSlug)?.specs ?? []);
 
 	let plan = $state<Keybinds>(emptyKeybinds());
 	let loadedFor = $state(0);
-	let newAbility = $state('');
-	/** The button whose key is being set, waiting for a key press. */
-	let binding = $state<{ bar: Bar; slot: number } | null>(null);
+	/** The key being set, waiting for a key press: a command's first or second key. */
+	let capturing = $state<{ command: string; index: number } | null>(null);
+	let notice = $state('');
+	let exported = $state('');
 
 	// The plan lives in this browser, one per character: load on a switch, save on any edit.
 	$effect(() => {
-		plan = loadKeybinds(characterId);
+		plan = loadKeybinds(characterId, classSlug);
 		loadedFor = characterId;
-		binding = null;
+		capturing = null;
+		exported = '';
 	});
 	$effect(() => {
 		const snapshot = $state.snapshot(plan);
@@ -43,33 +60,25 @@
 	});
 
 	const row = (key: string) => (plan.rows[key] ??= Array(SLOTS).fill(null));
-	const placed = $derived(new Set(Object.values(plan.rows).flat().filter(Boolean)));
+	const placed = $derived(
+		new Set(
+			Object.values(plan.rows)
+				.flat()
+				.filter((n) => n !== null)
+		)
+	);
 
-	/** Keys bound to more than one button: in the game the last one bound wins. */
-	const clashes = $derived.by(() => {
-		const seen: Record<string, number> = {};
-		for (const keys of Object.values(plan.keys))
-			for (const key of keys) if (key) seen[key] = (seen[key] ?? 0) + 1;
-		return new Set(Object.keys(seen).filter((key) => seen[key] > 1));
-	});
-
-	function addAbility(event: SubmitEvent) {
-		event.preventDefault();
-		const names = newAbility
-			.split(',')
-			.map((n) => n.trim())
-			.filter((n) => n && !plan.pool.includes(n));
-		plan.pool.push(...new Set(names));
-		newAbility = '';
+	function addCustom(name: string) {
+		if (!plan.custom.includes(name) && !spellByName.has(name)) plan.custom.push(name);
 	}
 
-	function removeAbility(name: string) {
-		plan.pool = plan.pool.filter((n) => n !== name);
+	function removeCustom(name: string) {
+		plan.custom = plan.custom.filter((n) => n !== name);
 		for (const slots of Object.values(plan.rows))
 			slots.forEach((n, i) => n === name && (slots[i] = null));
 	}
 
-	/* --- dragging: from the pool onto a button, between buttons, and off a bar to clear --- */
+	/* --- dragging: from the spellbook onto a button, between buttons, and off a bar to clear --- */
 
 	type Payload = { ability: string } | { from: string; slot: number };
 	let dragging = $state<Payload | null>(null);
@@ -98,49 +107,76 @@
 		}
 	}
 
-	function dropOnPool(event: DragEvent) {
+	function dropOnBook(event: DragEvent) {
 		event.preventDefault();
 		const payload = dragging;
 		dragging = null;
 		if (payload && 'from' in payload) row(payload.from)[payload.slot] = null;
 	}
 
-	/* --- binding: click a button's key, then press a key, a mouse button, or the wheel --- */
+	/* --- binding: pick a key, then press a key, a mouse button, or scroll --- */
 
-	function setKey(label: string | null) {
-		if (!binding || !label) return;
-		plan.keys[binding.bar][binding.slot] = label;
-		binding = null;
+	function capture(command: string, index: number) {
+		const same = capturing?.command === command && capturing.index === index;
+		capturing = same ? null : { command, index };
+		notice = '';
+	}
+
+	/** Binds the key being set; as in the game, a key moves off whatever had it before. */
+	function bind(key: string) {
+		if (!capturing) return;
+		const { command, index } = capturing;
+		capturing = null;
+		for (const [other, keys] of Object.entries(plan.bindings))
+			keys.forEach((k, i) => {
+				if (k !== key || (other === command && i === index)) return;
+				keys[i] = '';
+				notice = `${key} was unbound from ${commandLabel(other)}.`;
+			});
+		(plan.bindings[command] ??= ['', ''])[index] = key;
 	}
 
 	function onKeydown(event: KeyboardEvent) {
-		if (!binding) return;
+		if (!capturing) return;
 		event.preventDefault();
-		if (event.key === 'Escape') binding = null;
+		if (event.key === 'Escape') capturing = null;
 		else if (event.key === 'Backspace' || event.key === 'Delete') {
-			plan.keys[binding.bar][binding.slot] = '';
-			binding = null;
-		} else setKey(keyLabel(event));
+			const { command, index } = capturing;
+			(plan.bindings[command] ??= ['', ''])[index] = '';
+			capturing = null;
+		} else {
+			const key = keyFromEvent(event);
+			if (key) bind(key);
+		}
 	}
 
 	function onMousedown(event: MouseEvent) {
-		if (!binding) return;
-		const label = mouseLabel(event);
-		if (label) {
+		if (!capturing) return;
+		const key = keyFromMouse(event);
+		if (key) {
 			event.preventDefault();
-			setKey(label);
+			bind(key);
 		}
 	}
 
 	function onWheel(event: WheelEvent) {
-		if (!binding) return;
+		if (!capturing) return;
 		event.preventDefault();
-		setKey(wheelLabel(event));
+		bind(keyFromWheel(event));
 	}
 
-	function reset() {
-		if (confirm(`Clear every ability and key for ${character?.first_name}?`))
-			plan = emptyKeybinds();
+	function clearBars() {
+		if (confirm(`Clear every button on ${character?.first_name}'s bars?`)) plan.rows = {};
+	}
+
+	function resetBindings() {
+		if (confirm('Put every key binding back to the default?')) plan.bindings = defaultBindings();
+	}
+
+	function makeExport() {
+		if (!character) return;
+		const name = `${character.first_name} ${character.last_name}`;
+		exported = exportString($state.snapshot(plan), classSlug, name, stances);
 	}
 
 	const pickCharacter = (id: number) =>
@@ -149,18 +185,6 @@
 			replaceState: true,
 			noScroll: true
 		});
-
-	/** A short name for a button, as text fits on an icon: initials, or a long word cut. */
-	function short(name: string) {
-		if (name.length <= 8) return name;
-		const words = name.split(/\s+/);
-		return words.length > 1
-			? words
-					.map((w) => w[0])
-					.join('')
-					.toUpperCase()
-			: name.slice(0, 5);
-	}
 </script>
 
 <svelte:window onkeydown={onKeydown} onmousedown={onMousedown} />
@@ -199,15 +223,20 @@
 	</p>
 {:else}
 	<p class="muted small">
-		Add abilities to the pool, then drag them onto the bars; drag a button onto another to swap, or
-		back to the pool to clear it. Click a button's key and press a key, mouse button, or scroll to
-		bind it (Backspace unbinds). Kept in this browser, one plan per character.
+		Drag spells onto the bars; drag a button onto another to swap, or back to the spellbook to clear
+		it. Click a button's key, or any key in the bindings below, then press a key, mouse button, or
+		scroll to bind it (Backspace unbinds, Escape cancels). Kept in this browser, one plan per
+		character; export it to load it in game with the Blood Legion addon.
 	</p>
+
+	{#if notice}<Alert variant="info">{notice}</Alert>{/if}
 
 	{#snippet button(key: string, bar: Bar, slot: number)}
 		{@const ability = plan.rows[key]?.[slot] ?? null}
-		{@const bound = plan.keys[bar][slot]}
-		{@const isBinding = binding?.bar === bar && binding.slot === slot}
+		{@const spell = ability ? spellByName.get(ability) : undefined}
+		{@const command = buttonCommand(bar, slot)}
+		{@const bound = plan.bindings[command]?.[0] ?? ''}
+		{@const active = capturing?.command === command && capturing.index === 0}
 		<div
 			class="slot"
 			class:filled={ability}
@@ -219,18 +248,21 @@
 			ondragover={(e) => e.preventDefault()}
 			ondrop={(e) => dropOnSlot(e, key, slot)}
 		>
-			{#if ability}<span class="name">{short(ability)}</span>{/if}
+			{#if spell}
+				<img src={spellIcon(spell.icon)} alt={ability} draggable="false" />
+			{:else if ability}
+				<span class="name">{ability}</span>
+			{/if}
 			<button
 				type="button"
 				class="key"
-				class:binding={isBinding}
-				class:clash={bound && clashes.has(bound)}
+				class:binding={active}
 				aria-label="Key for {BAR_LABEL[bar]} button {slot + 1}{bound ? `: ${bound}` : ''}"
 				onclick={(e) => {
 					e.stopPropagation();
-					binding = isBinding ? null : { bar, slot };
+					capture(command, 0);
 				}}
-				onwheel={onWheel}>{isBinding ? '…' : bound}</button
+				onwheel={onWheel}>{active ? '…' : shortKey(bound)}</button
 			>
 		</div>
 	{/snippet}
@@ -249,38 +281,19 @@
 	<div class="ui">
 		<section
 			class="pool"
-			aria-label="Abilities"
+			aria-label="Spellbook"
 			ondragover={(e) => e.preventDefault()}
-			ondrop={dropOnPool}
+			ondrop={dropOnBook}
 		>
-			<form onsubmit={addAbility}>
-				<input
-					bind:value={newAbility}
-					placeholder="Add abilities, comma separated (Heroic Strike, Charge, …)"
-					aria-label="Ability names"
-				/>
-				<Button type="submit" size="small">Add</Button>
-			</form>
-			<ul>
-				{#each plan.pool as name (name)}
-					<li
-						class:placed={placed.has(name)}
-						draggable="true"
-						ondragstart={(e) => dragStart(e, { ability: name })}
-						ondragend={() => (dragging = null)}
-					>
-						{name}
-						<button type="button" aria-label="Remove {name}" onclick={() => removeAbility(name)}
-							>×</button
-						>
-					</li>
-				{:else}
-					<li class="empty muted">No abilities yet.</li>
-				{/each}
-			</ul>
-			<div class="pool-foot">
-				<Button variant="secondary" size="small" onclick={reset}>Clear all</Button>
-			</div>
+			<SpellBook
+				{spells}
+				{specs}
+				custom={plan.custom}
+				{placed}
+				ondrag={(e, name) => dragStart(e, { ability: name })}
+				onadd={addCustom}
+				onremove={removeCustom}
+			/>
 		</section>
 
 		<div class="right">
@@ -298,6 +311,32 @@
 			{/each}
 		</div>
 	</div>
+
+	<div class="tools">
+		<Button size="small" onclick={makeExport}>Export for the addon</Button>
+		<Button size="small" variant="secondary" onclick={clearBars}>Clear bars</Button>
+		<Button size="small" variant="secondary" onclick={resetBindings}>Default bindings</Button>
+	</div>
+
+	{#if exported}
+		<div class="export">
+			<p class="small">
+				In game, type <code>/bl import</code>, paste this, and press Import. It places each spell at
+				the highest rank {character.first_name} knows and saves the bindings for that character.
+			</p>
+			<textarea readonly rows="4" onfocus={(e) => e.currentTarget.select()}>{exported}</textarea>
+			<div>
+				<Button
+					size="small"
+					variant="secondary"
+					onclick={() => navigator.clipboard.writeText(exported)}>Copy</Button
+				>
+			</div>
+		</div>
+	{/if}
+
+	<h2>Key bindings</h2>
+	<KeyBindings bindings={plan.bindings} {capturing} oncapture={capture} />
 {/if}
 
 <style>
@@ -341,64 +380,14 @@
 
 	.pool {
 		grid-area: pool;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
+		/* As tall as bars 4 and 5 beside it, scrolling past that. */
+		height: calc(12 * var(--slot) + 11 * 3px + 1.5rem);
 		min-height: 16rem;
+		overflow-y: auto;
 		padding: var(--space-4);
 		background: var(--grey-bg);
 		border: 1px dashed var(--grey-surface);
 		border-radius: var(--radius-xl);
-	}
-
-	.pool form {
-		display: flex;
-		gap: var(--space-2);
-	}
-
-	.pool input {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.pool ul {
-		display: flex;
-		flex-wrap: wrap;
-		align-content: flex-start;
-		gap: var(--space-2);
-		flex: 1;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.pool li:not(.empty) {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
-		font-size: var(--text-sm);
-		background: var(--grey-surface);
-		border-radius: var(--radius-md);
-		cursor: grab;
-	}
-
-	.pool li.placed {
-		opacity: 0.55;
-	}
-
-	.pool li button {
-		padding: 0 var(--space-1);
-		font: inherit;
-		color: var(--grey-text);
-		background: none;
-		border: 0;
-		cursor: pointer;
-	}
-
-	.pool-foot {
-		display: flex;
-		justify-content: flex-end;
 	}
 
 	.right {
@@ -465,7 +454,7 @@
 		place-items: center;
 		width: var(--slot);
 		height: var(--slot);
-		padding: 2px;
+		padding: 1px;
 		background: var(--black);
 		border: 1px solid var(--grey-surface);
 		border-radius: var(--radius-sm);
@@ -475,6 +464,13 @@
 		background: linear-gradient(160deg, var(--grey-solid), var(--black));
 		border-color: var(--grey-text);
 		cursor: grab;
+	}
+
+	.slot img {
+		width: 100%;
+		height: 100%;
+		border-radius: 2px;
+		pointer-events: none;
 	}
 
 	.name {
@@ -498,7 +494,9 @@
 		font-size: 0.6rem;
 		font-weight: 700;
 		color: var(--grey-text-active);
-		text-shadow: 0 0 2px var(--black);
+		text-shadow:
+			0 0 2px var(--black),
+			0 0 2px var(--black);
 		background: none;
 		border: 0;
 		cursor: pointer;
@@ -508,15 +506,40 @@
 		color: var(--white);
 	}
 
-	.key.clash {
-		color: var(--red-text);
-	}
-
 	.key.binding {
 		inset: 0;
 		color: var(--accent-text);
 		background: color-mix(in srgb, var(--accent-solid) 30%, transparent);
 		border-radius: var(--radius-sm);
+	}
+
+	.tools {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+		margin-top: var(--space-4);
+	}
+
+	.export {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		margin-top: var(--space-3);
+	}
+
+	.export p {
+		margin: 0;
+	}
+
+	.export textarea {
+		width: 100%;
+		font-family: var(--font-mono);
+		font-size: var(--text-xs);
+		word-break: break-all;
+	}
+
+	h2 {
+		margin-top: var(--space-8);
 	}
 
 	@media (max-width: 48rem) {

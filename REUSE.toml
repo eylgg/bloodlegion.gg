@@ -2,6 +2,7 @@ version = 1
 
 [[annotations]]
 path = [
+    "apps/addon/**",
     "apps/web/**",
     "crates/*/**",
     ".cargo/config.toml",

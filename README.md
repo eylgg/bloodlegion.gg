@@ -6,6 +6,9 @@ The website for Blood Legion, at [bloodlegion.gg](https://bloodlegion.gg).
 
 - `apps/web`: the SvelteKit site, built with the Node adapter and shipped as the `bloodlegion-web`
   image. It serves the pages and forwards `/api`, `/auth`, and `/.well-known` to the backend.
+- `apps/addon`: the in-game addon, `BloodLegion`. `/bl import` loads a keybind plan exported
+  from the site (Profile, Keybinds): the spells on each bar and stance bar, and the key bindings.
+  Copy `apps/addon/BloodLegion` into the game's `Interface/AddOns`.
 - `crates/bloodlegion-server`: the backend (Rust, axum, Postgres), shipped as the `bloodlegion-server` image.
   Accounts and sessions, username/password login, OAuth2 / OpenID Connect login sources such as
   Battle.net, and an OpenID Connect provider so other guild tools can sign people in with their
