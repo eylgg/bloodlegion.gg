@@ -1,0 +1,4214 @@
+{
+	"druid": [
+		{
+			"id": 6603,
+			"name": "Attack",
+			"icon": "inv_sword_04",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 16857,
+			"name": "Faerie Fire (Feral)",
+			"icon": "spell_nature_faeriefire",
+			"level": 0,
+			"tree": "feral",
+			"talent": true,
+			"ranks": 4
+		},
+		{
+			"id": 16979,
+			"name": "Feral Charge",
+			"icon": "ability_hunter_pet_bear",
+			"level": 0,
+			"tree": "feral",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 5570,
+			"name": "Insect Swarm",
+			"icon": "spell_nature_insectswarm",
+			"level": 0,
+			"tree": "restoration",
+			"talent": true,
+			"ranks": 5
+		},
+		{
+			"id": 24858,
+			"name": "Moonkin Form",
+			"icon": "spell_nature_forceofnature",
+			"level": 0,
+			"tree": "balance",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 16689,
+			"name": "Nature's Grasp",
+			"icon": "spell_nature_natureswrath",
+			"level": 0,
+			"tree": "balance",
+			"talent": true,
+			"ranks": 6
+		},
+		{
+			"id": 17116,
+			"name": "Nature's Swiftness",
+			"icon": "spell_nature_ravenform",
+			"level": 0,
+			"tree": "restoration",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 18562,
+			"name": "Swiftmend",
+			"icon": "inv_relics_idolofrejuvenation",
+			"level": 0,
+			"tree": "restoration",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 5185,
+			"name": "Healing Touch",
+			"icon": "spell_nature_healingtouch",
+			"level": 1,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 11
+		},
+		{
+			"id": 1126,
+			"name": "Mark of the Wild",
+			"icon": "spell_nature_regeneration",
+			"level": 1,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 5176,
+			"name": "Wrath",
+			"icon": "spell_nature_abolishmagic",
+			"level": 1,
+			"tree": "balance",
+			"talent": false,
+			"ranks": 8
+		},
+		{
+			"id": 8921,
+			"name": "Moonfire",
+			"icon": "spell_nature_starfall",
+			"level": 4,
+			"tree": "balance",
+			"talent": false,
+			"ranks": 10
+		},
+		{
+			"id": 774,
+			"name": "Rejuvenation",
+			"icon": "spell_nature_rejuvenation",
+			"level": 4,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 11
+		},
+		{
+			"id": 467,
+			"name": "Thorns",
+			"icon": "spell_nature_thorns",
+			"level": 6,
+			"tree": "balance",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 339,
+			"name": "Entangling Roots",
+			"icon": "spell_nature_stranglevines",
+			"level": 8,
+			"tree": "balance",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 5487,
+			"name": "Bear Form",
+			"icon": "ability_racial_bearform",
+			"level": 10,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 99,
+			"name": "Demoralizing Roar",
+			"icon": "ability_druid_demoralizingroar",
+			"level": 10,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 6795,
+			"name": "Growl",
+			"icon": "ability_physical_taunt",
+			"level": 10,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 6807,
+			"name": "Maul",
+			"icon": "ability_druid_maul",
+			"level": 10,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 18960,
+			"name": "Teleport: Moonglade",
+			"icon": "spell_arcane_teleportmoonglade",
+			"level": 10,
+			"tree": "balance",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5229,
+			"name": "Enrage",
+			"icon": "ability_druid_enrage",
+			"level": 12,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 8936,
+			"name": "Regrowth",
+			"icon": "spell_nature_resistnature",
+			"level": 12,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 9
+		},
+		{
+			"id": 5211,
+			"name": "Bash",
+			"icon": "ability_druid_bash",
+			"level": 14,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 8946,
+			"name": "Cure Poison",
+			"icon": "spell_nature_nullifypoison",
+			"level": 14,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1066,
+			"name": "Aquatic Form",
+			"icon": "ability_druid_aquaticform",
+			"level": 16,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 779,
+			"name": "Swipe",
+			"icon": "inv_misc_monsterclaw_03",
+			"level": 16,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 770,
+			"name": "Faerie Fire",
+			"icon": "spell_nature_faeriefire",
+			"level": 18,
+			"tree": "balance",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 2637,
+			"name": "Hibernate",
+			"icon": "spell_nature_sleep",
+			"level": 18,
+			"tree": "balance",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 768,
+			"name": "Cat Form",
+			"icon": "ability_druid_catform",
+			"level": 20,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1082,
+			"name": "Claw",
+			"icon": "ability_druid_rake",
+			"level": 20,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 5215,
+			"name": "Prowl",
+			"icon": "ability_ambush",
+			"level": 20,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 20484,
+			"name": "Rebirth",
+			"icon": "spell_nature_reincarnation",
+			"level": 20,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 1079,
+			"name": "Rip",
+			"icon": "ability_ghoulfrenzy",
+			"level": 20,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 2912,
+			"name": "Starfire",
+			"icon": "spell_arcane_starfire",
+			"level": 20,
+			"tree": "balance",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 5221,
+			"name": "Shred",
+			"icon": "spell_shadow_vampiricaura",
+			"level": 22,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 2908,
+			"name": "Soothe Animal",
+			"icon": "ability_hunter_beastsoothe",
+			"level": 22,
+			"tree": "balance",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 1822,
+			"name": "Rake",
+			"icon": "ability_druid_disembowel",
+			"level": 24,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 2782,
+			"name": "Remove Curse",
+			"icon": "spell_holy_removecurse",
+			"level": 24,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5217,
+			"name": "Tiger's Fury",
+			"icon": "ability_mount_jungletiger",
+			"level": 24,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 2893,
+			"name": "Abolish Poison",
+			"icon": "spell_nature_nullifypoison_02",
+			"level": 26,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1850,
+			"name": "Dash",
+			"icon": "ability_druid_dash",
+			"level": 26,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 5209,
+			"name": "Challenging Roar",
+			"icon": "ability_druid_challangingroar",
+			"level": 28,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 8998,
+			"name": "Cower",
+			"icon": "ability_druid_cower",
+			"level": 28,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 740,
+			"name": "Tranquility",
+			"icon": "spell_nature_tranquility",
+			"level": 30,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 783,
+			"name": "Travel Form",
+			"icon": "ability_druid_travelform",
+			"level": 30,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 22568,
+			"name": "Ferocious Bite",
+			"icon": "ability_druid_ferociousbite",
+			"level": 32,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 6785,
+			"name": "Ravage",
+			"icon": "ability_druid_ravage",
+			"level": 32,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 5225,
+			"name": "Track Humanoids",
+			"icon": "ability_tracking",
+			"level": 32,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 22842,
+			"name": "Frenzied Regeneration",
+			"icon": "ability_bullrush",
+			"level": 36,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 9005,
+			"name": "Pounce",
+			"icon": "ability_druid_supriseattack",
+			"level": 36,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 9634,
+			"name": "Dire Bear Form",
+			"icon": "ability_racial_bearform",
+			"level": 40,
+			"tree": "feral",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 16914,
+			"name": "Hurricane",
+			"icon": "spell_nature_cyclone",
+			"level": 40,
+			"tree": "balance",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 29166,
+			"name": "Innervate",
+			"icon": "spell_nature_lightning",
+			"level": 40,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 22812,
+			"name": "Barkskin",
+			"icon": "spell_nature_stoneclawtotem",
+			"level": 44,
+			"tree": "balance",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 21849,
+			"name": "Gift of the Wild",
+			"icon": "spell_nature_regeneration",
+			"level": 50,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 2
+		}
+	],
+	"hunter": [
+		{
+			"id": 6603,
+			"name": "Attack",
+			"icon": "inv_sword_04",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 19434,
+			"name": "Aimed Shot",
+			"icon": "inv_spear_07",
+			"level": 0,
+			"tree": "marksmanship",
+			"talent": true,
+			"ranks": 6
+		},
+		{
+			"id": 19574,
+			"name": "Bestial Wrath",
+			"icon": "ability_druid_ferociousbite",
+			"level": 0,
+			"tree": "beast-mastery",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 19306,
+			"name": "Counterattack",
+			"icon": "ability_warrior_challange",
+			"level": 0,
+			"tree": "survival",
+			"talent": true,
+			"ranks": 3
+		},
+		{
+			"id": 19263,
+			"name": "Deterrence",
+			"icon": "ability_whirlwind",
+			"level": 0,
+			"tree": "survival",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 19577,
+			"name": "Intimidation",
+			"icon": "ability_devour",
+			"level": 0,
+			"tree": "beast-mastery",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 19503,
+			"name": "Scatter Shot",
+			"icon": "ability_golemstormbolt",
+			"level": 0,
+			"tree": "marksmanship",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 19506,
+			"name": "Trueshot Aura",
+			"icon": "ability_trueshot",
+			"level": 0,
+			"tree": "marksmanship",
+			"talent": true,
+			"ranks": 3
+		},
+		{
+			"id": 19386,
+			"name": "Wyvern Sting",
+			"icon": "inv_spear_02",
+			"level": 0,
+			"tree": "survival",
+			"talent": true,
+			"ranks": 3
+		},
+		{
+			"id": 75,
+			"name": "Auto Shot",
+			"icon": "ability_whirlwind",
+			"level": 1,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2973,
+			"name": "Raptor Strike",
+			"icon": "ability_meleedamage",
+			"level": 1,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 8
+		},
+		{
+			"id": 1494,
+			"name": "Track Beasts",
+			"icon": "ability_tracking",
+			"level": 1,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 13163,
+			"name": "Aspect of the Monkey",
+			"icon": "ability_hunter_aspectofthemonkey",
+			"level": 4,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1978,
+			"name": "Serpent Sting",
+			"icon": "ability_hunter_quickshot",
+			"level": 4,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 9
+		},
+		{
+			"id": 3044,
+			"name": "Arcane Shot",
+			"icon": "ability_impalingbolt",
+			"level": 6,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 8
+		},
+		{
+			"id": 1130,
+			"name": "Hunter's Mark",
+			"icon": "ability_hunter_snipershot",
+			"level": 6,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 5116,
+			"name": "Concussive Shot",
+			"icon": "spell_frost_stun",
+			"level": 8,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 13165,
+			"name": "Aspect of the Hawk",
+			"icon": "spell_nature_ravenform",
+			"level": 10,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 883,
+			"name": "Call Pet",
+			"icon": "ability_hunter_beastcall",
+			"level": 10,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2641,
+			"name": "Dismiss Pet",
+			"icon": "spell_nature_spiritwolf",
+			"level": 10,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 6991,
+			"name": "Feed Pet",
+			"icon": "ability_hunter_beasttraining",
+			"level": 10,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 982,
+			"name": "Revive Pet",
+			"icon": "ability_hunter_beastsoothe",
+			"level": 10,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1515,
+			"name": "Tame Beast",
+			"icon": "ability_hunter_beasttaming",
+			"level": 10,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 19883,
+			"name": "Track Humanoids",
+			"icon": "spell_holy_prayerofhealing",
+			"level": 10,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 20736,
+			"name": "Distracting Shot",
+			"icon": "spell_arcane_blink",
+			"level": 12,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 136,
+			"name": "Mend Pet",
+			"icon": "ability_hunter_mendpet",
+			"level": 12,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 2974,
+			"name": "Wing Clip",
+			"icon": "ability_rogue_trip",
+			"level": 12,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 6197,
+			"name": "Eagle Eye",
+			"icon": "ability_hunter_eagleeye",
+			"level": 14,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1002,
+			"name": "Eyes of the Beast",
+			"icon": "ability_eyeoftheowl",
+			"level": 14,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1513,
+			"name": "Scare Beast",
+			"icon": "ability_druid_cower",
+			"level": 14,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 13795,
+			"name": "Immolation Trap",
+			"icon": "spell_fire_flameshock",
+			"level": 16,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 1495,
+			"name": "Mongoose Bite",
+			"icon": "ability_hunter_swiftstrike",
+			"level": 16,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 2643,
+			"name": "Multi-Shot",
+			"icon": "ability_upgrademoonglaive",
+			"level": 18,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 19884,
+			"name": "Track Undead",
+			"icon": "spell_shadow_darksummoning",
+			"level": 18,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5118,
+			"name": "Aspect of the Cheetah",
+			"icon": "ability_mount_jungletiger",
+			"level": 20,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 781,
+			"name": "Disengage",
+			"icon": "ability_rogue_feint",
+			"level": 20,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 1499,
+			"name": "Freezing Trap",
+			"icon": "spell_frost_chainsofice",
+			"level": 20,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 3043,
+			"name": "Scorpid Sting",
+			"icon": "ability_hunter_criticalshot",
+			"level": 22,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 1462,
+			"name": "Beast Lore",
+			"icon": "ability_physical_taunt",
+			"level": 24,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 19885,
+			"name": "Track Hidden",
+			"icon": "ability_stealth",
+			"level": 24,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 3045,
+			"name": "Rapid Fire",
+			"icon": "ability_hunter_runningshot",
+			"level": 26,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 19880,
+			"name": "Track Elementals",
+			"icon": "spell_frost_summonwaterelemental",
+			"level": 26,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 13809,
+			"name": "Frost Trap",
+			"icon": "spell_frost_freezingbreath",
+			"level": 28,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 13161,
+			"name": "Aspect of the Beast",
+			"icon": "ability_mount_pinktiger",
+			"level": 30,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5384,
+			"name": "Feign Death",
+			"icon": "ability_rogue_feigndeath",
+			"level": 30,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1543,
+			"name": "Flare",
+			"icon": "spell_fire_flare",
+			"level": 32,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 19878,
+			"name": "Track Demons",
+			"icon": "spell_shadow_summonfelhunter",
+			"level": 32,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 13813,
+			"name": "Explosive Trap",
+			"icon": "spell_fire_selfdestruct",
+			"level": 34,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 3034,
+			"name": "Viper Sting",
+			"icon": "ability_hunter_aimedshot",
+			"level": 36,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 13159,
+			"name": "Aspect of the Pack",
+			"icon": "ability_mount_whitetiger",
+			"level": 40,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 19882,
+			"name": "Track Giants",
+			"icon": "ability_racial_avatar",
+			"level": 40,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1510,
+			"name": "Volley",
+			"icon": "ability_marksmanship",
+			"level": 40,
+			"tree": "marksmanship",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 20043,
+			"name": "Aspect of the Wild",
+			"icon": "spell_nature_protectionformnature",
+			"level": 46,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 19879,
+			"name": "Track Dragonkin",
+			"icon": "inv_misc_head_dragon_01",
+			"level": 50,
+			"tree": "survival",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 19801,
+			"name": "Tranquilizing Shot",
+			"icon": "spell_nature_drowsy",
+			"level": 60,
+			"tree": "beast-mastery",
+			"talent": false,
+			"ranks": 1
+		}
+	],
+	"mage": [
+		{
+			"id": 6603,
+			"name": "Attack",
+			"icon": "inv_sword_04",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5019,
+			"name": "Shoot",
+			"icon": "ability_shootwand",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 12042,
+			"name": "Arcane Power",
+			"icon": "spell_nature_lightning",
+			"level": 0,
+			"tree": "arcane",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 11113,
+			"name": "Blast Wave",
+			"icon": "spell_holy_excorcism_02",
+			"level": 0,
+			"tree": "fire",
+			"talent": true,
+			"ranks": 5
+		},
+		{
+			"id": 12472,
+			"name": "Cold Snap",
+			"icon": "spell_frost_wizardmark",
+			"level": 0,
+			"tree": "frost",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 11129,
+			"name": "Combustion",
+			"icon": "spell_fire_sealoffire",
+			"level": 0,
+			"tree": "fire",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 11426,
+			"name": "Ice Barrier",
+			"icon": "spell_ice_lament",
+			"level": 0,
+			"tree": "frost",
+			"talent": true,
+			"ranks": 4
+		},
+		{
+			"id": 11958,
+			"name": "Ice Block",
+			"icon": "spell_frost_frost",
+			"level": 0,
+			"tree": "frost",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 12043,
+			"name": "Presence of Mind",
+			"icon": "spell_nature_enchantarmor",
+			"level": 0,
+			"tree": "arcane",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 11366,
+			"name": "Pyroblast",
+			"icon": "spell_fire_fireball02",
+			"level": 0,
+			"tree": "fire",
+			"talent": true,
+			"ranks": 8
+		},
+		{
+			"id": 1459,
+			"name": "Arcane Intellect",
+			"icon": "spell_holy_magicalsentry",
+			"level": 1,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 133,
+			"name": "Fireball",
+			"icon": "spell_fire_flamebolt",
+			"level": 1,
+			"tree": "fire",
+			"talent": false,
+			"ranks": 12
+		},
+		{
+			"id": 168,
+			"name": "Frost Armor",
+			"icon": "spell_frost_frostarmor02",
+			"level": 1,
+			"tree": "frost",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 5504,
+			"name": "Conjure Water",
+			"icon": "inv_drink_06",
+			"level": 4,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 116,
+			"name": "Frostbolt",
+			"icon": "spell_frost_frostbolt02",
+			"level": 4,
+			"tree": "frost",
+			"talent": false,
+			"ranks": 11
+		},
+		{
+			"id": 587,
+			"name": "Conjure Food",
+			"icon": "inv_misc_food_10",
+			"level": 6,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 2136,
+			"name": "Fire Blast",
+			"icon": "spell_fire_fireball",
+			"level": 6,
+			"tree": "fire",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 5143,
+			"name": "Arcane Missiles",
+			"icon": "spell_nature_starfall",
+			"level": 8,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 8
+		},
+		{
+			"id": 118,
+			"name": "Polymorph",
+			"icon": "spell_nature_polymorph",
+			"level": 8,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 122,
+			"name": "Frost Nova",
+			"icon": "spell_frost_frostnova",
+			"level": 10,
+			"tree": "frost",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 604,
+			"name": "Dampen Magic",
+			"icon": "spell_nature_abolishmagic",
+			"level": 12,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 130,
+			"name": "Slow Fall",
+			"icon": "spell_magic_featherfall",
+			"level": 12,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1449,
+			"name": "Arcane Explosion",
+			"icon": "spell_nature_wispsplode",
+			"level": 14,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 2855,
+			"name": "Detect Magic",
+			"icon": "spell_holy_dizzy",
+			"level": 16,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2120,
+			"name": "Flamestrike",
+			"icon": "spell_fire_selfdestruct",
+			"level": 16,
+			"tree": "fire",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 1008,
+			"name": "Amplify Magic",
+			"icon": "spell_holy_flashheal",
+			"level": 18,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 475,
+			"name": "Remove Lesser Curse",
+			"icon": "spell_nature_removecurse",
+			"level": 18,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1953,
+			"name": "Blink",
+			"icon": "spell_arcane_blink",
+			"level": 20,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 10,
+			"name": "Blizzard",
+			"icon": "spell_frost_icestorm",
+			"level": 20,
+			"tree": "frost",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 12051,
+			"name": "Evocation",
+			"icon": "spell_nature_purge",
+			"level": 20,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 543,
+			"name": "Fire Ward",
+			"icon": "spell_fire_firearmor",
+			"level": 20,
+			"tree": "fire",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 1463,
+			"name": "Mana Shield",
+			"icon": "spell_shadow_detectlesserinvisibility",
+			"level": 20,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 3562,
+			"name": "Teleport: Ironforge",
+			"icon": "spell_arcane_teleportironforge",
+			"level": 20,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 3567,
+			"name": "Teleport: Orgrimmar",
+			"icon": "spell_arcane_teleportorgrimmar",
+			"level": 20,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 3561,
+			"name": "Teleport: Stormwind",
+			"icon": "spell_arcane_teleportstormwind",
+			"level": 20,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 3563,
+			"name": "Teleport: Undercity",
+			"icon": "spell_arcane_teleportundercity",
+			"level": 20,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 6143,
+			"name": "Frost Ward",
+			"icon": "spell_frost_frostward",
+			"level": 22,
+			"tree": "frost",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 2948,
+			"name": "Scorch",
+			"icon": "spell_fire_soulburn",
+			"level": 22,
+			"tree": "fire",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 2139,
+			"name": "Counterspell",
+			"icon": "spell_frost_iceshock",
+			"level": 24,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 120,
+			"name": "Cone of Cold",
+			"icon": "spell_frost_glacier",
+			"level": 26,
+			"tree": "frost",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 759,
+			"name": "Conjure Mana Agate",
+			"icon": "inv_misc_gem_emerald_01",
+			"level": 28,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 7302,
+			"name": "Ice Armor",
+			"icon": "spell_frost_frostarmor02",
+			"level": 30,
+			"tree": "frost",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 3565,
+			"name": "Teleport: Darnassus",
+			"icon": "spell_arcane_teleportdarnassus",
+			"level": 30,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 3566,
+			"name": "Teleport: Thunder Bluff",
+			"icon": "spell_arcane_teleportthunderbluff",
+			"level": 30,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 6117,
+			"name": "Mage Armor",
+			"icon": "spell_magearmor",
+			"level": 34,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 3552,
+			"name": "Conjure Mana Jade",
+			"icon": "inv_misc_gem_emerald_02",
+			"level": 38,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 11416,
+			"name": "Portal: Ironforge",
+			"icon": "spell_arcane_portalironforge",
+			"level": 40,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 11417,
+			"name": "Portal: Orgrimmar",
+			"icon": "spell_arcane_portalorgrimmar",
+			"level": 40,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 10059,
+			"name": "Portal: Stormwind",
+			"icon": "spell_arcane_portalstormwind",
+			"level": 40,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 11418,
+			"name": "Portal: Undercity",
+			"icon": "spell_arcane_portalundercity",
+			"level": 40,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 10053,
+			"name": "Conjure Mana Citrine",
+			"icon": "inv_misc_gem_opal_01",
+			"level": 48,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 11419,
+			"name": "Portal: Darnassus",
+			"icon": "spell_arcane_portaldarnassus",
+			"level": 50,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 11420,
+			"name": "Portal: Thunder Bluff",
+			"icon": "spell_arcane_portalthunderbluff",
+			"level": 50,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 23028,
+			"name": "Arcane Brilliance",
+			"icon": "spell_holy_arcaneintellect",
+			"level": 56,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 10054,
+			"name": "Conjure Mana Ruby",
+			"icon": "inv_misc_gem_ruby_01",
+			"level": 58,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 28270,
+			"name": "Polymorph: Cow",
+			"icon": "spell_nature_polymorph_cow",
+			"level": 60,
+			"tree": "arcane",
+			"talent": false,
+			"ranks": 1
+		}
+	],
+	"paladin": [
+		{
+			"id": 6603,
+			"name": "Attack",
+			"icon": "inv_sword_04",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 20217,
+			"name": "Blessing of Kings",
+			"icon": "spell_magic_magearmor",
+			"level": 0,
+			"tree": "protection",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 20911,
+			"name": "Blessing of Sanctuary",
+			"icon": "spell_nature_lightningshield",
+			"level": 0,
+			"tree": "protection",
+			"talent": true,
+			"ranks": 4
+		},
+		{
+			"id": 20216,
+			"name": "Divine Favor",
+			"icon": "spell_holy_heal",
+			"level": 0,
+			"tree": "holy",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 20925,
+			"name": "Holy Shield",
+			"icon": "spell_holy_blessingofprotection",
+			"level": 0,
+			"tree": "protection",
+			"talent": true,
+			"ranks": 3
+		},
+		{
+			"id": 20473,
+			"name": "Holy Shock",
+			"icon": "spell_holy_searinglight",
+			"level": 0,
+			"tree": "holy",
+			"talent": true,
+			"ranks": 3
+		},
+		{
+			"id": 20066,
+			"name": "Repentance",
+			"icon": "spell_holy_prayerofhealing",
+			"level": 0,
+			"tree": "retribution",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 20375,
+			"name": "Seal of Command",
+			"icon": "ability_warrior_innerrage",
+			"level": 0,
+			"tree": "retribution",
+			"talent": true,
+			"ranks": 5
+		},
+		{
+			"id": 465,
+			"name": "Devotion Aura",
+			"icon": "spell_holy_devotionaura",
+			"level": 1,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 635,
+			"name": "Holy Light",
+			"icon": "spell_holy_holybolt",
+			"level": 1,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 9
+		},
+		{
+			"id": 20154,
+			"name": "Seal of Righteousness",
+			"icon": "ability_thunderbolt",
+			"level": 1,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 9
+		},
+		{
+			"id": 19740,
+			"name": "Blessing of Might",
+			"icon": "spell_holy_fistofjustice",
+			"level": 4,
+			"tree": "retribution",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 20271,
+			"name": "Judgement",
+			"icon": "spell_holy_righteousfury",
+			"level": 4,
+			"tree": "retribution",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 498,
+			"name": "Divine Protection",
+			"icon": "spell_holy_restoration",
+			"level": 6,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 21082,
+			"name": "Seal of the Crusader",
+			"icon": "spell_holy_holysmite",
+			"level": 6,
+			"tree": "retribution",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 853,
+			"name": "Hammer of Justice",
+			"icon": "spell_holy_sealofmight",
+			"level": 8,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 1152,
+			"name": "Purify",
+			"icon": "spell_holy_purify",
+			"level": 8,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1022,
+			"name": "Blessing of Protection",
+			"icon": "spell_holy_sealofprotection",
+			"level": 10,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 633,
+			"name": "Lay on Hands",
+			"icon": "spell_holy_layonhands",
+			"level": 10,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 7328,
+			"name": "Redemption",
+			"icon": "spell_holy_resurrection",
+			"level": 12,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 19742,
+			"name": "Blessing of Wisdom",
+			"icon": "spell_holy_sealofwisdom",
+			"level": 14,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 7294,
+			"name": "Retribution Aura",
+			"icon": "spell_holy_auraoflight",
+			"level": 16,
+			"tree": "retribution",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 25780,
+			"name": "Righteous Fury",
+			"icon": "spell_holy_sealoffury",
+			"level": 16,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1044,
+			"name": "Blessing of Freedom",
+			"icon": "spell_holy_sealofvalor",
+			"level": 18,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 879,
+			"name": "Exorcism",
+			"icon": "spell_holy_excorcism_02",
+			"level": 20,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 19750,
+			"name": "Flash of Light",
+			"icon": "spell_holy_flashheal",
+			"level": 20,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 5502,
+			"name": "Sense Undead",
+			"icon": "spell_holy_senseundead",
+			"level": 20,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 19746,
+			"name": "Concentration Aura",
+			"icon": "spell_holy_mindsooth",
+			"level": 22,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 20164,
+			"name": "Seal of Justice",
+			"icon": "spell_holy_sealofwrath",
+			"level": 22,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2878,
+			"name": "Turn Undead",
+			"icon": "spell_holy_turnundead",
+			"level": 24,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 1038,
+			"name": "Blessing of Salvation",
+			"icon": "spell_holy_sealofsalvation",
+			"level": 26,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 19876,
+			"name": "Shadow Resistance Aura",
+			"icon": "spell_shadow_sealofkings",
+			"level": 28,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 19752,
+			"name": "Divine Intervention",
+			"icon": "spell_nature_timestop",
+			"level": 30,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 20165,
+			"name": "Seal of Light",
+			"icon": "spell_holy_healingaura",
+			"level": 30,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 19888,
+			"name": "Frost Resistance Aura",
+			"icon": "spell_frost_wizardmark",
+			"level": 32,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 642,
+			"name": "Divine Shield",
+			"icon": "spell_holy_divineintervention",
+			"level": 34,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 19891,
+			"name": "Fire Resistance Aura",
+			"icon": "spell_fire_sealoffire",
+			"level": 36,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 20166,
+			"name": "Seal of Wisdom",
+			"icon": "spell_holy_righteousnessaura",
+			"level": 38,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 19977,
+			"name": "Blessing of Light",
+			"icon": "spell_holy_prayerofhealing02",
+			"level": 40,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 13819,
+			"name": "Summon Warhorse",
+			"icon": "spell_nature_swiftness",
+			"level": 40,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 4987,
+			"name": "Cleanse",
+			"icon": "spell_holy_renew",
+			"level": 42,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 24275,
+			"name": "Hammer of Wrath",
+			"icon": "ability_thunderclap",
+			"level": 44,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 6940,
+			"name": "Blessing of Sacrifice",
+			"icon": "spell_holy_sealofsacrifice",
+			"level": 46,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 2812,
+			"name": "Holy Wrath",
+			"icon": "spell_holy_excorcism",
+			"level": 50,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 25782,
+			"name": "Greater Blessing of Might",
+			"icon": "spell_holy_greaterblessingofkings",
+			"level": 52,
+			"tree": "retribution",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 25894,
+			"name": "Greater Blessing of Wisdom",
+			"icon": "spell_holy_greaterblessingofwisdom",
+			"level": 54,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 25898,
+			"name": "Greater Blessing of Kings",
+			"icon": "spell_magic_greaterblessingofkings",
+			"level": 60,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 25890,
+			"name": "Greater Blessing of Light",
+			"icon": "spell_holy_greaterblessingoflight",
+			"level": 60,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 25895,
+			"name": "Greater Blessing of Salvation",
+			"icon": "spell_holy_greaterblessingofsalvation",
+			"level": 60,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 25899,
+			"name": "Greater Blessing of Sanctuary",
+			"icon": "spell_holy_greaterblessingofsanctuary",
+			"level": 60,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 23214,
+			"name": "Summon Charger",
+			"icon": "ability_mount_charger",
+			"level": 60,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 1
+		}
+	],
+	"priest": [
+		{
+			"id": 6603,
+			"name": "Attack",
+			"icon": "inv_sword_04",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5019,
+			"name": "Shoot",
+			"icon": "ability_shootwand",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 15237,
+			"name": "Holy Nova",
+			"icon": "spell_holy_holynova",
+			"level": 0,
+			"tree": "holy",
+			"talent": true,
+			"ranks": 6
+		},
+		{
+			"id": 14751,
+			"name": "Inner Focus",
+			"icon": "spell_frost_windwalkon",
+			"level": 0,
+			"tree": "discipline",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 724,
+			"name": "Lightwell",
+			"icon": "spell_holy_summonlightwell",
+			"level": 0,
+			"tree": "holy",
+			"talent": true,
+			"ranks": 3
+		},
+		{
+			"id": 15407,
+			"name": "Mind Flay",
+			"icon": "spell_shadow_siphonmana",
+			"level": 0,
+			"tree": "shadow",
+			"talent": true,
+			"ranks": 6
+		},
+		{
+			"id": 10060,
+			"name": "Power Infusion",
+			"icon": "spell_holy_powerinfusion",
+			"level": 0,
+			"tree": "discipline",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 15473,
+			"name": "Shadowform",
+			"icon": "spell_shadow_shadowform",
+			"level": 0,
+			"tree": "shadow",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 15487,
+			"name": "Silence",
+			"icon": "spell_shadow_impphaseshift",
+			"level": 0,
+			"tree": "shadow",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 15286,
+			"name": "Vampiric Embrace",
+			"icon": "spell_shadow_unsummonbuilding",
+			"level": 0,
+			"tree": "shadow",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 2050,
+			"name": "Lesser Heal",
+			"icon": "spell_holy_lesserheal",
+			"level": 1,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 1243,
+			"name": "Power Word: Fortitude",
+			"icon": "spell_holy_wordfortitude",
+			"level": 1,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 585,
+			"name": "Smite",
+			"icon": "spell_holy_holysmite",
+			"level": 1,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 8
+		},
+		{
+			"id": 589,
+			"name": "Shadow Word: Pain",
+			"icon": "spell_shadow_shadowwordpain",
+			"level": 4,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 8
+		},
+		{
+			"id": 17,
+			"name": "Power Word: Shield",
+			"icon": "spell_holy_powerwordshield",
+			"level": 6,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 10
+		},
+		{
+			"id": 586,
+			"name": "Fade",
+			"icon": "spell_magic_lesserinvisibilty",
+			"level": 8,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 139,
+			"name": "Renew",
+			"icon": "spell_holy_renew",
+			"level": 8,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 10
+		},
+		{
+			"id": 13908,
+			"name": "Desperate Prayer",
+			"icon": "spell_holy_restoration",
+			"level": 10,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 9035,
+			"name": "Hex of Weakness",
+			"icon": "spell_shadow_fingerofdeath",
+			"level": 10,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 8092,
+			"name": "Mind Blast",
+			"icon": "spell_shadow_unholyfrenzy",
+			"level": 10,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 9
+		},
+		{
+			"id": 2006,
+			"name": "Resurrection",
+			"icon": "spell_holy_resurrection",
+			"level": 10,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 10797,
+			"name": "Starshards",
+			"icon": "spell_arcane_starfire",
+			"level": 10,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 2652,
+			"name": "Touch of Weakness",
+			"icon": "spell_shadow_deadofnight",
+			"level": 10,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 588,
+			"name": "Inner Fire",
+			"icon": "spell_holy_innerfire",
+			"level": 12,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 528,
+			"name": "Cure Disease",
+			"icon": "spell_holy_nullifydisease",
+			"level": 14,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 8122,
+			"name": "Psychic Scream",
+			"icon": "spell_shadow_psychicscream",
+			"level": 14,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 2054,
+			"name": "Heal",
+			"icon": "spell_holy_heal",
+			"level": 16,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 527,
+			"name": "Dispel Magic",
+			"icon": "spell_holy_dispelmagic",
+			"level": 18,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 2944,
+			"name": "Devouring Plague",
+			"icon": "spell_shadow_blackplague",
+			"level": 20,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 2651,
+			"name": "Elune's Grace",
+			"icon": "spell_holy_elunesgrace",
+			"level": 20,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 6346,
+			"name": "Fear Ward",
+			"icon": "spell_holy_excorcism",
+			"level": 20,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 13896,
+			"name": "Feedback",
+			"icon": "spell_shadow_ritualofsacrifice",
+			"level": 20,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 2061,
+			"name": "Flash Heal",
+			"icon": "spell_holy_flashheal",
+			"level": 20,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 14914,
+			"name": "Holy Fire",
+			"icon": "spell_holy_searinglight",
+			"level": 20,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 8
+		},
+		{
+			"id": 453,
+			"name": "Mind Soothe",
+			"icon": "spell_holy_mindsooth",
+			"level": 20,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 9484,
+			"name": "Shackle Undead",
+			"icon": "spell_nature_slow",
+			"level": 20,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 18137,
+			"name": "Shadowguard",
+			"icon": "spell_nature_lightningshield",
+			"level": 20,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 2096,
+			"name": "Mind Vision",
+			"icon": "spell_holy_mindvision",
+			"level": 22,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 8129,
+			"name": "Mana Burn",
+			"icon": "spell_shadow_manaburn",
+			"level": 24,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 605,
+			"name": "Mind Control",
+			"icon": "spell_shadow_shadowworddominate",
+			"level": 30,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 596,
+			"name": "Prayer of Healing",
+			"icon": "spell_holy_prayerofhealing02",
+			"level": 30,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 976,
+			"name": "Shadow Protection",
+			"icon": "spell_shadow_antishadow",
+			"level": 30,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 552,
+			"name": "Abolish Disease",
+			"icon": "spell_nature_nullifydisease",
+			"level": 32,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1706,
+			"name": "Levitate",
+			"icon": "spell_holy_layonhands",
+			"level": 34,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2060,
+			"name": "Greater Heal",
+			"icon": "spell_holy_greaterheal",
+			"level": 40,
+			"tree": "holy",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 21562,
+			"name": "Prayer of Fortitude",
+			"icon": "spell_holy_prayeroffortitude",
+			"level": 48,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 27683,
+			"name": "Prayer of Shadow Protection",
+			"icon": "spell_holy_prayerofshadowprotection",
+			"level": 56,
+			"tree": "shadow",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 27681,
+			"name": "Prayer of Spirit",
+			"icon": "spell_holy_prayerofspirit",
+			"level": 60,
+			"tree": "discipline",
+			"talent": false,
+			"ranks": 1
+		}
+	],
+	"rogue": [
+		{
+			"id": 6603,
+			"name": "Attack",
+			"icon": "inv_sword_04",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2480,
+			"name": "Shoot Bow",
+			"icon": "ability_marksmanship",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 7918,
+			"name": "Shoot Gun",
+			"icon": "ability_marksmanship",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 7919,
+			"name": "Shoot Crossbow",
+			"icon": "ability_marksmanship",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2764,
+			"name": "Throw",
+			"icon": "ability_throw",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 13750,
+			"name": "Adrenaline Rush",
+			"icon": "spell_shadow_shadowworddominate",
+			"level": 0,
+			"tree": "combat",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 13877,
+			"name": "Blade Flurry",
+			"icon": "ability_warrior_punishingblow",
+			"level": 0,
+			"tree": "combat",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 14177,
+			"name": "Cold Blood",
+			"icon": "spell_ice_lament",
+			"level": 0,
+			"tree": "assassination",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 14278,
+			"name": "Ghostly Strike",
+			"icon": "spell_shadow_curse",
+			"level": 0,
+			"tree": "subtlety",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 16511,
+			"name": "Hemorrhage",
+			"icon": "spell_shadow_lifedrain",
+			"level": 0,
+			"tree": "subtlety",
+			"talent": true,
+			"ranks": 3
+		},
+		{
+			"id": 14183,
+			"name": "Premeditation",
+			"icon": "spell_shadow_possession",
+			"level": 0,
+			"tree": "subtlety",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 14185,
+			"name": "Preparation",
+			"icon": "spell_shadow_antishadow",
+			"level": 0,
+			"tree": "subtlety",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 14251,
+			"name": "Riposte",
+			"icon": "ability_warrior_challange",
+			"level": 0,
+			"tree": "combat",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 2098,
+			"name": "Eviscerate",
+			"icon": "ability_rogue_eviscerate",
+			"level": 1,
+			"tree": "assassination",
+			"talent": false,
+			"ranks": 9
+		},
+		{
+			"id": 1804,
+			"name": "Pick Lock",
+			"icon": "spell_nature_moonkey",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1752,
+			"name": "Sinister Strike",
+			"icon": "spell_shadow_ritualofsacrifice",
+			"level": 1,
+			"tree": "combat",
+			"talent": false,
+			"ranks": 8
+		},
+		{
+			"id": 1784,
+			"name": "Stealth",
+			"icon": "ability_stealth",
+			"level": 1,
+			"tree": "subtlety",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 53,
+			"name": "Backstab",
+			"icon": "ability_backstab",
+			"level": 4,
+			"tree": "combat",
+			"talent": false,
+			"ranks": 9
+		},
+		{
+			"id": 921,
+			"name": "Pick Pocket",
+			"icon": "inv_misc_bag_11",
+			"level": 4,
+			"tree": "subtlety",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1776,
+			"name": "Gouge",
+			"icon": "ability_gouge",
+			"level": 6,
+			"tree": "combat",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 5277,
+			"name": "Evasion",
+			"icon": "spell_shadow_shadowward",
+			"level": 8,
+			"tree": "combat",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 6770,
+			"name": "Sap",
+			"icon": "ability_sap",
+			"level": 10,
+			"tree": "subtlety",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 5171,
+			"name": "Slice and Dice",
+			"icon": "ability_rogue_slicedice",
+			"level": 10,
+			"tree": "assassination",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 2983,
+			"name": "Sprint",
+			"icon": "ability_rogue_sprint",
+			"level": 10,
+			"tree": "combat",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 1766,
+			"name": "Kick",
+			"icon": "ability_kick",
+			"level": 12,
+			"tree": "combat",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 8647,
+			"name": "Expose Armor",
+			"icon": "ability_warrior_riposte",
+			"level": 14,
+			"tree": "assassination",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 703,
+			"name": "Garrote",
+			"icon": "ability_rogue_garrote",
+			"level": 14,
+			"tree": "assassination",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 1966,
+			"name": "Feint",
+			"icon": "ability_rogue_feint",
+			"level": 16,
+			"tree": "combat",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 8676,
+			"name": "Ambush",
+			"icon": "ability_rogue_ambush",
+			"level": 18,
+			"tree": "assassination",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 1943,
+			"name": "Rupture",
+			"icon": "ability_rogue_rupture",
+			"level": 20,
+			"tree": "assassination",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 1725,
+			"name": "Distract",
+			"icon": "ability_rogue_distract",
+			"level": 22,
+			"tree": "subtlety",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1856,
+			"name": "Vanish",
+			"icon": "ability_vanish",
+			"level": 22,
+			"tree": "subtlety",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 1833,
+			"name": "Cheap Shot",
+			"icon": "ability_cheapshot",
+			"level": 26,
+			"tree": "assassination",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1842,
+			"name": "Disarm Trap",
+			"icon": "spell_shadow_grimward",
+			"level": 30,
+			"tree": "subtlety",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 408,
+			"name": "Kidney Shot",
+			"icon": "ability_rogue_kidneyshot",
+			"level": 30,
+			"tree": "assassination",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 2094,
+			"name": "Blind",
+			"icon": "spell_shadow_mindsteal",
+			"level": 34,
+			"tree": "subtlety",
+			"talent": false,
+			"ranks": 1
+		}
+	],
+	"shaman": [
+		{
+			"id": 6603,
+			"name": "Attack",
+			"icon": "inv_sword_04",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 16166,
+			"name": "Elemental Mastery",
+			"icon": "spell_nature_wispheal",
+			"level": 0,
+			"tree": "elemental",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 16190,
+			"name": "Mana Tide Totem",
+			"icon": "spell_frost_summonwaterelemental",
+			"level": 0,
+			"tree": "restoration",
+			"talent": true,
+			"ranks": 3
+		},
+		{
+			"id": 16188,
+			"name": "Nature's Swiftness",
+			"icon": "spell_nature_ravenform",
+			"level": 0,
+			"tree": "restoration",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 17364,
+			"name": "Stormstrike",
+			"icon": "spell_holy_sealofmight",
+			"level": 0,
+			"tree": "enhancement",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 331,
+			"name": "Healing Wave",
+			"icon": "spell_nature_magicimmunity",
+			"level": 1,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 10
+		},
+		{
+			"id": 403,
+			"name": "Lightning Bolt",
+			"icon": "spell_nature_lightning",
+			"level": 1,
+			"tree": "elemental",
+			"talent": false,
+			"ranks": 10
+		},
+		{
+			"id": 8017,
+			"name": "Rockbiter Weapon",
+			"icon": "spell_nature_rockbiter",
+			"level": 1,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 8042,
+			"name": "Earth Shock",
+			"icon": "spell_nature_earthshock",
+			"level": 4,
+			"tree": "elemental",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 8071,
+			"name": "Stoneskin Totem",
+			"icon": "spell_nature_stoneskintotem",
+			"level": 4,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 2484,
+			"name": "Earthbind Totem",
+			"icon": "spell_nature_strengthofearthtotem02",
+			"level": 6,
+			"tree": "elemental",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 324,
+			"name": "Lightning Shield",
+			"icon": "spell_nature_lightningshield",
+			"level": 8,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 5730,
+			"name": "Stoneclaw Totem",
+			"icon": "spell_nature_stoneclawtotem",
+			"level": 8,
+			"tree": "elemental",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 8050,
+			"name": "Flame Shock",
+			"icon": "spell_fire_flameshock",
+			"level": 10,
+			"tree": "elemental",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 8024,
+			"name": "Flametongue Weapon",
+			"icon": "spell_fire_flametounge",
+			"level": 10,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 3599,
+			"name": "Searing Totem",
+			"icon": "spell_fire_searingtotem",
+			"level": 10,
+			"tree": "elemental",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 8075,
+			"name": "Strength of Earth Totem",
+			"icon": "spell_nature_earthbindtotem",
+			"level": 10,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 2008,
+			"name": "Ancestral Spirit",
+			"icon": "spell_nature_regenerate",
+			"level": 12,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 1535,
+			"name": "Fire Nova Totem",
+			"icon": "spell_fire_sealoffire",
+			"level": 12,
+			"tree": "elemental",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 370,
+			"name": "Purge",
+			"icon": "spell_nature_purge",
+			"level": 12,
+			"tree": "elemental",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 526,
+			"name": "Cure Poison",
+			"icon": "spell_nature_nullifypoison",
+			"level": 16,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 8143,
+			"name": "Tremor Totem",
+			"icon": "spell_nature_tremortotem",
+			"level": 18,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 8056,
+			"name": "Frost Shock",
+			"icon": "spell_frost_frostshock",
+			"level": 20,
+			"tree": "elemental",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 8033,
+			"name": "Frostbrand Weapon",
+			"icon": "spell_frost_frostbrand",
+			"level": 20,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 2645,
+			"name": "Ghost Wolf",
+			"icon": "spell_nature_spiritwolf",
+			"level": 20,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5394,
+			"name": "Healing Stream Totem",
+			"icon": "inv_spear_04",
+			"level": 20,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 8004,
+			"name": "Lesser Healing Wave",
+			"icon": "spell_nature_healingwavelesser",
+			"level": 20,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 2870,
+			"name": "Cure Disease",
+			"icon": "spell_nature_removedisease",
+			"level": 22,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 8166,
+			"name": "Poison Cleansing Totem",
+			"icon": "spell_nature_poisoncleansingtotem",
+			"level": 22,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 131,
+			"name": "Water Breathing",
+			"icon": "spell_shadow_demonbreath",
+			"level": 22,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 8181,
+			"name": "Frost Resistance Totem",
+			"icon": "spell_frostresistancetotem_01",
+			"level": 24,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 6196,
+			"name": "Far Sight",
+			"icon": "spell_nature_farsight",
+			"level": 26,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 8190,
+			"name": "Magma Totem",
+			"icon": "spell_fire_selfdestruct",
+			"level": 26,
+			"tree": "elemental",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 5675,
+			"name": "Mana Spring Totem",
+			"icon": "spell_nature_manaregentotem",
+			"level": 26,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 8184,
+			"name": "Fire Resistance Totem",
+			"icon": "spell_fireresistancetotem_01",
+			"level": 28,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 8227,
+			"name": "Flametongue Totem",
+			"icon": "spell_nature_guardianward",
+			"level": 28,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 546,
+			"name": "Water Walking",
+			"icon": "spell_frost_windwalkon",
+			"level": 28,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 556,
+			"name": "Astral Recall",
+			"icon": "spell_nature_astralrecal",
+			"level": 30,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 8177,
+			"name": "Grounding Totem",
+			"icon": "spell_nature_groundingtotem",
+			"level": 30,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 10595,
+			"name": "Nature Resistance Totem",
+			"icon": "spell_nature_natureresistancetotem",
+			"level": 30,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 20608,
+			"name": "Reincarnation",
+			"icon": "spell_nature_reincarnation",
+			"level": 30,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 8232,
+			"name": "Windfury Weapon",
+			"icon": "spell_nature_cyclone",
+			"level": 30,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 421,
+			"name": "Chain Lightning",
+			"icon": "spell_nature_chainlightning",
+			"level": 32,
+			"tree": "elemental",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 8512,
+			"name": "Windfury Totem",
+			"icon": "spell_nature_windfury",
+			"level": 32,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 6495,
+			"name": "Sentry Totem",
+			"icon": "spell_nature_removecurse",
+			"level": 34,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 15107,
+			"name": "Windwall Totem",
+			"icon": "spell_nature_earthbind",
+			"level": 36,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 8170,
+			"name": "Disease Cleansing Totem",
+			"icon": "spell_nature_diseasecleansingtotem",
+			"level": 38,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1064,
+			"name": "Chain Heal",
+			"icon": "spell_nature_healingwavegreater",
+			"level": 40,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 8835,
+			"name": "Grace of Air Totem",
+			"icon": "spell_nature_invisibilitytotem",
+			"level": 42,
+			"tree": "enhancement",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 25908,
+			"name": "Tranquil Air Totem",
+			"icon": "spell_nature_brilliance",
+			"level": 50,
+			"tree": "restoration",
+			"talent": false,
+			"ranks": 1
+		}
+	],
+	"warlock": [
+		{
+			"id": 6603,
+			"name": "Attack",
+			"icon": "inv_sword_04",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5019,
+			"name": "Shoot",
+			"icon": "ability_shootwand",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 18288,
+			"name": "Amplify Curse",
+			"icon": "spell_shadow_contagion",
+			"level": 0,
+			"tree": "affliction",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 17962,
+			"name": "Conflagrate",
+			"icon": "spell_fire_fireball",
+			"level": 0,
+			"tree": "destruction",
+			"talent": true,
+			"ranks": 4
+		},
+		{
+			"id": 18223,
+			"name": "Curse of Exhaustion",
+			"icon": "spell_shadow_grimward",
+			"level": 0,
+			"tree": "affliction",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 18220,
+			"name": "Dark Pact",
+			"icon": "spell_shadow_darkritual",
+			"level": 0,
+			"tree": "affliction",
+			"talent": true,
+			"ranks": 3
+		},
+		{
+			"id": 18788,
+			"name": "Demonic Sacrifice",
+			"icon": "spell_shadow_psychicscream",
+			"level": 0,
+			"tree": "demonology",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 18708,
+			"name": "Fel Domination",
+			"icon": "spell_nature_removecurse",
+			"level": 0,
+			"tree": "demonology",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 17877,
+			"name": "Shadowburn",
+			"icon": "spell_shadow_scourgebuild",
+			"level": 0,
+			"tree": "destruction",
+			"talent": true,
+			"ranks": 6
+		},
+		{
+			"id": 18265,
+			"name": "Siphon Life",
+			"icon": "spell_shadow_requiem",
+			"level": 0,
+			"tree": "affliction",
+			"talent": true,
+			"ranks": 4
+		},
+		{
+			"id": 19028,
+			"name": "Soul Link",
+			"icon": "spell_shadow_gathershadows",
+			"level": 0,
+			"tree": "demonology",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 687,
+			"name": "Demon Skin",
+			"icon": "spell_shadow_ragingscream",
+			"level": 1,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 348,
+			"name": "Immolate",
+			"icon": "spell_fire_immolation",
+			"level": 1,
+			"tree": "destruction",
+			"talent": false,
+			"ranks": 8
+		},
+		{
+			"id": 686,
+			"name": "Shadow Bolt",
+			"icon": "spell_shadow_shadowbolt",
+			"level": 1,
+			"tree": "destruction",
+			"talent": false,
+			"ranks": 10
+		},
+		{
+			"id": 688,
+			"name": "Summon Imp",
+			"icon": "spell_shadow_summonimp",
+			"level": 1,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 172,
+			"name": "Corruption",
+			"icon": "spell_shadow_abominationexplosion",
+			"level": 4,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 702,
+			"name": "Curse of Weakness",
+			"icon": "spell_shadow_curseofmannoroth",
+			"level": 4,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 1454,
+			"name": "Life Tap",
+			"icon": "spell_shadow_burningspirit",
+			"level": 6,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 980,
+			"name": "Curse of Agony",
+			"icon": "spell_shadow_curseofsargeras",
+			"level": 8,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 5782,
+			"name": "Fear",
+			"icon": "spell_shadow_possession",
+			"level": 8,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 6201,
+			"name": "Create Healthstone (Minor)",
+			"icon": "inv_stone_04",
+			"level": 10,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1120,
+			"name": "Drain Soul",
+			"icon": "spell_shadow_haunting",
+			"level": 10,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 697,
+			"name": "Summon Voidwalker",
+			"icon": "spell_shadow_summonvoidwalker",
+			"level": 10,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 755,
+			"name": "Health Funnel",
+			"icon": "spell_shadow_lifedrain",
+			"level": 12,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 704,
+			"name": "Curse of Recklessness",
+			"icon": "spell_shadow_unholystrength",
+			"level": 14,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 689,
+			"name": "Drain Life",
+			"icon": "spell_shadow_lifedrain02",
+			"level": 14,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 5697,
+			"name": "Unending Breath",
+			"icon": "spell_shadow_demonbreath",
+			"level": 16,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 693,
+			"name": "Create Soulstone (Minor)",
+			"icon": "inv_misc_orb_04",
+			"level": 18,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5676,
+			"name": "Searing Pain",
+			"icon": "spell_fire_soulburn",
+			"level": 18,
+			"tree": "destruction",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 706,
+			"name": "Demon Armor",
+			"icon": "spell_shadow_ragingscream",
+			"level": 20,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 5740,
+			"name": "Rain of Fire",
+			"icon": "spell_shadow_rainoffire",
+			"level": 20,
+			"tree": "destruction",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 698,
+			"name": "Ritual of Summoning",
+			"icon": "spell_shadow_twilight",
+			"level": 20,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 713,
+			"name": "Summon Incubus",
+			"icon": "ability_warlock_incubus",
+			"level": 20,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 712,
+			"name": "Summon Succubus",
+			"icon": "spell_shadow_summonsuccubus",
+			"level": 20,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 6202,
+			"name": "Create Healthstone (Lesser)",
+			"icon": "inv_stone_04",
+			"level": 22,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 126,
+			"name": "Eye of Kilrogg",
+			"icon": "spell_shadow_evileye",
+			"level": 22,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5138,
+			"name": "Drain Mana",
+			"icon": "spell_shadow_siphonmana",
+			"level": 24,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 5500,
+			"name": "Sense Demons",
+			"icon": "spell_shadow_metamorphosis",
+			"level": 24,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1714,
+			"name": "Curse of Tongues",
+			"icon": "spell_shadow_curseoftounges",
+			"level": 26,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 132,
+			"name": "Detect Lesser Invisibility",
+			"icon": "spell_shadow_detectlesserinvisibility",
+			"level": 26,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 710,
+			"name": "Banish",
+			"icon": "spell_shadow_cripple",
+			"level": 28,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 6366,
+			"name": "Create Firestone (Lesser)",
+			"icon": "inv_misc_gem_bloodstone_02",
+			"level": 28,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 20752,
+			"name": "Create Soulstone (Lesser)",
+			"icon": "inv_misc_orb_04",
+			"level": 30,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1949,
+			"name": "Hellfire",
+			"icon": "spell_fire_incinerate",
+			"level": 30,
+			"tree": "destruction",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 1098,
+			"name": "Subjugate Demon",
+			"icon": "spell_shadow_enslavedemon",
+			"level": 30,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 691,
+			"name": "Summon Felhunter",
+			"icon": "spell_shadow_summonfelhunter",
+			"level": 30,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1490,
+			"name": "Curse of the Elements",
+			"icon": "spell_shadow_chilltouch",
+			"level": 32,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 6229,
+			"name": "Shadow Ward",
+			"icon": "spell_shadow_antishadow",
+			"level": 32,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 5699,
+			"name": "Create Healthstone",
+			"icon": "inv_stone_04",
+			"level": 34,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 17951,
+			"name": "Create Firestone",
+			"icon": "inv_misc_gem_bloodstone_02",
+			"level": 36,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2362,
+			"name": "Create Spellstone",
+			"icon": "inv_misc_gem_sapphire_01",
+			"level": 36,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2970,
+			"name": "Detect Invisibility",
+			"icon": "spell_shadow_detectinvisibility",
+			"level": 38,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 20755,
+			"name": "Create Soulstone",
+			"icon": "inv_misc_orb_04",
+			"level": 40,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5484,
+			"name": "Howl of Terror",
+			"icon": "spell_shadow_deathscream",
+			"level": 40,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 5784,
+			"name": "Summon Felsteed",
+			"icon": "spell_nature_swiftness",
+			"level": 40,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 6789,
+			"name": "Death Coil",
+			"icon": "spell_shadow_deathcoil",
+			"level": 42,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 17862,
+			"name": "Curse of Shadow",
+			"icon": "spell_shadow_curseofachimonde",
+			"level": 44,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 17952,
+			"name": "Create Firestone (Greater)",
+			"icon": "inv_misc_gem_bloodstone_02",
+			"level": 46,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 11729,
+			"name": "Create Healthstone (Greater)",
+			"icon": "inv_stone_04",
+			"level": 46,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 17727,
+			"name": "Create Spellstone (Greater)",
+			"icon": "inv_misc_gem_sapphire_01",
+			"level": 48,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 6353,
+			"name": "Soul Fire",
+			"icon": "spell_fire_fireball02",
+			"level": 48,
+			"tree": "destruction",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 20756,
+			"name": "Create Soulstone (Greater)",
+			"icon": "inv_misc_orb_04",
+			"level": 50,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 11743,
+			"name": "Detect Greater Invisibility",
+			"icon": "spell_shadow_detectinvisibility",
+			"level": 50,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1122,
+			"name": "Inferno",
+			"icon": "spell_shadow_summoninfernal",
+			"level": 50,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 17953,
+			"name": "Create Firestone (Major)",
+			"icon": "inv_misc_gem_bloodstone_02",
+			"level": 56,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 11730,
+			"name": "Create Healthstone (Major)",
+			"icon": "inv_stone_04",
+			"level": 58,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 20757,
+			"name": "Create Soulstone (Major)",
+			"icon": "inv_misc_orb_04",
+			"level": 60,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 17728,
+			"name": "Create Spellstone (Major)",
+			"icon": "inv_misc_gem_sapphire_01",
+			"level": 60,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 603,
+			"name": "Curse of Doom",
+			"icon": "spell_shadow_auraofdarkness",
+			"level": 60,
+			"tree": "affliction",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 18540,
+			"name": "Ritual of Doom",
+			"icon": "spell_shadow_antimagicshell",
+			"level": 60,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 23161,
+			"name": "Summon Dreadsteed",
+			"icon": "ability_mount_dreadsteed",
+			"level": 60,
+			"tree": "demonology",
+			"talent": false,
+			"ranks": 1
+		}
+	],
+	"warrior": [
+		{
+			"id": 6603,
+			"name": "Attack",
+			"icon": "inv_sword_04",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2480,
+			"name": "Shoot Bow",
+			"icon": "ability_marksmanship",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 7918,
+			"name": "Shoot Gun",
+			"icon": "ability_marksmanship",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 7919,
+			"name": "Shoot Crossbow",
+			"icon": "ability_marksmanship",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2764,
+			"name": "Throw",
+			"icon": "ability_throw",
+			"level": 1,
+			"tree": null,
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 23881,
+			"name": "Bloodthirst",
+			"icon": "spell_nature_bloodlust",
+			"level": 0,
+			"tree": "fury",
+			"talent": true,
+			"ranks": 4
+		},
+		{
+			"id": 12809,
+			"name": "Concussion Blow",
+			"icon": "ability_thunderbolt",
+			"level": 0,
+			"tree": "protection",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 12328,
+			"name": "Death Wish",
+			"icon": "spell_shadow_deathpact",
+			"level": 0,
+			"tree": "fury",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 12975,
+			"name": "Last Stand",
+			"icon": "spell_holy_ashestoashes",
+			"level": 0,
+			"tree": "protection",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 12294,
+			"name": "Mortal Strike",
+			"icon": "ability_warrior_savageblow",
+			"level": 0,
+			"tree": "arms",
+			"talent": true,
+			"ranks": 4
+		},
+		{
+			"id": 12323,
+			"name": "Piercing Howl",
+			"icon": "spell_shadow_deathscream",
+			"level": 0,
+			"tree": "fury",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 23922,
+			"name": "Shield Slam",
+			"icon": "inv_shield_05",
+			"level": 0,
+			"tree": "protection",
+			"talent": true,
+			"ranks": 4
+		},
+		{
+			"id": 12292,
+			"name": "Sweeping Strikes",
+			"icon": "ability_rogue_slicedice",
+			"level": 0,
+			"tree": "arms",
+			"talent": true,
+			"ranks": 1
+		},
+		{
+			"id": 6673,
+			"name": "Battle Shout",
+			"icon": "ability_warrior_battleshout",
+			"level": 1,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 2457,
+			"name": "Battle Stance",
+			"icon": "ability_warrior_offensivestance",
+			"level": 1,
+			"tree": "arms",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 78,
+			"name": "Heroic Strike",
+			"icon": "ability_rogue_ambush",
+			"level": 1,
+			"tree": "arms",
+			"talent": false,
+			"ranks": 9
+		},
+		{
+			"id": 100,
+			"name": "Charge",
+			"icon": "ability_warrior_charge",
+			"level": 4,
+			"tree": "arms",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 772,
+			"name": "Rend",
+			"icon": "ability_gouge",
+			"level": 4,
+			"tree": "arms",
+			"talent": false,
+			"ranks": 7
+		},
+		{
+			"id": 6343,
+			"name": "Thunder Clap",
+			"icon": "spell_nature_thunderclap",
+			"level": 6,
+			"tree": "arms",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 1715,
+			"name": "Hamstring",
+			"icon": "ability_shockwave",
+			"level": 8,
+			"tree": "arms",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 2687,
+			"name": "Bloodrage",
+			"icon": "ability_racial_bloodrage",
+			"level": 10,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 71,
+			"name": "Defensive Stance",
+			"icon": "ability_warrior_defensivestance",
+			"level": 10,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 7386,
+			"name": "Sunder Armor",
+			"icon": "ability_warrior_sunder",
+			"level": 10,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 355,
+			"name": "Taunt",
+			"icon": "spell_nature_reincarnation",
+			"level": 10,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 7384,
+			"name": "Overpower",
+			"icon": "ability_meleedamage",
+			"level": 12,
+			"tree": "arms",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 72,
+			"name": "Shield Bash",
+			"icon": "ability_warrior_shieldbash",
+			"level": 12,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 1160,
+			"name": "Demoralizing Shout",
+			"icon": "ability_warrior_warcry",
+			"level": 14,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 6572,
+			"name": "Revenge",
+			"icon": "ability_warrior_revenge",
+			"level": 14,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 6
+		},
+		{
+			"id": 694,
+			"name": "Mocking Blow",
+			"icon": "ability_warrior_punishingblow",
+			"level": 16,
+			"tree": "arms",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 2565,
+			"name": "Shield Block",
+			"icon": "ability_defend",
+			"level": 16,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 676,
+			"name": "Disarm",
+			"icon": "ability_warrior_disarm",
+			"level": 18,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 845,
+			"name": "Cleave",
+			"icon": "ability_warrior_cleave",
+			"level": 20,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 20230,
+			"name": "Retaliation",
+			"icon": "ability_warrior_challange",
+			"level": 20,
+			"tree": "arms",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5246,
+			"name": "Intimidating Shout",
+			"icon": "ability_golemthunderclap",
+			"level": 22,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 5308,
+			"name": "Execute",
+			"icon": "inv_sword_48",
+			"level": 24,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 5
+		},
+		{
+			"id": 1161,
+			"name": "Challenging Shout",
+			"icon": "ability_bullrush",
+			"level": 26,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 871,
+			"name": "Shield Wall",
+			"icon": "ability_warrior_shieldwall",
+			"level": 28,
+			"tree": "protection",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 2458,
+			"name": "Berserker Stance",
+			"icon": "ability_racial_avatar",
+			"level": 30,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 20252,
+			"name": "Intercept",
+			"icon": "ability_rogue_sprint",
+			"level": 30,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 3
+		},
+		{
+			"id": 1464,
+			"name": "Slam",
+			"icon": "ability_warrior_decisivestrike",
+			"level": 30,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 4
+		},
+		{
+			"id": 18499,
+			"name": "Berserker Rage",
+			"icon": "spell_nature_ancestralguardian",
+			"level": 32,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 1680,
+			"name": "Whirlwind",
+			"icon": "ability_whirlwind",
+			"level": 36,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 1
+		},
+		{
+			"id": 6552,
+			"name": "Pummel",
+			"icon": "inv_gauntlets_04",
+			"level": 38,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 2
+		},
+		{
+			"id": 1719,
+			"name": "Recklessness",
+			"icon": "ability_criticalstrike",
+			"level": 50,
+			"tree": "fury",
+			"talent": false,
+			"ranks": 1
+		}
+	]
+}

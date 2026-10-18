@@ -1,0 +1,7 @@
+## Interface: 11507
+## Title: Blood Legion
+## Notes: Loads keybind plans from bloodlegion.gg: /bl import
+## Author: Blood Legion
+## Version: 0.1.0
+
+BloodLegion.lua
