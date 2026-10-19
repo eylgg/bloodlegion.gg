@@ -296,6 +296,20 @@ pub async fn insert_seed(
     .await
 }
 
+/// The ids of the unlinked characters of those (lowercase, full) names, in id order.
+pub async fn find_seeded(pool: &PgPool, names: &[String]) -> sqlx::Result<Vec<i64>> {
+    sqlx::query_scalar!(
+        r#"
+        SELECT id FROM characters
+        WHERE user_id IS NULL AND name_normalized = ANY($1)
+        ORDER BY id
+        "#,
+        names,
+    )
+    .fetch_all(pool)
+    .await
+}
+
 /// Deletes the unlinked characters of those (lowercase, full) names that never raided or won
 /// loot; returns how many went and how many stayed for their history.
 pub async fn delete_seeded(pool: &PgPool, names: &[String]) -> sqlx::Result<(u64, u64)> {

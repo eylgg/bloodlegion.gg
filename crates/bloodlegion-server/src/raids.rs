@@ -11,6 +11,7 @@ pub mod catalog;
 mod db;
 pub mod effects;
 pub mod priorities;
+pub mod seed;
 
 use sqlx::PgPool;
 use time::{OffsetDateTime, PrimitiveDateTime, serde::iso8601};

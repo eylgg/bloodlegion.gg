@@ -461,7 +461,17 @@ pub async fn seed(pool: &PgPool) -> sqlx::Result<u64> {
 /// Removes [`seed`]'s characters, except any that raided or won loot (they are history now).
 /// Returns how many went and how many stayed.
 pub async fn unseed(pool: &PgPool) -> sqlx::Result<(u64, u64)> {
-    let names: Vec<String> = crate::launch::catalog::CLASSES
+    db::delete_seeded(pool, &seed_names()).await
+}
+
+/// The ids of [`seed`]'s characters that are still around.
+pub async fn seeded_ids(pool: &PgPool) -> sqlx::Result<Vec<i64>> {
+    db::find_seeded(pool, &seed_names()).await
+}
+
+/// [`seed`]'s characters' full names, lowercase.
+fn seed_names() -> Vec<String> {
+    crate::launch::catalog::CLASSES
         .iter()
         .flat_map(|class| {
             SEED_NAMES
@@ -469,8 +479,7 @@ pub async fn unseed(pool: &PgPool) -> sqlx::Result<(u64, u64)> {
                 .map(move |last| format!("{} {last}", class.name))
         })
         .map(|name| name.to_lowercase())
-        .collect();
-    db::delete_seeded(pool, &names).await
+        .collect()
 }
 
 /// Every note on a character of the raiding roster (leaders through trials), latest first.

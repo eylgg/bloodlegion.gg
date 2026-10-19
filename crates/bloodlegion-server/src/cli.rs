@@ -512,7 +512,7 @@ pub async fn items_sync(ids: Vec<i32>) -> Result<()> {
     }
 }
 
-/// `characters seed`: makes the test characters.
+/// `characters seed`: makes the test characters, then raids and loot for them.
 #[tokio::main(flavor = "current_thread")]
 pub async fn characters_seed() -> Result<()> {
     let pool = State::load_pool().await?;
@@ -520,13 +520,33 @@ pub async fn characters_seed() -> Result<()> {
         .await
         .context("making the test characters")?;
     eprintln!("made {created} test characters (four of each class; names already taken skipped)");
+    let characters = crate::characters::seeded_ids(&pool)
+        .await
+        .context("finding the test characters")?;
+    let report = crate::raids::seed::seed(&pool, &characters)
+        .await
+        .context("making the test raids")?;
+    eprintln!(
+        "made {} test raids with {} loot (zones that had test raids skipped)",
+        report.raids, report.loot
+    );
     Ok(())
 }
 
-/// `characters unseed`: removes the test characters that have no history.
+/// `characters unseed`: removes the test raids, then the test characters that have no history.
 #[tokio::main(flavor = "current_thread")]
 pub async fn characters_unseed() -> Result<()> {
     let pool = State::load_pool().await?;
+    let characters = crate::characters::seeded_ids(&pool)
+        .await
+        .context("finding the test characters")?;
+    let report = crate::raids::seed::unseed(&pool, &characters)
+        .await
+        .context("removing the test raids")?;
+    eprintln!(
+        "removed {} test raids and {} test items",
+        report.raids, report.items
+    );
     let (removed, kept) = crate::characters::unseed(&pool)
         .await
         .context("removing the test characters")?;

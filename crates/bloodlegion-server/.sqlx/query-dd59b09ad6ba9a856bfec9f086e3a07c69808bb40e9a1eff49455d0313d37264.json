@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM items i\n        WHERE i.name_normalized = ANY($1)\n            AND NOT EXISTS (SELECT 1 FROM loot l WHERE l.item_id = i.id)\n            AND NOT EXISTS (SELECT 1 FROM loot_priorities p WHERE p.item_id = i.id)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dd59b09ad6ba9a856bfec9f086e3a07c69808bb40e9a1eff49455d0313d37264"
+}

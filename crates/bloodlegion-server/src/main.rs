@@ -141,9 +141,11 @@ enum UsersCommand {
 enum CharactersCommand {
     /// Make test characters linked to no member: four of each class ("Shaman One" through
     /// "Shaman Four"), their two specs covering all three of the class's, with talents. Skips
-    /// names already taken.
+    /// names already taken. Then two past raids of them in each zone without any yet, with loot
+    /// from every boss.
     Seed,
-    /// Remove the test characters `seed` makes, except any that raided or won loot.
+    /// Remove the test raids and loot `seed` makes, then its characters, except any that raided
+    /// or won loot with real characters.
     Unseed,
 }
 
