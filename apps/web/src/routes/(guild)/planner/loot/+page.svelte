@@ -420,7 +420,7 @@
 				{/if}
 				<AddPriority
 					zone={data.zone}
-					bossId={section.bossId}
+					boss={section.bossId === null ? null : { id: section.bossId, name: section.title }}
 					onadded={(priority) => (priorities = [...priorities, priority])}
 				/>
 			</section>

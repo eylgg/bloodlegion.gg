@@ -10,9 +10,14 @@
 	 */
 	let {
 		zone,
-		bossId,
+		boss,
 		onadded
-	}: { zone: string; bossId: number | null; onadded: (priority: LootPriority) => void } = $props();
+	}: {
+		zone: string;
+		/** The boss it drops from; null for trash, or a kind of item from anywhere. */
+		boss: { id: number; name: string } | null;
+		onadded: (priority: LootPriority) => void;
+	} = $props();
 
 	let kind = $state<'item' | 'label'>('item');
 	let name = $state('');
@@ -25,7 +30,7 @@
 		event.preventDefault();
 		saving = true;
 		error = '';
-		const where = { zone, boss_id: bossId };
+		const where = { zone, boss_id: boss?.id ?? null };
 		try {
 			const priority = await api.post<LootPriority>(
 				'/api/loot-priorities',
@@ -54,7 +59,13 @@
 	</select>
 	<div class="field">
 		{#if kind === 'item'}
-			<GameItemPicker bind:name bind:selected={picked} label="Item" placeholder="Item name" />
+			<GameItemPicker
+				bind:name
+				bind:selected={picked}
+				{boss}
+				label="Item"
+				placeholder={boss ? `Dropped by ${boss.name}` : 'Item name'}
+			/>
 		{:else}
 			<input
 				type="text"

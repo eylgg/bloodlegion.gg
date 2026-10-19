@@ -12,7 +12,7 @@ use crate::users::User;
 use crate::{Result, State};
 
 use super::{
-    Attendee, Boss, BossDetail, BossInput, Item, ItemDetail, ItemInput, LootEntry, LootFilter,
+    Attendee, Boss, BossDetail, BossInput, Drop, Item, ItemDetail, ItemInput, LootEntry, LootFilter,
     LootInput, LootUpdate, Placement, Raid, RaidDetail, RaidError, RaidInput, calendar, catalog,
     effects, priorities,
 };
@@ -248,6 +248,15 @@ async fn boss_detail(
     Ok(Json(super::boss_detail(&state.pool, id).await?))
 }
 
+/// `GET /api/bosses/{id}/items`: the items a boss is known to drop.
+async fn boss_items(
+    state: State,
+    _user: User,
+    Path(id): Path<i64>,
+) -> Result<Json<Vec<Drop>>, RaidError> {
+    Ok(Json(super::boss_items(&state.pool, id).await?))
+}
+
 #[derive(Debug, serde::Deserialize)]
 struct RenameInput {
     name: String,
@@ -404,6 +413,7 @@ pub fn router() -> Router<State> {
             "/bosses/{id}",
             get(boss_detail).put(rename_boss).delete(delete_boss),
         )
+        .route("/bosses/{id}/items", get(boss_items))
         .route(
             "/loot-priorities",
             get(list_priorities).post(create_priority),

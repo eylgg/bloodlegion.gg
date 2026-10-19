@@ -362,17 +362,20 @@ export type LootEntry = {
 
 export type RaidDetail = { raid: Raid; attendees: Attendee[]; loot: LootEntry[] };
 
+/** An item a boss drops: how often it was recorded from the boss (0 when only planned). */
+export type BossDrop = {
+	item_id: number;
+	item_name: string;
+	item_quality: Quality;
+	game_item_id: number | null;
+	item_icon: string | null;
+	count: number;
+};
+
 export type BossDetail = {
 	boss: Boss;
 	kills: number;
-	drops: {
-		item_id: number;
-		item_name: string;
-		item_quality: Quality;
-		game_item_id: number | null;
-		item_icon: string | null;
-		count: number;
-	}[];
+	drops: BossDrop[];
 	loot: LootEntry[];
 };
 

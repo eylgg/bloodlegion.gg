@@ -1,20 +1,25 @@
 <script lang="ts">
 	import { api } from '$lib/api';
 	import { QUALITY_COLOR } from '$lib/guild';
-	import type { GameItemPage, GameItemSummary, Quality } from '$lib/types';
+	import type { BossDrop, GameItemPage, GameItemSummary, Quality } from '$lib/types';
 	import { itemIcon } from '$lib/wow/items';
 
 	/**
 	 * An item name field that searches the item mirror as it is typed. Picking a suggestion sets
 	 * `selected`; typing anything else clears it, leaving a plain name (an item the mirror does not
 	 * know).
+	 *
+	 * With a `boss`, it suggests only what that boss is known to drop (recorded from it, or planned
+	 * under it), from the first focus, and picking one names the guild's item; a name it does not
+	 * know is a new drop.
 	 */
 	let {
 		name = $bindable(''),
 		selected = $bindable(),
 		id,
 		label,
-		placeholder
+		placeholder,
+		boss = null
 	}: {
 		name?: string;
 		selected?: GameItemSummary | null;
@@ -22,6 +27,8 @@
 		/** The field's name for assistive tech, when no `<label>` names it. */
 		label?: string;
 		placeholder?: string;
+		/** The boss the item comes from; null searches every item. */
+		boss?: { id: number; name: string } | null;
 	} = $props();
 
 	const listbox = $props.id();
@@ -33,8 +40,50 @@
 	// Only the latest search's answer counts.
 	let latest = 0;
 
+	/* --- a boss's drops --- */
+
+	let drops = $state<BossDrop[]>([]);
+	// The icon of the boss's item last picked, until the name changes.
+	let pickedIcon = $state<string | null>(null);
+
+	// The id alone, so a new object for the same boss does not fetch again.
+	const bossId = $derived(boss?.id);
+
+	$effect(() => {
+		const id = bossId;
+		drops = [];
+		if (id === undefined) return;
+		let current = true;
+		api
+			.get<BossDrop[]>(`/api/bosses/${id}/items`)
+			.then((found) => current && (drops = found))
+			.catch(() => {});
+		return () => (current = false);
+	});
+
+	const query = $derived(name.trim().toLowerCase());
+	const matches = $derived(
+		drops.filter((d) => d.item_name.toLowerCase().includes(query)).slice(0, 12)
+	);
+	// A typed name that matches none of the boss's items: it will be a new one.
+	const newDrop = $derived(query.length > 0 && matches.length === 0);
+	const count = $derived(boss ? matches.length : suggestions.length);
+
+	function pickDrop(drop: BossDrop) {
+		selected = null;
+		name = drop.item_name;
+		pickedIcon = drop.item_icon;
+		open = false;
+	}
+
 	function input() {
 		selected = null;
+		pickedIcon = null;
+		if (boss) {
+			active = -1;
+			open = true;
+			return;
+		}
 		clearTimeout(timer);
 		const query = name.trim();
 		if (query.length < 2) {
@@ -66,21 +115,29 @@
 	}
 
 	function keydown(event: KeyboardEvent) {
-		if (!open) return;
-		if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+		if (!open) {
+			if (boss && event.key === 'ArrowDown') open = true;
+			return;
+		}
+		if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && count > 0) {
 			event.preventDefault();
 			const step = event.key === 'ArrowDown' ? 1 : -1;
-			active = (active + step + suggestions.length) % suggestions.length;
+			active = (active + step + count) % count;
 		} else if (event.key === 'Enter' && active >= 0) {
 			event.preventDefault();
-			pick(suggestions[active]);
+			if (boss) pickDrop(matches[active]);
+			else pick(suggestions[active]);
 		} else if (event.key === 'Escape') {
 			open = false;
 		}
 	}
 </script>
 
-<div class="picker" class:picked={selected}>
+{#snippet itemName(name: string, quality: string)}
+	<span class="name" style:color={QUALITY_COLOR[quality as Quality] ?? '#fff'}>{name}</span>
+{/snippet}
+
+<div class="picker" class:picked={selected?.icon || pickedIcon}>
 	<input
 		{id}
 		{placeholder}
@@ -96,20 +153,48 @@
 		bind:value={name}
 		oninput={input}
 		onkeydown={keydown}
+		onfocus={() => boss && ((active = -1), (open = true))}
 		onblur={() => setTimeout(() => (open = false), 150)}
 	/>
-	{#if selected?.icon}
-		<img class="chosen" src={itemIcon(selected.icon)} alt="" width="22" height="22" />
+	{#if selected?.icon || pickedIcon}
+		<img
+			class="chosen"
+			src={itemIcon((selected?.icon ?? pickedIcon) as string)}
+			alt=""
+			width="22"
+			height="22"
+		/>
 	{/if}
-	{#if open}
+	{#if open && boss}
+		<ul role="listbox" id={listbox}>
+			{#each matches as drop, i (drop.item_id)}
+				<li role="option" aria-selected={i === active}>
+					<button type="button" class:active={i === active} onmousedown={() => pickDrop(drop)}>
+						{#if drop.item_icon}
+							<img src={itemIcon(drop.item_icon)} alt="" width="24" height="24" />
+						{/if}
+						{@render itemName(drop.item_name, drop.item_quality)}
+						<span class="meta">
+							{drop.count > 0 ? `Dropped ${drop.count}×` : 'In the loot plan'}
+						</span>
+					</button>
+				</li>
+			{/each}
+			{#if drops.length === 0}
+				<li class="hint">
+					Nothing recorded from {boss.name} yet. Type the item's name to add its first drop.
+				</li>
+			{:else if newDrop}
+				<li class="hint">“{name.trim()}” is new: it will be added as a {boss.name} drop.</li>
+			{/if}
+		</ul>
+	{:else if open}
 		<ul role="listbox" id={listbox}>
 			{#each suggestions as item, i (item.id)}
 				<li role="option" aria-selected={i === active}>
 					<button type="button" class:active={i === active} onmousedown={() => pick(item)}>
 						{#if item.icon}<img src={itemIcon(item.icon)} alt="" width="24" height="24" />{/if}
-						<span class="name" style:color={QUALITY_COLOR[item.quality as Quality] ?? '#fff'}
-							>{item.name}</span
-						>
+						{@render itemName(item.name, item.quality)}
 						<span class="meta">{item.slot} · {item.item_subclass} · {item.item_level}</span>
 					</button>
 				</li>
@@ -187,5 +272,11 @@
 	.meta {
 		color: var(--grey-text);
 		font-size: var(--text-xs);
+	}
+
+	.hint {
+		padding: var(--space-1) var(--space-2);
+		color: var(--grey-text);
+		font-size: var(--text-sm);
 	}
 </style>

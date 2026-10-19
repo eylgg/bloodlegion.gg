@@ -316,6 +316,16 @@ pub async fn boss_detail(pool: &PgPool, id: i64) -> Result<BossDetail, RaidError
     })
 }
 
+/// What a boss is known to drop, for the item fields that name its loot: the items recorded from
+/// it, then those planned under it. Forever's bosses have no loot table to load, so this is the
+/// nearest there is; a new drop is still named by hand.
+pub async fn boss_items(pool: &PgPool, id: i64) -> Result<Vec<Drop>, RaidError> {
+    if db::find_boss(pool, id).await?.is_none() {
+        return external(RaidError::BossNotFound);
+    }
+    Ok(db::boss_items(pool, id).await?)
+}
+
 /* --- items --- */
 
 pub const QUALITIES: &[&str] = &["poor", "common", "uncommon", "rare", "epic", "legendary"];
@@ -1083,6 +1093,65 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn a_bosses_known_items_are_its_drops_then_its_plans(pool: PgPool) {
+        let ids = characters(&pool, 1).await;
+        let onyxia = bosses(&pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|b| b.name == "Onyxia")
+            .expect("Onyxia is seeded");
+        let lair = create_raid(&pool, &raid("onyxias-lair")).await.unwrap();
+        for item in ["Head of Onyxia", "Head of Onyxia", "Onyxia Hide Backpack"] {
+            record_loot(&pool, lair.id, &named(item, Some(onyxia.id), Some(ids[0])))
+                .await
+                .unwrap();
+        }
+        // Trash is not hers.
+        record_loot(&pool, lair.id, &named("Runecloth", None, None))
+            .await
+            .unwrap();
+        priorities::create(
+            &pool,
+            &priorities::PriorityInput {
+                zone: "onyxias-lair".into(),
+                boss_id: Some(onyxia.id),
+                label: None,
+                item_id: None,
+                item_name: Some("Planned Helm".into()),
+                item_quality: None,
+                game_item_id: None,
+            },
+        )
+        .await
+        .unwrap();
+
+        let known = boss_items(&pool, onyxia.id).await.unwrap();
+        assert_eq!(
+            known
+                .iter()
+                .map(|d| (d.item_name.as_str(), d.count))
+                .collect::<Vec<_>>(),
+            [
+                ("Head of Onyxia", 2),
+                ("Onyxia Hide Backpack", 1),
+                ("Planned Helm", 0)
+            ]
+        );
+        let chillhowl = bosses(&pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|b| b.name == "Chillhowl")
+            .expect("Chillhowl is seeded");
+        assert!(boss_items(&pool, chillhowl.id).await.unwrap().is_empty());
+        assert!(matches!(
+            boss_items(&pool, i64::MAX).await,
+            Err(Error::External(RaidError::BossNotFound))
+        ));
+    }
+
+    #[sqlx::test]
     async fn loot_is_recorded_by_boss_and_counted(pool: PgPool) {
         let ids = characters(&pool, 2).await;
         let onyxia = bosses(&pool)
@@ -1151,6 +1220,7 @@ mod tests {
         assert_eq!(detail.kills, 2);
         assert_eq!(detail.drops.len(), 1);
         assert_eq!(detail.drops[0].count, 2);
+
 
         // Trash loot sorts last on the raid.
         let raid_loot = raid_detail(&pool, second.id).await.unwrap().loot;

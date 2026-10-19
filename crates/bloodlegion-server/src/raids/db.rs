@@ -104,6 +104,27 @@ pub async fn boss_drops(pool: &PgPool, id: i64) -> sqlx::Result<Vec<Drop>> {
     .await
 }
 
+/// The items known to come from a boss: recorded from it, or planned under it in the loot plan;
+/// the recorded ones first, most dropped first.
+pub async fn boss_items(pool: &PgPool, id: i64) -> sqlx::Result<Vec<Drop>> {
+    sqlx::query_as!(
+        Drop,
+        r#"
+        SELECT i.id AS item_id, i.name AS item_name, i.quality AS item_quality, i.game_item_id,
+               g.icon AS "item_icon?",
+               (SELECT count(*) FROM loot l WHERE l.item_id = i.id AND l.boss_id = $1) AS "count!"
+        FROM items i
+        LEFT JOIN game_items g ON g.id = i.game_item_id
+        WHERE EXISTS (SELECT 1 FROM loot l WHERE l.item_id = i.id AND l.boss_id = $1)
+            OR EXISTS (SELECT 1 FROM loot_priorities p WHERE p.item_id = i.id AND p.boss_id = $1)
+        ORDER BY 6 DESC, i.name_normalized
+        "#,
+        id,
+    )
+    .fetch_all(pool)
+    .await
+}
+
 /* --- items --- */
 
 pub async fn list_items(pool: &PgPool) -> sqlx::Result<Vec<Item>> {

@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT i.id AS item_id, i.name AS item_name, i.quality AS item_quality, i.game_item_id,\n               g.icon AS \"item_icon?\",\n               (SELECT count(*) FROM loot l WHERE l.item_id = i.id AND l.boss_id = $1) AS \"count!\"\n        FROM items i\n        LEFT JOIN game_items g ON g.id = i.game_item_id\n        WHERE EXISTS (SELECT 1 FROM loot l WHERE l.item_id = i.id AND l.boss_id = $1)\n            OR EXISTS (SELECT 1 FROM loot_priorities p WHERE p.item_id = i.id AND p.boss_id = $1)\n        ORDER BY 6 DESC, i.name_normalized\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "item_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "items",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "item_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "items",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "item_quality",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "items",
+            "name": "quality"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "game_item_id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "items",
+            "name": "game_item_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "item_icon?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "icon"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "f5bc347a5ac62efaab4047d0af8081b770963138a1cbd2f6b3a4c4a9d72e1c9b"
+}

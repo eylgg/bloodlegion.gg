@@ -247,7 +247,11 @@
 				</label>
 				<label class="field">
 					Item
-					<GameItemPicker bind:name={itemName} bind:selected={gameItem} />
+					<GameItemPicker
+						bind:name={itemName}
+						bind:selected={gameItem}
+						boss={zoneBosses.find((b) => String(b.id) === bossId) ?? null}
+					/>
 				</label>
 				<label class="field">
 					Won by
