@@ -1221,7 +1221,6 @@ mod tests {
         assert_eq!(detail.drops.len(), 1);
         assert_eq!(detail.drops[0].count, 2);
 
-
         // Trash loot sorts last on the raid.
         let raid_loot = raid_detail(&pool, second.id).await.unwrap().loot;
         assert_eq!(raid_loot.last().unwrap().boss_id, None);

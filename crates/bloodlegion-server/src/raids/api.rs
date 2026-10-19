@@ -12,9 +12,9 @@ use crate::users::User;
 use crate::{Result, State};
 
 use super::{
-    Attendee, Boss, BossDetail, BossInput, Drop, Item, ItemDetail, ItemInput, LootEntry, LootFilter,
-    LootInput, LootUpdate, Placement, Raid, RaidDetail, RaidError, RaidInput, calendar, catalog,
-    effects, priorities,
+    Attendee, Boss, BossDetail, BossInput, Drop, Item, ItemDetail, ItemInput, LootEntry,
+    LootFilter, LootInput, LootUpdate, Placement, Raid, RaidDetail, RaidError, RaidInput, calendar,
+    catalog, effects, priorities,
 };
 
 /// `GET /api/raids/zones`: the raid zones and their sizes. Public, like the class catalog.
