@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { flip } from 'svelte/animate';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { api, errorMessage } from '$lib/api';
 	import { fullName, raidNames, zoneName } from '$lib/guild';
-	import { dragCharacter } from '$lib/wow/drag';
+	import { drag, dragCharacter, hover } from '$lib/wow/drag.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import ItemLink from '$lib/components/guild/ItemLink.svelte';
@@ -18,8 +19,6 @@
 	let priorities = $derived<LootPriority[]>(data.priorities);
 	let selected = $state<number | null>(null);
 	let error = $state('');
-	// Where a drag would land: a line, and the place in it.
-	let over = $state<{ id: number; index: number } | null>(null);
 
 	const names = $derived(raidNames(data.zones, data.weekRaids));
 	const nameOf = (raidId: number) => names.get(raidId) ?? '';
@@ -125,16 +124,72 @@
 		selected = null;
 	}
 
-	function dragOver(event: DragEvent, id: number, index: number) {
-		event.preventDefault();
-		event.stopPropagation();
-		over = { id, index };
+	/** Where a drag over `priority`'s line would land, as an index into the line as saved. */
+	const overIndex = (priority: LootPriority) =>
+		drag.over?.kind === 'line' && drag.over.id === priority.id ? drag.over.index : null;
+
+	/**
+	 * A line as it would be if the drag under way dropped where the pointer is (as `placeIn` would
+	 * leave it): someone in it moved, or someone new shown where they would join.
+	 */
+	function shownLine(priority: LootPriority): { character: InLine; ghost: boolean }[] {
+		const shown = priority.characters.map((character) => ({ character, ghost: false }));
+		const dragged = drag.current;
+		const index = overIndex(priority);
+		if (!dragged || index === null) return shown;
+		const from = shown.findIndex((e) => e.character.character_id === dragged.characterId);
+		let at = index;
+		let entry: { character: InLine; ghost: boolean } = {
+			character: {
+				character_id: dragged.characterId,
+				user_id: null,
+				username: null,
+				first_name: dragged.first_name,
+				last_name: dragged.last_name,
+				class: dragged.class,
+				note: null,
+				received: false
+			},
+			ghost: true
+		};
+		if (from >= 0) {
+			[entry] = shown.splice(from, 1);
+			if (from < at) at--;
+		}
+		shown.splice(Math.min(at, shown.length), 0, entry);
+		return shown;
 	}
 
-	function drop(event: DragEvent, priority: LootPriority, index: number) {
+	/**
+	 * A drag over someone in a line: it would land before them on their left half, after them on
+	 * their right. Over the dragged person themself (or one joining) the place holds.
+	 */
+	function dragOverPerson(event: DragEvent, priority: LootPriority, character: InLine) {
 		event.preventDefault();
-		event.stopPropagation();
-		over = null;
+		const at = priority.characters.findIndex((c) => c.character_id === character.character_id);
+		const index = overIndex(priority);
+		if (character.character_id === drag.current?.characterId || at < 0) {
+			if (index !== null) hover({ kind: 'line', id: priority.id, index });
+			return;
+		}
+		const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		const after = event.clientX > box.left + box.width / 2;
+		hover({ kind: 'line', id: priority.id, index: at + (after ? 1 : 0) });
+	}
+
+	/** A drag over a line but nobody in it: the end, unless it is already somewhere in the line. */
+	function dragOverLine(event: DragEvent, priority: LootPriority) {
+		event.preventDefault();
+		hover({
+			kind: 'line',
+			id: priority.id,
+			index: overIndex(priority) ?? priority.characters.length
+		});
+	}
+
+	function drop(event: DragEvent, priority: LootPriority) {
+		event.preventDefault();
+		const index = overIndex(priority) ?? priority.characters.length;
 		const characterId = Number(event.dataTransfer?.getData('text/plain'));
 		if (characterId > 0) placeIn(priority, characterId, index);
 	}
@@ -305,20 +360,25 @@
 										</td>
 										<td
 											class="line"
-											class:dropping={over?.id === priority.id}
-											ondragover={(e) => dragOver(e, priority.id, priority.characters.length)}
-											ondragleave={() => (over = null)}
-											ondrop={(e) => drop(e, priority, priority.characters.length)}
+											class:dropping={overIndex(priority) !== null}
+											ondragover={(e) => dragOverLine(e, priority)}
+											ondrop={(e) => drop(e, priority)}
 										>
 											<ol>
-												{#each priority.characters as character, i (character.character_id)}
+												{#each shownLine(priority) as { character, ghost }, i (character.character_id)}
+													{@const dragged = character.character_id === drag.current?.characterId}
 													<li
-														class:insert={over?.id === priority.id && over.index === i}
-														draggable="true"
-														ondragstart={(e) => dragCharacter(e, character.character_id)}
-														ondragover={(e) => dragOver(e, priority.id, i)}
-														ondrop={(e) => drop(e, priority, i)}
-														ondblclick={() => editNote(priority, character)}
+														class:origin={dragged && overIndex(priority) === null}
+														class:landing={dragged && overIndex(priority) !== null}
+														animate:flip={{ duration: 120 }}
+														draggable={!ghost}
+														ondragstart={(e) =>
+															dragCharacter(e, {
+																characterId: character.character_id,
+																...character
+															})}
+														ondragover={(e) => dragOverPerson(e, priority, character)}
+														ondblclick={() => !ghost && editNote(priority, character)}
 													>
 														{@render chip(character, i + 1)}
 														<button
@@ -552,8 +612,15 @@
 		cursor: grab;
 	}
 
-	.line li.insert {
-		box-shadow: -3px 0 0 var(--accent-solid);
+	/* A drag under way: the line shows where they would land, and fades them where they stood
+	   in a line they are not over. */
+	.line li.origin {
+		opacity: 0.4;
+	}
+
+	.line li.landing .chip {
+		outline: 2px solid var(--accent-solid);
+		outline-offset: 1px;
 	}
 
 	.chip {

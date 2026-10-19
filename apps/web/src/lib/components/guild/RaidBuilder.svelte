@@ -13,7 +13,7 @@
 	import RoleIcon from '$lib/components/RoleIcon.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import CharacterSpecs from './CharacterSpecs.svelte';
-	import { dragCharacter } from '$lib/wow/drag';
+	import { drag, dragCharacter, hover } from '$lib/wow/drag.svelte';
 	import type { Attendee, Effect, Placement, WowClass } from '$lib/types';
 
 	/**
@@ -59,7 +59,64 @@
 	const at = (group: number, slot: number) =>
 		attendees.find((a) => a.group_number === group && a.slot === slot);
 
-	const members = $derived(attendees.map(member));
+	/* --- the drag preview --- */
+
+	/** The first free place in `group`, else anywhere; where someone dropped on a taken one goes. */
+	function freeSlot(group: number): Target | null {
+		for (const g of [group, ...groupNumbers.filter((g) => g !== group)]) {
+			for (const s of SLOTS) if (!at(g, s)) return { group: g, slot: s };
+		}
+		return null;
+	}
+
+	/**
+	 * The raid as it would be if the drag under way dropped where the pointer is: someone of this
+	 * raid moved (or swapped), or someone from outside standing where they would join. Everything
+	 * below (the groups, their buffs, the coverage) shows it, so a drag tries the move out.
+	 */
+	const shown = $derived.by(() => {
+		const dragged = drag.current;
+		const over = drag.over;
+		if (!editable || !dragged || over?.kind !== 'slot' || over.raidId !== raidId) {
+			return attendees;
+		}
+		const target = { group: over.group, slot: over.slot };
+		if (onRaid(dragged.characterId)) return moved(dragged.characterId, target) ?? attendees;
+		const place = at(target.group, target.slot) ? freeSlot(target.group) : target;
+		if (!place) return attendees;
+		const joining: Attendee = {
+			character_id: dragged.characterId,
+			user_id: null,
+			username: null,
+			first_name: dragged.first_name,
+			last_name: dragged.last_name,
+			class: dragged.class,
+			is_main: false,
+			specs: dragged.specs,
+			group_number: place.group,
+			slot: place.slot,
+			spec: null
+		};
+		return [...attendees, joining];
+	});
+	const shownAt = (group: number, slot: number) =>
+		shown.find((a) => a.group_number === group && a.slot === slot);
+
+	/** How a person shows while a drag is under way. */
+	function dragRole(attendee: Attendee, group: number, slot: number) {
+		const dragged = drag.current;
+		if (!dragged || shown === attendees) {
+			return dragged?.characterId === attendee.character_id && dragged.raidId === raidId
+				? 'origin'
+				: null;
+		}
+		const was = attendees.find((a) => a.character_id === attendee.character_id);
+		const stays = was?.group_number === group && was.slot === slot;
+		if (attendee.character_id === dragged.characterId) return stays ? 'origin' : 'landing';
+		return stays ? null : 'shifted';
+	}
+
+	const members = $derived(shown.map(member));
 	const covered = $derived(coverage(effects, members));
 	const roleCounts = $derived(roles(classes, members));
 	const shared = $derived(contention(effects, members));
@@ -126,23 +183,26 @@
 		}
 	}
 
-	/** Moves a character to a slot, swapping with whoever is there. */
-	function move(characterId: number, target: Target) {
+	/** The attendees with a character moved to a slot, swapping with whoever is there. */
+	function moved(characterId: number, target: Target): Attendee[] | null {
 		const mover = attendees.find((a) => a.character_id === characterId);
-		if (!mover) return;
+		if (!mover) return null;
 		const occupant = at(target.group, target.slot);
-		if (occupant?.character_id === characterId) return;
-		save(
-			attendees.map((a) => {
-				if (a.character_id === characterId) {
-					return { ...a, group_number: target.group, slot: target.slot };
-				}
-				if (occupant && a.character_id === occupant.character_id) {
-					return { ...a, group_number: mover.group_number, slot: mover.slot };
-				}
-				return a;
-			})
-		);
+		if (occupant?.character_id === characterId) return null;
+		return attendees.map((a) => {
+			if (a.character_id === characterId) {
+				return { ...a, group_number: target.group, slot: target.slot };
+			}
+			if (occupant && a.character_id === occupant.character_id) {
+				return { ...a, group_number: mover.group_number, slot: mover.slot };
+			}
+			return a;
+		});
+	}
+
+	function move(characterId: number, target: Target) {
+		const next = moved(characterId, target);
+		if (next) save(next);
 	}
 
 	/** Moves someone on to the next spec they play, for this raid. */
@@ -194,16 +254,16 @@
 	}
 
 	function ondragstart(event: DragEvent, attendee: Attendee) {
-		dragCharacter(event, attendee.character_id, raidId);
+		dragCharacter(event, { characterId: attendee.character_id, ...attendee }, raidId);
 	}
 
 	const playing = (a: Attendee) => playedSpec(a.specs, a.spec)?.spec ?? null;
 	const picking = $derived(editable && (selected !== null || incoming !== null));
 </script>
 
-{#snippet person(attendee: Attendee)}
+{#snippet person(attendee: Attendee, role: 'origin' | 'landing' | 'shifted' | null)}
 	<div
-		class="person"
+		class="person {role}"
 		class:selected={selected === attendee.character_id}
 		style:--class-color={color(attendee.class) ?? 'var(--foreground)'}
 		draggable={editable}
@@ -267,15 +327,25 @@
 					<h4>Group {group}</h4>
 					<ol>
 						{#each SLOTS as slot (slot)}
-							{@const occupant = at(group, slot)}
+							{@const occupant = shownAt(group, slot)}
+							{@const real = at(group, slot)}
+							<!-- Where the dragged person stood shows them, faded, until someone takes the place: the
+							     element they were picked up by stays in the page to the end of the drag. -->
+							{@const who =
+								occupant ??
+								(real && real.character_id === drag.current?.characterId ? real : undefined)}
 							<li
 								class="slot"
 								class:target={picking}
-								ondragover={(e) => editable && e.preventDefault()}
+								ondragover={(e) => {
+									if (!editable) return;
+									e.preventDefault();
+									hover({ kind: 'slot', raidId, group, slot });
+								}}
 								ondrop={(e) => ondrop(e, { group, slot })}
 							>
-								{#if occupant}
-									{@render person(occupant)}
+								{#if who}
+									{@render person(who, who === occupant ? dragRole(who, group, slot) : 'origin')}
 								{:else if editable}
 									<button type="button" class="empty" onclick={() => put({ group, slot })}
 										>Empty</button
@@ -310,7 +380,7 @@
 				</span>
 			{/each}
 		</div>
-		{#if attendees.length === 0}
+		{#if shown.length === 0}
 			<p class="muted small">Put people in groups to see what the raid brings.</p>
 		{:else if compact}
 			{@const gaps = covered.filter((c) => status(c) !== 'covered')}
@@ -491,6 +561,37 @@
 	.person.selected {
 		border-color: var(--accent-solid);
 		box-shadow: 0 0 0 2px var(--accent-bg);
+	}
+
+	/* A drag under way: who was picked up fades where they stood, and the raid shows them where
+	   they would land, and whoever they would swap with in their old place. */
+	.person.origin {
+		border-style: dashed;
+		opacity: 0.4;
+	}
+
+	.person.landing {
+		border-color: var(--accent-solid);
+		box-shadow: 0 0 0 2px var(--accent-bg);
+		animation: land 120ms ease-out;
+	}
+
+	.person.shifted {
+		animation: land 120ms ease-out;
+	}
+
+	@keyframes land {
+		from {
+			transform: scale(0.94);
+			opacity: 0.6;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.person.landing,
+		.person.shifted {
+			animation: none;
+		}
 	}
 
 	.who {

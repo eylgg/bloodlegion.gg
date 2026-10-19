@@ -6,7 +6,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import CharacterSpecs from './CharacterSpecs.svelte';
-	import { dragCharacter } from '$lib/wow/drag';
+	import { drag, dragCharacter, hover } from '$lib/wow/drag.svelte';
 	import type { GuildCharacter, WowClass } from '$lib/types';
 
 	/**
@@ -74,6 +74,11 @@
 		selected = selected === character.id ? null : character.id;
 	}
 
+	/** Someone dragged off a raid, over the roster: dropping takes them off. */
+	const returning = $derived(
+		drag.over?.kind === 'roster' && drag.current !== null && drag.current.raidId !== null
+	);
+
 	function ondrop(event: DragEvent) {
 		event.preventDefault();
 		const raidId = Number(event.dataTransfer?.getData('application/x-raid'));
@@ -90,10 +95,11 @@
 			class="char"
 			class:selected={selected === character.id}
 			class:placed={here.length > 0}
+			class:origin={drag.current?.characterId === character.id && drag.current.raidId === null}
 			style:--class-color={color(character.class) ?? 'var(--foreground)'}
 			draggable={editable}
 			disabled={!editable}
-			ondragstart={(e) => dragCharacter(e, character.id)}
+			ondragstart={(e) => dragCharacter(e, { characterId: character.id, ...character })}
 			onclick={() => pick(character)}
 		>
 			<span class="name">{fullName(character)}</span>
@@ -110,7 +116,12 @@
 <aside
 	class="roster"
 	aria-label="Roster"
-	ondragover={(e) => editable && e.preventDefault()}
+	class:returning
+	ondragover={(e) => {
+		if (!editable) return;
+		e.preventDefault();
+		if (onreturn) hover({ kind: 'roster' });
+	}}
 	{ondrop}
 >
 	<h2>Roster</h2>
@@ -119,7 +130,12 @@
 		<input type="checkbox" bind:checked={unplacedOnly} />
 		Only characters not in a raid here
 	</label>
-	{#if editable}
+	{#if returning && drag.current}
+		<p class="small drop-hint">
+			Drop to take {drag.current.first_name}
+			{drag.current.last_name} off the raid
+		</p>
+	{:else if editable}
 		<p class="muted small">{hint}</p>
 	{/if}
 	<ul class="players">
@@ -168,6 +184,16 @@
 			position: static;
 			max-height: 24rem;
 		}
+	}
+
+	.roster.returning {
+		border-color: var(--red-text);
+		border-style: dashed;
+	}
+
+	.drop-hint {
+		color: var(--red-text);
+		font-weight: 600;
 	}
 
 	h2 {
@@ -247,6 +273,12 @@
 
 	.char.placed {
 		opacity: 0.55;
+	}
+
+	/* Picked up and on the move. */
+	.char.origin {
+		border-style: dashed;
+		opacity: 0.4;
 	}
 
 	.char.selected {
