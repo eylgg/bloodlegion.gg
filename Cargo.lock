@@ -3172,6 +3172,12 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
+ "http",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
 ]
 
 [[package]]

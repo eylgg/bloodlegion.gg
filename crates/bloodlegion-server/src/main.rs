@@ -52,7 +52,8 @@ struct Args {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Apply pending database migrations (the server also does this on start).
+    /// Apply pending database migrations, then load the item snapshot if it changed (the server
+    /// also does this on start).
     Migrate,
     /// Undo migrations down to `target` (a migration version).
     MigrateUndo { target: i64 },
@@ -82,11 +83,6 @@ enum Command {
     Characters {
         #[command(subcommand)]
         command: CharactersCommand,
-    },
-    /// The mirror of the game's item database.
-    Items {
-        #[command(subcommand)]
-        command: ItemsCommand,
     },
     /// Manage the OAuth2 / OpenID Connect login sources, such as Battle.net.
     Oauth2Providers {
@@ -147,18 +143,6 @@ enum CharactersCommand {
     /// Remove the test raids and loot `seed` makes, then its characters, except any that raided
     /// or won loot with real characters.
     Unseed,
-}
-
-#[derive(Debug, Subcommand)]
-enum ItemsCommand {
-    /// Sync the mirror from Battle.net's Game Data API now, with the `battlenet` provider's client
-    /// (the server also syncs daily): list every epic and legendary item, then fetch the
-    /// pages and icons that are missing or stale.
-    Sync {
-        /// Fetch only these item ids (repeatable), listed or not.
-        #[arg(long = "id")]
-        ids: Vec<i32>,
-    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -309,7 +293,6 @@ async fn serve() -> Result<()> {
         }
     });
     cleaner::spawn(state.pool.clone());
-    game_items::spawn(state.clone());
 
     let router = router(state);
     let app = router.layer(ServiceBuilder::new().layer(TraceLayer::new_for_http().on_request(())));
@@ -363,9 +346,6 @@ fn main() -> Result<()> {
         Some(Command::Characters { command }) => match command {
             CharactersCommand::Seed => cli::characters_seed(),
             CharactersCommand::Unseed => cli::characters_unseed(),
-        },
-        Some(Command::Items { command }) => match command {
-            ItemsCommand::Sync { ids } => cli::items_sync(ids),
         },
         Some(Command::Passwords { command }) => match command {
             PasswordsCommand::Status => cli::passwords_status(),

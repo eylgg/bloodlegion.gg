@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO game_items\n            (id, name, quality, item_level, required_level, inventory_type, slot, item_class,\n             item_subclass, is_equippable, icon, preview)\n        SELECT id, name, quality, item_level, required_level, inventory_type, slot, item_class,\n               item_subclass, is_equippable, icon, preview\n        FROM jsonb_to_recordset(($1::text)::jsonb) AS x(\n            id integer, name text, quality text, item_level integer, required_level integer,\n            inventory_type text, slot text, item_class text, item_subclass text,\n            is_equippable boolean, icon text, preview jsonb\n        )\n        ON CONFLICT (id) DO UPDATE SET\n            name = EXCLUDED.name,\n            quality = EXCLUDED.quality,\n            item_level = EXCLUDED.item_level,\n            required_level = EXCLUDED.required_level,\n            inventory_type = EXCLUDED.inventory_type,\n            slot = EXCLUDED.slot,\n            item_class = EXCLUDED.item_class,\n            item_subclass = EXCLUDED.item_subclass,\n            is_equippable = EXCLUDED.is_equippable,\n            icon = EXCLUDED.icon,\n            preview = EXCLUDED.preview\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "game_items",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5780f3fa09e1e9ccbdb5cc6a11c1c47deab63e9458becdf65757074e8ece35bb"
+}

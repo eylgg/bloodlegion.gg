@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM game_items g\n        WHERE NOT (g.id = ANY($1))\n            AND NOT EXISTS (SELECT 1 FROM items i WHERE i.game_item_id = g.id)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "91fd240fa385114fb7e261d5110fe40cbb60551b7078a2fb1b698d5ddfa5eca6"
+}

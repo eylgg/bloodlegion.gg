@@ -1,47 +1,26 @@
-//! A local mirror of the game's item database, kept current from Battle.net's Game Data API, so
-//! the site shows items, icons, and tooltips from its own database instead of a third party's.
-//! Until the API serves WoW: Forever it mirrors Classic Era (see [`blizzard::NAMESPACE`]).
+//! A local mirror of the game's item database, so the site shows items, icons, and tooltips from
+//! its own database instead of a third party's. Until Battle.net's API serves WoW: Forever it
+//! mirrors Classic Era.
 //!
-//! A sync lists every item of the [`QUALITIES`] the API's search returns, then fetches each
-//! item's own page (its tooltip) and icon, newest-missing first. A refresh asks for each page with
-//! `If-Modified-Since`, so an unchanged item costs a 304. The server syncs daily
-//! ([`spawn`]); `bloodlegion-server items sync` runs one now. The credentials are the `battlenet`
-//! sign-in provider's: the API takes a client credentials token from the same client.
+//! The mirror is a snapshot in the repository (`data/game-items`): `cargo xtask blizzard sync`
+//! fetches it from the API, and the server embeds it. [`load`] puts it in the database after every migrate
+//! (the server runs one on start), when its hash differs from the one last loaded, so the site
+//! works offline and every deploy has the items of its own commit.
 
 pub mod api;
-pub mod blizzard;
 mod db;
 
-use std::sync::Arc;
-use std::time::Duration;
-
 use anyhow::Context;
+use rsa::sha2::{Digest, Sha256};
 use sqlx::PgPool;
-use time::OffsetDateTime;
-
-use crate::State;
 
 pub use api::router;
 
-/// The sign-in provider whose client the API takes.
-pub const PROVIDER: &str = "battlenet";
+/// The snapshot's items: a JSON array, one item a line, by id.
+const ITEMS: &str = include_str!("../data/game-items/items.json");
 
-/// The qualities the listing mirrors, as the API names them: what a raid drops. A full sync drops
-/// any other item from the mirror, unless the guild has won it.
-pub const QUALITIES: &[&str] = &["EPIC", "LEGENDARY"];
-
-/// How long an item's page is trusted before the sync asks again.
-const REFRESH_AFTER: time::Duration = time::Duration::days(7);
-
-/// How often the server syncs, and how long after it starts the first sync runs.
-const SYNC_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
-const FIRST_SYNC_AFTER: Duration = Duration::from_secs(60);
-
-/// Item pages fetched at once: well under the API's 100 requests a second.
-const CONCURRENCY: usize = 8;
-
-/// The advisory lock that keeps one sync running across instances.
-const SYNC_LOCK_KEY: i64 = 0x6761_6d65; // "game"
+/// The snapshot's icons, `(name, extension, image)`, by name (from `build.rs`).
+const ICONS: &[(&str, &str, &[u8])] = include!(concat!(env!("OUT_DIR"), "/game_item_icons.rs"));
 
 /// A mirrored item, as a picker or a link shows it.
 #[derive(Debug, serde::Serialize)]
@@ -66,8 +45,6 @@ pub struct GameItem {
     #[serde(flatten)]
     pub summary: GameItemSummary,
     pub preview: Option<serde_json::Value>,
-    #[serde(with = "time::serde::iso8601::option")]
-    pub detailed_at: Option<OffsetDateTime>,
 }
 
 /// The most items one page holds.
@@ -120,315 +97,160 @@ pub async fn icon(pool: &PgPool, name: &str) -> sqlx::Result<Option<(String, Vec
     db::icon(pool, name).await
 }
 
-/// What a sync did.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct Report {
-    /// Items the listing returned.
-    pub listed: usize,
-    /// Items of other qualities dropped from the mirror (none the guild has won).
-    pub pruned: u64,
-    /// Item pages fetched new or changed.
-    pub fetched: usize,
-    /// Item pages unchanged since the last fetch (a 304).
-    pub unchanged: usize,
-    /// Ids the API does not know.
-    pub missing: usize,
-    /// Icons downloaded.
-    pub icons: usize,
-    /// Items that failed (logged); the next sync tries them again.
-    pub failed: usize,
-}
-
-#[derive(Debug)]
-pub enum Outcome {
-    /// No `battlenet` provider is configured, so there are no credentials.
-    NoProvider,
-    /// Another instance is syncing.
-    Busy,
-    Done(Report),
-}
-
-/// Syncs the mirror: everything (list, then refresh what is missing or stale), or only the items
-/// `ids` names (fetched whether or not the listing has them, for testing and one-offs).
-pub async fn sync(state: &State, ids: Option<&[i32]>) -> anyhow::Result<Outcome> {
-    let mut lock = state
-        .pool
-        .acquire()
-        .await
-        .context("acquiring a connection")?;
-    if !db::try_lock(&mut lock, SYNC_LOCK_KEY).await? {
-        return Ok(Outcome::Busy);
-    }
-    let result = run(state, ids).await;
-    db::unlock(&mut lock, SYNC_LOCK_KEY).await?;
-    result
-}
-
-async fn run(state: &State, ids: Option<&[i32]>) -> anyhow::Result<Outcome> {
-    let slug = crate::Slug::try_from(PROVIDER).context("the provider slug")?;
-    let token = blizzard::retry(|| crate::auth::oauth2::providers::app_access_token(state, &slug));
-    let Some(token) = token.await? else {
-        return Ok(Outcome::NoProvider);
-    };
-    let client = blizzard::Client {
-        http: state.http_client.clone(),
-        token,
-    };
-    let mut report = Report::default();
-
-    let queue = match ids {
-        Some(ids) => ids.to_vec(),
-        None => {
-            for quality in QUALITIES {
-                report.listed += list(&state.pool, &client, quality).await?;
-            }
-            let kept: Vec<String> = QUALITIES.iter().map(|q| q.to_lowercase()).collect();
-            report.pruned = db::prune(&state.pool, &kept).await?;
-            db::stale_ids(&state.pool, OffsetDateTime::now_utc() - REFRESH_AFTER).await?
-        }
-    };
-
-    let permits = Arc::new(tokio::sync::Semaphore::new(CONCURRENCY));
-    let mut tasks = tokio::task::JoinSet::new();
-    for id in queue {
-        let permit = permits
-            .clone()
-            .acquire_owned()
-            .await
-            .context("the semaphore")?;
-        let (pool, client) = (state.pool.clone(), client.clone());
-        tasks.spawn(async move {
-            let result = refresh(&pool, &client, id).await;
-            drop(permit);
-            (id, result)
-        });
-    }
-    while let Some(joined) = tasks.join_next().await {
-        let (id, result) = joined.context("an item task panicked")?;
-        match result {
-            Ok(Refreshed { page, icon }) => {
-                match page {
-                    Fetch::Fetched => report.fetched += 1,
-                    Fetch::Unchanged => report.unchanged += 1,
-                    Fetch::Missing => report.missing += 1,
-                }
-                report.icons += usize::from(icon);
-            }
-            Err(error) => {
-                tracing::warn!(
-                    id,
-                    error = format!("{error:#}"),
-                    "game items: refresh failed"
-                );
-                report.failed += 1;
-            }
-        }
-    }
-    Ok(Outcome::Done(report))
-}
-
-/// Lists every item of `quality`, page by page through ids, into the mirror's summaries.
-async fn list(pool: &PgPool, client: &blizzard::Client, quality: &str) -> anyhow::Result<usize> {
-    let mut from_id = 1;
-    let mut listed = 0;
-    loop {
-        let page = client.search(quality, from_id).await?;
-        for summary in &page {
-            db::upsert_summary(pool, summary).await?;
-        }
-        listed += page.len();
-        match page.last() {
-            Some(last) if page.len() >= blizzard::SEARCH_PAGE_SIZE => from_id = last.id + 1,
-            _ => return Ok(listed),
-        }
-    }
-}
-
-enum Fetch {
-    Fetched,
+/// What a load did.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Loaded {
+    /// The database already has this snapshot.
     Unchanged,
-    Missing,
+    Loaded {
+        items: u64,
+        /// Items no longer in the snapshot dropped from the mirror (none the guild has won).
+        pruned: u64,
+        icons: u64,
+    },
 }
 
-struct Refreshed {
-    page: Fetch,
-    /// Whether an icon was downloaded.
-    icon: bool,
+/// Loads the embedded snapshot into the mirror, unless it is the one last loaded.
+pub async fn load(pool: &PgPool) -> anyhow::Result<Loaded> {
+    load_snapshot(pool, ITEMS, ICONS).await
 }
 
-/// Fetches one item's page (unless unchanged) and, when it has none yet, its icon.
-async fn refresh(pool: &PgPool, client: &blizzard::Client, id: i32) -> anyhow::Result<Refreshed> {
-    let cached = db::cached(pool, id).await?;
-    let since = cached.as_ref().and_then(|c| c.last_modified.as_deref());
-    let page = match client.item(id, since).await? {
-        Some(detail) => {
-            db::upsert_detail(pool, &detail).await?;
-            Fetch::Fetched
-        }
-        None if cached.is_some() => {
-            db::touch(pool, id).await?;
-            Fetch::Unchanged
-        }
-        None => {
-            return Ok(Refreshed {
-                page: Fetch::Missing,
-                icon: false,
-            });
-        }
-    };
-
-    // Many items share an icon; each image is downloaded once.
-    let has_icon = cached.is_some_and(|c| c.icon_stored);
-    if has_icon {
-        return Ok(Refreshed { page, icon: false });
+async fn load_snapshot(
+    pool: &PgPool,
+    items: &str,
+    icons: &[(&str, &str, &[u8])],
+) -> anyhow::Result<Loaded> {
+    let sha256 = hash(items, icons);
+    let mut tx = pool.begin().await?;
+    // Instances starting together load it once: the others wait, then find it loaded.
+    db::lock(&mut tx, LOAD_LOCK_KEY).await?;
+    if db::snapshot_sha256(&mut tx).await?.as_deref() == Some(sha256.as_str()) {
+        return Ok(Loaded::Unchanged);
     }
-    let Some(icon) = client.icon(id).await? else {
-        return Ok(Refreshed { page, icon: false });
-    };
-    let mut downloaded = false;
-    if !db::icon_stored(pool, &icon.name).await? {
-        let (image, content_type) = client.download(&icon.url).await?;
-        db::store_icon(pool, &icon.name, &content_type, &image).await?;
-        downloaded = true;
-    }
-    db::set_icon(pool, id, &icon.name).await?;
-    Ok(Refreshed {
-        page,
-        icon: downloaded,
+    let (names, content_types, images) = icons
+        .iter()
+        .map(|&(name, ext, image)| {
+            let content_type = match ext {
+                "png" => "image/png",
+                _ => "image/jpeg",
+            };
+            (name.to_string(), content_type.to_string(), image.to_vec())
+        })
+        .collect::<(Vec<_>, Vec<_>, Vec<_>)>();
+    let icons = db::upsert_icons(&mut tx, &names, &content_types, &images).await?;
+    let ids = db::upsert_items(&mut tx, items)
+        .await
+        .context("loading the snapshot's items")?;
+    let pruned = db::prune(&mut tx, &ids).await?;
+    db::set_snapshot_sha256(&mut tx, &sha256).await?;
+    tx.commit().await?;
+    Ok(Loaded::Loaded {
+        items: ids.len() as u64,
+        pruned,
+        icons,
     })
 }
 
-/// Syncs the mirror daily, starting a minute after the server does. Without a `battlenet`
-/// provider it does nothing; another instance syncing makes this one skip its turn.
-pub fn spawn(state: State) {
-    tokio::spawn(async move {
-        tokio::time::sleep(FIRST_SYNC_AFTER).await;
-        let mut ticker = tokio::time::interval(SYNC_INTERVAL);
-        loop {
-            ticker.tick().await;
-            match sync(&state, None).await {
-                Ok(Outcome::Done(report)) => tracing::info!(?report, "game items: synced"),
-                Ok(Outcome::NoProvider) => {
-                    tracing::debug!("game items: no battlenet provider, nothing to sync with")
-                }
-                Ok(Outcome::Busy) => tracing::debug!("game items: another instance is syncing"),
-                Err(error) => {
-                    tracing::warn!(error = format!("{error:#}"), "game items: sync failed")
-                }
-            }
+/// The advisory lock that keeps one load running across instances.
+const LOAD_LOCK_KEY: i64 = 0x6761_6d65; // "game"
+
+/// The snapshot's SHA-256, hex: its items, then each icon's name, extension, and image.
+fn hash(items: &str, icons: &[(&str, &str, &[u8])]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(items.as_bytes());
+    for (name, ext, image) in icons {
+        for part in [name.as_bytes(), ext.as_bytes(), image] {
+            hasher.update((part.len() as u64).to_le_bytes());
+            hasher.update(part);
         }
-    });
+    }
+    hasher
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn summary(id: i32, name: &str) -> blizzard::Summary {
-        blizzard::Summary {
-            id,
-            name: name.into(),
-            quality: "epic".into(),
-            item_level: 66,
-            required_level: 60,
-            inventory_type: "feet".into(),
-            slot: "Feet".into(),
-            item_class: "Armor".into(),
-            item_subclass: "Cloth".into(),
-            is_equippable: true,
-        }
+    fn item(id: i32, name: &str, quality: &str, icon: &str) -> serde_json::Value {
+        serde_json::json!({
+            "id": id, "name": name, "quality": quality, "item_level": 66, "required_level": 60,
+            "inventory_type": "feet", "slot": "Feet", "item_class": "Armor",
+            "item_subclass": "Cloth", "is_equippable": true, "icon": icon,
+            "preview": {"armor": {"value": 70}},
+        })
+    }
+
+    fn snapshot(items: &[serde_json::Value]) -> String {
+        serde_json::to_string(items).unwrap()
     }
 
     #[sqlx::test]
-    async fn the_mirror_keeps_listings_pages_and_icons(pool: PgPool) {
-        db::upsert_summary(&pool, &summary(16800, "Arcanist Boots"))
-            .await
-            .unwrap();
-        db::upsert_summary(&pool, &summary(16805, "Felheart Gloves"))
-            .await
-            .unwrap();
-        // Both are listed but have no page yet, so both are due.
-        let due = db::stale_ids(&pool, OffsetDateTime::now_utc())
-            .await
-            .unwrap();
-        assert_eq!(due, vec![16800, 16805]);
-
-        db::upsert_detail(
-            &pool,
-            &blizzard::Detail {
-                summary: summary(16800, "Arcanist Boots"),
-                preview: serde_json::json!({"armor": {"value": 70}}),
-                last_modified: Some("Tue, 29 Sep 2026 14:37:02 GMT".into()),
-            },
-        )
-        .await
-        .unwrap();
-        db::store_icon(&pool, "inv_boots_07", "image/jpeg", &[0xff, 0xd8])
-            .await
-            .unwrap();
-        db::set_icon(&pool, 16800, "inv_boots_07").await.unwrap();
-
-        // A page fetched just now is not due until it goes stale.
-        let due = db::stale_ids(&pool, OffsetDateTime::now_utc() - REFRESH_AFTER)
-            .await
-            .unwrap();
-        assert_eq!(due, vec![16805]);
-        // A page without its icon (a failed download) stays due, so the next sync retries it.
-        db::upsert_detail(
-            &pool,
-            &blizzard::Detail {
-                summary: summary(16805, "Felheart Gloves"),
-                preview: serde_json::json!({}),
-                last_modified: None,
-            },
-        )
-        .await
-        .unwrap();
-        let due = db::stale_ids(&pool, OffsetDateTime::now_utc() - REFRESH_AFTER)
-            .await
-            .unwrap();
-        assert_eq!(due, vec![16805]);
-        let cached = db::cached(&pool, 16800).await.unwrap().unwrap();
+    async fn the_mirror_loads_its_snapshot(pool: PgPool) {
+        let boots = item(16800, "Arcanist Boots", "epic", "inv_boots_07");
+        let gloves = item(16805, "Felheart Gloves", "epic", "inv_gauntlets_19");
+        let band = item(17063, "Band of Accuria", "epic", "inv_jewelry_ring_15");
+        let icons: &[(&str, &str, &[u8])] = &[
+            ("inv_boots_07", "jpg", &[0xff, 0xd8]),
+            ("inv_gauntlets_19", "jpg", &[0xff, 0xd8]),
+            ("inv_jewelry_ring_15", "png", &[0x89, 0x50]),
+        ];
+        let first = snapshot(&[boots.clone(), gloves.clone(), band]);
         assert_eq!(
-            cached.last_modified.as_deref(),
-            Some("Tue, 29 Sep 2026 14:37:02 GMT")
+            load_snapshot(&pool, &first, icons).await.unwrap(),
+            Loaded::Loaded {
+                items: 3,
+                pruned: 0,
+                icons: 3
+            }
         );
-        assert!(cached.icon_stored);
-
-        // A later listing does not wipe the page.
-        db::upsert_summary(&pool, &summary(16800, "Arcanist Boots"))
-            .await
-            .unwrap();
+        // The same snapshot again is a no-op.
+        assert_eq!(
+            load_snapshot(&pool, &first, icons).await.unwrap(),
+            Loaded::Unchanged
+        );
         let item = find(&pool, 16800).await.unwrap().unwrap();
         assert_eq!(item.preview.unwrap()["armor"]["value"], 70);
         assert_eq!(item.summary.icon.as_deref(), Some("inv_boots_07"));
+        assert_eq!(
+            icon(&pool, "inv_jewelry_ring_15").await.unwrap().unwrap().0,
+            "image/png"
+        );
 
-        // A full sync drops qualities it no longer mirrors, except an item the guild has won.
-        let mut rare = summary(18832, "Brutality Blade");
-        rare.quality = "rare".into();
-        db::upsert_summary(&pool, &rare).await.unwrap();
-        let mut won = summary(17063, "Band of Accuria");
-        won.quality = "rare".into();
-        db::upsert_summary(&pool, &won).await.unwrap();
+        // A later snapshot drops what it no longer has, except an item the guild has won, and the
+        // icons nothing uses any more.
         sqlx::query!(
-            "INSERT INTO items (name, quality, game_item_id) VALUES ('Band of Accuria', 'rare', 17063)"
+            "INSERT INTO items (name, quality, game_item_id) VALUES ('Band of Accuria', 'epic', 17063)"
         )
         .execute(&pool)
         .await
         .unwrap();
-        let kept = ["epic".to_string(), "legendary".to_string()];
-        assert_eq!(db::prune(&pool, &kept).await.unwrap(), 1);
-        assert!(find(&pool, 18832).await.unwrap().is_none());
+        let mut renamed = boots;
+        renamed["name"] = "Arcanist Slippers".into();
+        let second = snapshot(&[renamed]);
+        assert_eq!(
+            load_snapshot(&pool, &second, &icons[..1]).await.unwrap(),
+            Loaded::Loaded {
+                items: 1,
+                pruned: 1,
+                icons: 1
+            }
+        );
+        assert_eq!(
+            find(&pool, 16800).await.unwrap().unwrap().summary.name,
+            "Arcanist Slippers"
+        );
+        assert!(find(&pool, 16805).await.unwrap().is_none());
         assert!(find(&pool, 17063).await.unwrap().is_some());
-        // The boots' icon is still in use, so it stays.
-        assert!(icon(&pool, "inv_boots_07").await.unwrap().is_some());
-        sqlx::query!("DELETE FROM items")
-            .execute(&pool)
-            .await
-            .unwrap();
-        db::prune(&pool, &kept).await.unwrap();
+        assert!(icon(&pool, "inv_gauntlets_19").await.unwrap().is_none());
+        // The won item's icon is still in use, so it stays.
+        assert!(icon(&pool, "inv_jewelry_ring_15").await.unwrap().is_some());
 
         // Browsing finds by any part of the name; unfiltered, it pages through everything.
+        load_snapshot(&pool, &first, icons).await.unwrap();
         let names = |page: Page| page.items.into_iter().map(|i| i.name).collect::<Vec<_>>();
         let by = |q: &str| Browse {
             q: q.into(),
@@ -450,13 +272,21 @@ mod tests {
             ..Browse::default()
         };
         let first = browse(&pool, &page(0)).await.unwrap();
-        assert_eq!((first.items.len(), first.total), (1, 2));
+        assert_eq!((first.items.len(), first.total), (1, 3));
         let second = browse(&pool, &page(1)).await.unwrap();
         assert_ne!(first.items[0].id, second.items[0].id);
         assert_eq!(slots(&pool).await.unwrap(), ["Feet"]);
-        assert_eq!(
-            icon(&pool, "inv_boots_07").await.unwrap().unwrap().0,
-            "image/jpeg"
-        );
+    }
+
+    #[test]
+    fn the_embedded_snapshot_parses_and_has_its_icons() {
+        let items: Vec<serde_json::Value> = serde_json::from_str(ITEMS).unwrap();
+        assert!(!items.is_empty());
+        let icons: std::collections::HashSet<_> = ICONS.iter().map(|(name, ..)| *name).collect();
+        for item in &items {
+            if let Some(icon) = item["icon"].as_str() {
+                assert!(icons.contains(icon), "{} has no icon {icon}", item["id"]);
+            }
+        }
     }
 }

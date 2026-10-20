@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO game_items_snapshot (sha256) VALUES ($1)\n        ON CONFLICT (id) DO UPDATE SET sha256 = EXCLUDED.sha256, loaded_at = now()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6b2e41129f0e99d2108ede0c48951b1991d61da24461848619ad134ca8fd2e72"
+}

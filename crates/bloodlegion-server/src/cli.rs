@@ -44,6 +44,14 @@ pub async fn migrate() -> Result<()> {
     let pool = State::load_pool().await?;
     let migrator = sqlx::migrate!();
     migrator.run(&pool).await.context("running migrations")?;
+    // The data the binary embeds follows the schema, so the database matches this build.
+    match crate::game_items::load(&pool)
+        .await
+        .context("loading the item snapshot")?
+    {
+        crate::game_items::Loaded::Unchanged => tracing::debug!("game items: snapshot unchanged"),
+        loaded => tracing::info!(?loaded, "game items: loaded the snapshot"),
+    }
     Ok(())
 }
 
@@ -480,36 +488,6 @@ pub async fn providers_update(
     }
     eprintln!("updated provider '{slug}'");
     Ok(())
-}
-
-/// `items sync`: syncs the item mirror now, reporting what it did.
-#[tokio::main]
-pub async fn items_sync(ids: Vec<i32>) -> Result<()> {
-    let state = State::new().await?;
-    let only = (!ids.is_empty()).then_some(ids.as_slice());
-    match crate::game_items::sync(&state, only).await? {
-        crate::game_items::Outcome::NoProvider => Err(anyhow::anyhow!(
-            "no '{}' provider is configured; the item sync uses its client",
-            crate::game_items::PROVIDER
-        )
-        .into()),
-        crate::game_items::Outcome::Busy => {
-            Err(anyhow::anyhow!("another sync is running; try again when it finishes").into())
-        }
-        crate::game_items::Outcome::Done(report) => {
-            eprintln!(
-                "listed {}, pruned {}, fetched {}, unchanged {}, unknown {}, icons {}, failed {}",
-                report.listed,
-                report.pruned,
-                report.fetched,
-                report.unchanged,
-                report.missing,
-                report.icons,
-                report.failed
-            );
-            Ok(())
-        }
-    }
 }
 
 /// `characters seed`: makes the test characters, then raids and loot for them.

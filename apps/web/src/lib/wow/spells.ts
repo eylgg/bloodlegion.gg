@@ -2,11 +2,15 @@ import catalog from './spells.json';
 
 /**
  * Each class's Classic spells: what its trainers teach, the talents that are buttons rather than
- * passives, and the attacks every character has (Attack, Shoot, Throw). Generated from Wowhead's
- * Classic ability and talent listings, without Season of Discovery's runes; `id` is the first
- * rank, as the addon places the highest rank its character knows by name. The tooltip is the
- * highest rank's, from Wowhead's tooltips with their formulas worked out. The icons are
+ * passives, and the attacks every character has (Attack, Shoot, Throw). First generated from
+ * Wowhead's Classic ability and talent listings, without Season of Discovery's runes; `id` is the
+ * first rank, as the addon places the highest rank its character knows by name. The tooltip is
+ * the highest rank's, from Wowhead's tooltips with their formulas worked out. The icons are
  * Blizzard's, vendored under `static/wow/spells` from its render service.
+ *
+ * Which spells there are, their levels, trees, ranks, and tooltip lines are edited here by hand:
+ * Blizzard's API serves none of them. `cargo xtask blizzard sync` refreshes the rest from it (each
+ * spell's name, description, and icon) and downloads any icon not yet vendored.
  */
 export type Spell = {
 	id: number;

@@ -1,3 +1,5 @@
+mod blizzard;
+
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -27,6 +29,24 @@ enum Cmd {
     Dev {
         #[command(subcommand)]
         command: DevCmd,
+    },
+    /// Blizzard's data the repository vendors: the item snapshot the server embeds, the
+    /// keybind planner's spells, and the class and talent tree icons.
+    Blizzard {
+        #[command(subcommand)]
+        command: BlizzardCmd,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum BlizzardCmd {
+    /// Refresh it all from Battle.net's Game Data API and Blizzard's render service, for the diff
+    /// to be reviewed and committed. Needs `BATTLENET_CLIENT_ID` and `BATTLENET_CLIENT_SECRET`
+    /// (except for `--only classes`).
+    Sync {
+        /// Only these parts (repeatable); everything when omitted.
+        #[arg(long, value_enum)]
+        only: Vec<blizzard::Part>,
     },
 }
 
@@ -474,6 +494,9 @@ fn main() -> Result<()> {
             DevCmd::Down => dev_down(&workspace)?,
             DevCmd::Reset => dev_reset(&workspace)?,
             DevCmd::Status => dev_status(&workspace)?,
+        },
+        Cmd::Blizzard { command } => match command {
+            BlizzardCmd::Sync { only } => blizzard::sync(&workspace, &only)?,
         },
     }
     Ok(())

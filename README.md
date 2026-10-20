@@ -131,7 +131,6 @@ bloodlegion-server users demote <username>
 bloodlegion-server users rename <username> <new username>
 bloodlegion-server users rank <username> <rank>  # leader, officer, raider, trial, member, friend, retired
 bloodlegion-server users characters <username>   # the WoW characters on each linked Battle.net account
-bloodlegion-server items sync [--id <item id>]... # sync the item mirror now (the server syncs daily)
 bloodlegion-server characters seed              # test characters: four per class, linked to no one
 bloodlegion-server characters unseed            # remove them (keeps any that raided or won loot)
 bloodlegion-server launch                # every member's WoW: Forever launch sign-ups
@@ -207,20 +206,41 @@ the changes.
   Onyxia is seeded. Recording loot by item name creates the item on first sight. A boss's page shows
   how often each item dropped.
 - **The item database** is a local mirror of the game's (`game_items`), with tooltips and icons
-  served from it: no third-party tooltip script. It syncs from Battle.net's Game Data API with the
-  `battlenet` provider's client (a client credentials token; no extra configuration), daily and on
-  demand. Until the API serves WoW: Forever it mirrors Classic Era (`static-classic1x-us`), listing
-  every epic and legendary item (dropping any other the guild has not won) and fetching each one's tooltip and icon; a refresh asks with
-  `If-Modified-Since`, so unchanged items cost little; a call that fails for a moment (a timeout,
-  a 5xx, a 429) is retried, and an item still missing its tooltip or icon is retried next sync.
-  The Items page browses it, 50 at a time; recording loot searches it, and a guild item picked from
-  it is linked by the game's item id.
+  served from it: no third-party tooltip script. It is a snapshot in the repository
+  (`crates/bloodlegion-server/data/game-items`: `items.json`, one item a line, and the icons) that
+  the server embeds. Every migrate, so every start, loads it when its hash differs from the one last
+  loaded: the site works offline, and each deploy has the items of its own commit. A snapshot that
+  no longer has an item drops it, unless the guild has won it. The Items page browses it, 50 at a
+  time; recording loot searches it, and a guild item picked from it is linked by the game's item id.
 
-  ```sh
-  bloodlegion-server items sync               # everything (the first run fetches thousands of items)
-  bloodlegion-server items sync --id 16800    # just these, listed or not
-  ```
+  It is refreshed with the rest of Blizzard's data; see [Blizzard's data](#blizzards-data).
 - **Questions**: officers ask yes-or-no questions; members answer and may change their minds.
+
+## Blizzard's data
+
+Everything the site shows of the game is vendored, so nothing reads Blizzard at run time and the
+site works offline: the item snapshot above (`crates/bloodlegion-server/data/game-items`), the
+keybind planner's spells (`apps/web/src/lib/wow/spells.json` and `apps/web/static/wow/spells`), and
+the class and talent tree icons (`apps/web/static/wow/classes` and `specs`). One command refreshes
+it all, then the diff is reviewed and committed:
+
+```sh
+BATTLENET_CLIENT_ID=... BATTLENET_CLIENT_SECRET=... cargo xtask blizzard sync
+cargo xtask blizzard sync --only classes   # just some: items, spells, classes (classes needs no credentials)
+```
+
+The credentials are the `battlenet` sign-in client's. Battle.net's Game Data API is read as Classic
+Era (`static-classic1x-us`) until it serves WoW: Forever; icons come from Blizzard's render
+service. A call that fails for a moment (a timeout, a 5xx, a 429) is retried.
+
+- **Items**: every epic and legendary item, with its tooltip and icon name, fetched again (a few
+  minutes); only icons not already vendored are downloaded. An item that still fails keeps its last
+  snapshot entry.
+- **Spells**: which spells each class has, their levels, trees, ranks, and tooltip lines are edited
+  by hand in `spells.json`, since the API serves none of them. The sync updates each spell's name,
+  description (unless the API leaves a formula unworked), and icon where the API has them, and
+  keeps the rest.
+- **Classes**: each class's and talent tree's icon, by the game's icon name.
 
 ## Images
 

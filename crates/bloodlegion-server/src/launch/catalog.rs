@@ -1,9 +1,11 @@
 //! The WoW: Forever classes: the nine original classes, each with its three Classic talent trees
-//! as the specs a member can pick. Icons are Blizzard's: class icons from its web CDN, and each
-//! spec's icon the one the Classic client's `TalentTab` table gives its tree; they are vendored
-//! under `apps/web/static/wow`, named `classes/<class>.jpg` and `specs/<class>-<spec>.jpg`. Colors are Blizzard's own `RAID_CLASS_COLORS` (the values the
-//! game client defines in `ChrClasses.db2`), using the modern Shaman blue: Forever lets both
-//! factions play Paladin and Shaman, which is why Classic's shared pink was retired in 2.0.1.
+//! as the specs a member can pick. Icons are Blizzard's: each class's `classicon_`, and each
+//! spec's the one the Classic client's `TalentTab` table gives its tree; they are vendored under
+//! `apps/web/static/wow`, named `classes/<class>.jpg` and `specs/<class>-<spec>.jpg`, and
+//! `cargo xtask blizzard sync` refreshes them from Blizzard's render service. Colors are
+//! Blizzard's own `RAID_CLASS_COLORS` (the values the game client defines in `ChrClasses.db2`),
+//! using the modern Shaman blue: Forever lets both factions play Paladin and Shaman, which is why
+//! Classic's shared pink was retired in 2.0.1.
 
 use serde::Serialize;
 

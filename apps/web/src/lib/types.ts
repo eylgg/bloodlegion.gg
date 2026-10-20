@@ -246,7 +246,6 @@ export type ItemPreview = {
 
 export type GameItem = GameItemSummary & {
 	preview: ItemPreview | null;
-	detailed_at: string | null;
 };
 
 /** The guild's settings: the zone raids are scheduled in, and when they usually start there. */
