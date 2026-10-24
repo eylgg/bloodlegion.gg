@@ -306,13 +306,19 @@ pub(super) async fn provision_user(
         if !provider.is_auto_connection_allowed {
             return Err(crate::Error::External(ProviderError::EmailInUse));
         }
-        let mut conn = pool.acquire().await.context("acquiring a connection")?;
-        db::insert_credential(&mut conn, provider.id, subject, user_id, userinfo, &profile)
+        let mut tx = pool
+            .begin()
+            .await
+            .context("beginning a transaction to link by verified email")?;
+        db::insert_credential(&mut tx, provider.id, subject, user_id, userinfo, &profile)
             .await
             .context("linking the provider credential")?;
-        crate::users::mark_email_federated(&mut conn, user_id, email)
+        crate::users::mark_email_federated(&mut tx, user_id, email)
             .await
             .context("marking the linked OIDC email federated")?;
+        tx.commit()
+            .await
+            .context("committing the credential linked by verified email")?;
         return Ok(Provisioned::User(user_id));
     }
 

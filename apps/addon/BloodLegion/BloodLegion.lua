@@ -111,15 +111,17 @@ local function pickup(action)
 	return GetCursorInfo() ~= nil
 end
 
+-- Applies the plan, or says why not and returns false (so the import box stays open with the
+-- paste in it).
 local function apply(plan)
 	if InCombatLockdown() then
-		say("Not in combat; try again once it ends.")
-		return
+		say("Not while in combat; try again once it ends.")
+		return false
 	end
 	local _, class = UnitClass("player")
 	if plan.class and class:lower() ~= plan.class then
 		say(("That plan is for a %s, and this is a %s."):format(plan.class, class:lower()))
-		return
+		return false
 	end
 
 	ClearCursor()
@@ -163,6 +165,7 @@ local function apply(plan)
 	if #missing > 0 then
 		say("Not known (yet): " .. table.concat(missing, ", "))
 	end
+	return true
 end
 
 -- The import box: paste, then Import.
@@ -210,8 +213,9 @@ local function showImport()
 				say(err)
 				return
 			end
-			apply(plan)
-			frame:Hide()
+			if apply(plan) then
+				frame:Hide()
+			end
 		end)
 	end
 	frame.edit:SetText("")

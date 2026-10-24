@@ -42,7 +42,7 @@ pub async fn upsert_consent(
     pool: &PgPool,
     user_id: UserId,
     client_id: &str,
-    scope: &str,
+    scope: &Scope,
 ) -> Result<()> {
     sqlx::query!(
         r#"
@@ -53,7 +53,7 @@ pub async fn upsert_consent(
         "#,
         user_id.0,
         client_id,
-        scope,
+        scope.as_ref(),
     )
     .execute(pool)
     .await?;
@@ -150,9 +150,14 @@ mod tests {
             "no consent should exist initially"
         );
 
-        upsert_consent(&pool, user_id, &client_id, "openid email")
-            .await
-            .unwrap();
+        upsert_consent(
+            &pool,
+            user_id,
+            &client_id,
+            &Scope::try_from("openid email").unwrap(),
+        )
+        .await
+        .unwrap();
         assert_eq!(
             find_consented_scope(&pool, user_id, &client_id)
                 .await
@@ -163,9 +168,14 @@ mod tests {
 
         // A second grant for the same (user, client) replaces the scope set
         // rather than creating a duplicate row (ON CONFLICT DO UPDATE).
-        upsert_consent(&pool, user_id, &client_id, "openid")
-            .await
-            .unwrap();
+        upsert_consent(
+            &pool,
+            user_id,
+            &client_id,
+            &Scope::try_from("openid").unwrap(),
+        )
+        .await
+        .unwrap();
         assert_eq!(
             find_consented_scope(&pool, user_id, &client_id)
                 .await

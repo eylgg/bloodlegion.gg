@@ -305,6 +305,25 @@ fn scope_string(scopes: &[&ScopeDefinition]) -> super::Scope {
         .expect("scope names from the registry form a valid scope set")
 }
 
+/// The consent to store after a decision. For the scopes this request asked about, the user's
+/// answer now wins (unticking one withdraws it); every scope consented to earlier and not asked
+/// about this time is kept, so approving one request does not forget what an earlier one granted.
+fn merged_consent(
+    previous: Option<&super::Scope>,
+    requested: &[&ScopeDefinition],
+    approved: &[&ScopeDefinition],
+) -> std::result::Result<super::Scope, super::scope::Error> {
+    let kept = previous
+        .into_iter()
+        .flat_map(|scope| scope.split(' '))
+        .filter(|token| !token.is_empty() && !requested.iter().any(|scope| scope.name == *token));
+    let joined = kept
+        .chain(approved.iter().map(|scope| scope.name))
+        .collect::<Vec<_>>()
+        .join(" ");
+    super::Scope::try_from(joined.as_str())
+}
+
 fn build_callback(
     redirect_uri: &str,
     code: &str,
@@ -433,14 +452,14 @@ pub async fn decide(
         .copied()
         .filter(|scope| decision.scopes.iter().any(|name| name == scope.name))
         .collect();
-    db::upsert_consent(
-        &pool,
-        user.id,
-        &params.client_id,
-        scope_string(&approved).as_ref(),
-    )
-    .await
-    .context("recording the consent")?;
+    let previous = db::find_consented_scope(&pool, user.id, &params.client_id)
+        .await
+        .context("looking up the consented scope")?;
+    let consent = merged_consent(previous.as_ref(), &request.scopes, &approved)
+        .context("merging the consent")?;
+    db::upsert_consent(&pool, user.id, &params.client_id, &consent)
+        .await
+        .context("recording the consent")?;
 
     // Issue for everything now granted: the user's approvals plus the client's
     // pre-authorized scopes, bounded to what was requested.
@@ -494,6 +513,24 @@ mod tests {
         assert!(all_scopes_granted(&requested, &auto_one, Some(&user_other)));
         // Only one covered, nothing for the rest -> still prompt.
         assert!(!all_scopes_granted(&requested, &auto_one, None));
+    }
+
+    #[test]
+    fn a_consent_keeps_earlier_grants_and_takes_this_answer_for_what_was_asked() {
+        use crate::auth::oauth2::{Scope, lookup_scope};
+        let openid = lookup_scope("openid").unwrap();
+        let profile = lookup_scope("profile").unwrap();
+        let email = lookup_scope("email").unwrap();
+
+        // First consent: nothing before.
+        let first = merged_consent(None, &[openid, email], &[openid, email]).unwrap();
+        assert_eq!(first, Scope::try_from("openid email").unwrap());
+        // A later request for other scopes keeps `email`, which it did not ask about.
+        let second = merged_consent(Some(&first), &[openid, profile], &[openid, profile]).unwrap();
+        assert_eq!(second, Scope::try_from("email openid profile").unwrap());
+        // Unticking a scope this request asked about withdraws it.
+        let third = merged_consent(Some(&second), &[openid, email], &[openid]).unwrap();
+        assert_eq!(third, Scope::try_from("profile openid").unwrap());
     }
 
     #[test]

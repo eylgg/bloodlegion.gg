@@ -65,7 +65,8 @@ pub struct Week {
     pub ends_at: OffsetDateTime,
 }
 
-/// Week `number` (from 1), or `None` for a number below 1.
+/// Week `number` (from 1), or `None` for a number below 1 or one so far out its dates are past
+/// what a date can hold (the number comes straight from a URL).
 pub fn week(number: i64) -> Option<Week> {
     let first_reset = first_reset();
     match number {
@@ -76,11 +77,12 @@ pub fn week(number: i64) -> Option<Week> {
             ends_at: first_reset,
         }),
         _ => {
-            let starts_at = first_reset + Duration::weeks(number - 2);
+            let offset = (number - 2).checked_mul(Duration::WEEK.whole_seconds())?;
+            let starts_at = first_reset.checked_add(Duration::seconds(offset))?;
             Some(Week {
                 number,
                 starts_at,
-                ends_at: starts_at + Duration::weeks(1),
+                ends_at: starts_at.checked_add(Duration::WEEK)?,
             })
         }
     }
@@ -197,6 +199,17 @@ mod tests {
             2
         );
         assert_eq!(week_of(datetime!(2026-12-22 15:00 UTC)).unwrap().number, 3);
+    }
+
+    #[test]
+    fn a_week_too_far_out_is_none_rather_than_a_panic() {
+        assert!(week(1_000).is_some());
+        assert_eq!(week(1_000_000), None);
+        assert_eq!(week(i64::MAX), None);
+        assert_eq!(
+            default_start(i64::MAX, "America/New_York", time::macros::time!(20:00)),
+            None
+        );
     }
 
     #[test]

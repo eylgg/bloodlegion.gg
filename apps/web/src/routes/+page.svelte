@@ -66,7 +66,16 @@
 	}
 </script>
 
-<Logo>
+{#snippet account()}
+	<!-- Who is signed in, and the way out. -->
+	<div class="account">
+		<a href={resolve('/profile')}>{data.user?.username}</a>
+		<span class="sep" aria-hidden="true">·</span>
+		<button type="button" onclick={signOut} disabled={signingOut}>Sign out</button>
+	</div>
+{/snippet}
+
+<Logo footer={data.user ? account : undefined}>
 	{#if data.user}
 		<Button href={resolve('/raids')} variant="primary" full>Raids and loot</Button>
 		<Button href={resolve('/roster')} variant="secondary" full>Roster</Button>
@@ -93,19 +102,8 @@
 	{/if}
 </Logo>
 
-{#if data.user}
-	<!-- Who is signed in, and the way out. -->
-	<footer class="account">
-		<a href={resolve('/profile')}>{data.user.username}</a>
-		<span class="sep" aria-hidden="true">·</span>
-		<button type="button" onclick={signOut} disabled={signingOut}>Sign out</button>
-	</footer>
-{/if}
-
 <style>
 	.account {
-		position: fixed;
-		inset: auto 0 var(--space-6);
 		display: flex;
 		justify-content: center;
 		gap: var(--space-2);

@@ -572,7 +572,8 @@ pub async fn raids_attended(pool: &PgPool, character_id: i64) -> sqlx::Result<i6
 /// Loot matching every set field of `filter`, latest raid first.
 pub async fn loot(pool: &PgPool, filter: &LootFilter) -> sqlx::Result<Vec<LootEntry>> {
     let limit = filter.limit.unwrap_or(LOOT_LIMIT).clamp(1, LOOT_LIMIT);
-    // A week narrows to its span; a week that does not exist (below 1) to an empty one.
+    // A week narrows to its span; a week that does not exist (below 1, or too far out) to an
+    // empty one.
     let span = filter.week.map(|number| {
         calendar::week(number).map_or((calendar::release_at(), calendar::release_at()), |week| {
             (week.starts_at, week.ends_at)

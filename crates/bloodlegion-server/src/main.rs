@@ -130,6 +130,10 @@ enum UsersCommand {
         namespace: Option<String>,
         #[arg(long, default_value = "en_US")]
         locale: String,
+        /// Print the API's JSON as it answered instead of the table, to see what the table leaves
+        /// out (fields it does not read).
+        #[arg(long)]
+        raw: bool,
     },
 }
 
@@ -340,7 +344,8 @@ fn main() -> Result<()> {
                 region,
                 namespace,
                 locale,
-            } => cli::users_characters(username, provider, region, namespace, locale),
+                raw,
+            } => cli::users_characters(username, provider, region, namespace, locale, raw),
         },
         Some(Command::Launch) => cli::launch(),
         Some(Command::Characters { command }) => match command {

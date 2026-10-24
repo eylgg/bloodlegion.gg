@@ -23,17 +23,18 @@ fn api_host(region: &str) -> String {
     format!("https://{region}.api.blizzard.com")
 }
 
-/// `GET /profile/user/wow`: every character on every WoW license of the account the token belongs
-/// to, in the game the `namespace` selects (`profile-<region>` is retail; Classic flavors have
-/// their own, such as `profile-classic1x-<region>` for Classic Era). A 401 means the token expired
-/// or was revoked; a 403 means either a namespace the API does not serve or no `wow.profile`.
-pub async fn account_characters(
+/// `GET /profile/user/wow`, as the API answered it: every character on every WoW license of the
+/// account the token belongs to, in the game the `namespace` selects (`profile-<region>` is
+/// retail; Classic flavors have their own, such as `profile-classic1x-<region>` for Classic Era).
+/// A 401 means the token expired or was revoked; a 403 means either a namespace the API does not
+/// serve or no `wow.profile`.
+pub async fn account_profile(
     http: &reqwest::Client,
     region: &str,
     namespace: &str,
     locale: &str,
     access_token: &str,
-) -> anyhow::Result<Vec<Character>> {
+) -> anyhow::Result<Value> {
     let mut url = url::Url::parse(&format!("{}/profile/user/wow", api_host(region)))
         .context("building the WoW account profile URL")?;
     url.query_pairs_mut()
@@ -57,16 +58,15 @@ pub async fn account_characters(
         };
         anyhow::bail!("the WoW account profile API answered {status}{hint}");
     }
-    let body: Value = response
+    response
         .json()
         .await
-        .context("reading the WoW account profile")?;
-    Ok(parse_characters(&body))
+        .context("reading the WoW account profile")
 }
 
 /// The characters in an account profile summary, highest level first, then by name. Lenient:
 /// a field missing from one entry shows as empty rather than failing the whole listing.
-fn parse_characters(body: &Value) -> Vec<Character> {
+pub fn parse_characters(body: &Value) -> Vec<Character> {
     let text = |value: &Value, path: &[&str]| -> String {
         let mut node = value;
         for key in path {

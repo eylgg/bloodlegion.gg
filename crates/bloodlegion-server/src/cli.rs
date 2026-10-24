@@ -198,6 +198,7 @@ pub async fn users_characters(
     region: String,
     namespace: Option<String>,
     locale: String,
+    raw: bool,
 ) -> Result<()> {
     let namespace = namespace.unwrap_or_else(|| format!("profile-{region}"));
     let state = State::new().await?;
@@ -231,7 +232,7 @@ pub async fn users_characters(
             },
             tokens.scope,
         );
-        let characters = match crate::wow::account_characters(
+        let profile = match crate::wow::account_profile(
             &state.http_client,
             &region,
             &namespace,
@@ -240,12 +241,17 @@ pub async fn users_characters(
         )
         .await
         {
-            Ok(characters) => characters,
+            Ok(profile) => profile,
             Err(error) => {
                 eprintln!("{account}: {error:#}");
                 continue;
             }
         };
+        if raw {
+            println!("{profile:#}");
+            continue;
+        }
+        let characters = crate::wow::parse_characters(&profile);
         println!(
             "{:<14} {:<22} {:>5} {:<14} {:<20} FACTION",
             "NAME", "REALM", "LEVEL", "CLASS", "RACE"
