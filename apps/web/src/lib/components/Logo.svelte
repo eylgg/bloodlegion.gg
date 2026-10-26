@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 
-	let { children, footer }: { children?: Snippet; footer?: Snippet } = $props();
+	let { children, after, footer }: { children?: Snippet; after?: Snippet; footer?: Snippet } =
+		$props();
 </script>
 
 <!--
@@ -12,10 +13,13 @@
 	height and by an absolute size so it sits in the viewport rather than filling it. A faint red
 	spill behind it keeps the page from reading as flat black.
 
+	With something `after` it (the front page's announcements), the mark moves up and shrinks a
+	little so that starts on the first screen, right below the buttons, rather than a viewport down.
+
 	The footer sits at the bottom of the viewport when there is room, and below everything else
 	when there is not (a short window), so it never covers the buttons.
 -->
-<div class="stage">
+<div class="stage" class:has-after={after}>
 	<div class="mark">
 		<img src="/logo.svg" alt="Blood Legion" width="1024" height="1024" fetchpriority="high" />
 		{#if children}
@@ -24,6 +28,9 @@
 			</div>
 		{/if}
 	</div>
+	{#if after}
+		{@render after()}
+	{/if}
 	{#if footer}
 		<footer>
 			{@render footer()}
@@ -50,8 +57,16 @@
 		gap: var(--space-6);
 	}
 
+	.has-after .mark {
+		margin-block: var(--space-8) var(--space-6);
+	}
+
 	footer {
 		padding-block: var(--space-6);
+	}
+
+	.has-after footer {
+		margin-top: auto;
 	}
 
 	img {
@@ -77,6 +92,10 @@
 			opacity: 1;
 			transform: none;
 		}
+	}
+
+	.has-after img {
+		width: min(100vw, 46vh, 28rem);
 	}
 
 	@media (prefers-reduced-motion: reduce) {

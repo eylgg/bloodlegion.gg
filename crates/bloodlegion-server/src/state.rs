@@ -16,10 +16,12 @@ use crate::well_known::openid_configuration::OpenidConfiguration;
 /// The database connection pool's ceiling, per instance.
 ///
 /// One connection is held permanently by the `jwk_rotated` listener (a `PgListener` keeps its
-/// pooled connection for its whole life), the cleaner takes one per sweep, and the rest serve HTTP
-/// requests, one per in-flight request (no handler holds two: transactions are threaded as
-/// `&mut PgConnection` rather than re-acquiring). 16 is plenty for a guild site and lets several
-/// instances share a stock Postgres (`max_connections = 100`).
+/// pooled connection for its whole life), and while this instance runs the Discord bot one more by
+/// its `discord_roles` listener (the bot's lock has a connection of its own, taken out of the
+/// pool). The cleaner takes one per sweep, and the rest serve HTTP requests, one per in-flight
+/// request (no handler holds two: transactions are threaded as `&mut PgConnection` rather than
+/// re-acquiring). 16 is plenty for a guild site and lets several instances share a stock Postgres
+/// (`max_connections = 100`).
 const POOL_MAX_CONNECTIONS: u32 = 16;
 
 /// Connections held open when idle: the listener plus a couple for requests, so the permanently

@@ -236,6 +236,32 @@ the changes.
   It is refreshed with the rest of Blizzard's data; see [Blizzard's data](#blizzards-data).
 - **Questions**: officers ask yes-or-no questions; members answer and may change their minds.
 
+## The Discord server
+
+The guild's Discord server is kept by a bot, the same Discord application members link (step 4
+above). It makes three roles, Officer, Raider, and Member, and gives each member who linked Discord
+the one their rank calls for: the leader and officers are officers, raiders and trials raiders,
+everyone else members. It makes four categories that follow the site's access levels, each open to
+its level and those above it: Public (everyone), Members, Raiders, and Officers. In Public it makes
+#announcements, which everyone reads and officers post in; its posts show on the front page, kept
+in step as they are edited or deleted.
+
+It never deletes anything. It makes what is missing (taking over a role or category of the same
+name made by hand), and on its own categories sets only its own permission entries, so others added
+by hand stay. Renaming its roles or categories is fine: it keeps track by id. Roles follow ranks as
+they change, a member joining, and a link or unlink, and are checked every ten minutes besides.
+
+To set it up, in the application's **Bot** page turn on the **Server Members** and **Message
+Content** intents, and invite it to the server (**OAuth2 → URL Generator**, scope `bot`) with
+Manage Roles, Manage Channels, View Channels, Send Messages, and Read Message History. Then, as a
+superuser, enter the bot's token and the Discord server's id (right-click the server with Developer
+Mode on, **Copy Server ID**) under **Discord bot** on the settings page (`/settings`). The token is
+checked with Discord, stored encrypted with `ENCRYPTION_KEY`, and never shown again.
+
+Until both are set there is no bot, and changing either restarts it. With several instances
+running, one runs the bot at a time (a Postgres advisory lock), and another takes over within a
+minute if it goes away.
+
 ## Blizzard's data
 
 Everything the site shows of the game is vendored, so nothing reads Blizzard at run time and the

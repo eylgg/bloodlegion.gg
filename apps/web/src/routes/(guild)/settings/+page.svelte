@@ -4,6 +4,7 @@
 	import { formatInZone, zoneCity } from '$lib/guild';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
+	import DiscordSettings from '$lib/components/guild/DiscordSettings.svelte';
 	import type { GuildSettings } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -86,6 +87,8 @@
 		</Button>
 	</div>
 </form>
+
+<DiscordSettings settings={data.discord} />
 
 <style>
 	.panel {

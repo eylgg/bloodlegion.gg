@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM discord_announcements\n        WHERE message_id <> ALL($1)\n          AND ($3 OR ($2::timestamptz IS NOT NULL AND posted_at >= $2))\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array",
+        "Timestamptz",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e5d5d836137ca30f1d0237017a518724d18e360b51e72560e9a65048248ee74d"
+}

@@ -29,6 +29,24 @@ export type LoginProvider =
 			connection_only: boolean;
 	  };
 
+/** The Discord bot's settings, as a superuser sees them: never the token, only whether one is set. */
+export type DiscordSettings = {
+	/** A string: Discord ids do not fit a JavaScript number. */
+	guild_id: string | null;
+	has_bot_token: boolean;
+};
+
+/** A post from the Discord server's #announcements, rendered by the backend. */
+export type Announcement = {
+	/** The Discord message id: a string, as it does not fit a JavaScript number. */
+	id: string;
+	author: string;
+	/** Safe to put on the page: the backend escapes all of the post. */
+	html: string;
+	posted_at: string;
+	edited_at: string | null;
+};
+
 export type LoginOptions = {
 	providers: LoginProvider[];
 };

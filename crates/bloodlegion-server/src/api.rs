@@ -21,6 +21,7 @@ pub fn router() -> Router<State> {
         .nest("/characters", crate::characters::router())
         .nest("/questions", crate::questions::router())
         .nest("/game-items", crate::game_items::router())
+        .merge(crate::discord::router())
         .merge(crate::raids::router())
         .nest("/auth", crate::auth::api::router())
 }

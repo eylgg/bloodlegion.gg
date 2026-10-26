@@ -5,6 +5,7 @@
 	import Logo from '$lib/components/Logo.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
+	import Announcements from '$lib/components/Announcements.svelte';
 	import { api } from '$lib/api';
 	import { resolve } from '$app/paths';
 	import { providerVariant, returnedProviderName } from '$lib/auth';
@@ -80,7 +81,14 @@
 	</div>
 {/snippet}
 
-<Logo footer={data.user ? account : undefined}>
+{#snippet announcements()}
+	<Announcements announcements={data.announcements} />
+{/snippet}
+
+<Logo
+	footer={data.user ? account : undefined}
+	after={data.announcements.length > 0 ? announcements : undefined}
+>
 	{#if data.user}
 		<Button href={resolve('/raids')} variant="primary" full>Raids and loot</Button>
 		<Button href={resolve('/roster')} variant="secondary" full>Roster</Button>

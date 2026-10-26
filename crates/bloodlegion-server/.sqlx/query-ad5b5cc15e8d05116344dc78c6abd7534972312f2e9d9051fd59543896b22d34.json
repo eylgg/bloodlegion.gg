@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE discord_settings SET bot_token_ciphertext = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ad5b5cc15e8d05116344dc78c6abd7534972312f2e9d9051fd59543896b22d34"
+}

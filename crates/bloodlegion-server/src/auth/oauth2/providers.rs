@@ -282,6 +282,55 @@ pub async fn list_connections(
     db::list_connections(pool, user_id).await
 }
 
+/// For tests elsewhere: links `subject` at the OIDC provider `slug` (made if missing) to `user_id`.
+#[cfg(test)]
+pub(crate) async fn link_for_test(pool: &PgPool, slug: &str, subject: &str, user_id: UserId) {
+    let slug = crate::Slug::try_from(slug).unwrap();
+    let provider = match db::find_provider_by_slug(pool, &slug).await.unwrap() {
+        Some(provider) => provider,
+        None => {
+            let mut tx = pool.begin().await.unwrap();
+            db::insert_provider(
+                &mut tx,
+                &slug,
+                &format!("Provider {slug}"),
+                Some(&format!("https://{slug}.test")),
+                "client",
+                &crate::crypto::Ciphertext::for_test("secret"),
+                crate::auth::ProviderFlags {
+                    is_registration_allowed: false,
+                    is_auto_connection_allowed: false,
+                    is_email_verified: false,
+                    is_disconnection_allowed: true,
+                    is_unclaimed_username_connection_allowed: false,
+                },
+                &serde_json::json!([]),
+                "openid",
+                true,
+            )
+            .await
+            .unwrap();
+            tx.commit().await.unwrap();
+            db::find_provider_by_slug(pool, &slug)
+                .await
+                .unwrap()
+                .unwrap()
+        }
+    };
+    let userinfo = serde_json::json!({ "sub": subject });
+    let mut conn = pool.acquire().await.unwrap();
+    db::insert_credential(
+        &mut conn,
+        provider.id,
+        subject,
+        user_id,
+        &userinfo,
+        &userinfo,
+    )
+    .await
+    .unwrap();
+}
+
 /// How long a cached OIDC discovery document (endpoints + JWKS) stays fresh before
 /// it is refetched. Bounds staleness for IdP key rotation without paying a
 /// discovery + JWKS round trip on every single login.

@@ -4,6 +4,7 @@ mod characters;
 mod cleaner;
 mod cli;
 mod crypto;
+mod discord;
 mod error;
 mod extract;
 mod fallbacks;
@@ -304,6 +305,7 @@ async fn serve() -> Result<()> {
         }
     });
     cleaner::spawn(state.pool.clone());
+    discord::spawn(state.clone());
 
     let router = router(state);
     let app = router.layer(ServiceBuilder::new().layer(TraceLayer::new_for_http().on_request(())));
