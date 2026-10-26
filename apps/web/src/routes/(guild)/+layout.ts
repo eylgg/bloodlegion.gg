@@ -17,7 +17,7 @@ export const load: LayoutLoad = async ({ parent, url, fetch }) => {
 			api.get<WowClass[]>('/api/launch/classes', { fetch }),
 			api.get<Zone[]>('/api/raids/zones', { fetch }),
 			api.get<Calendar>('/api/raids/calendar', { fetch }),
-			api.get<GuildSettings>('/api/guild/settings', { fetch })
+			api.get<GuildSettings>('/api/guild', { fetch })
 		]);
 		return { user, classes, zones, calendar, settings, officer: isOfficer(user) };
 	} catch (err) {

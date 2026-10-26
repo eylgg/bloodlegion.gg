@@ -28,7 +28,7 @@ use serenity::all::{
 use sqlx::PgPool;
 use sqlx::postgres::PgListener;
 
-pub use api::router;
+pub use api::{admin_router, router};
 use layout::Layout;
 
 use crate::State;

@@ -8,7 +8,10 @@ export const load: PageLoad = async ({ parent, fetch }) => {
 	const { user } = await parent();
 	if (!user.is_superuser) error(403, 'Only admins see the Discord role check.');
 	try {
-		return { check: await api.get<DiscordCheck>('/api/discord/check', { fetch }), failure: null };
+		return {
+			check: await api.get<DiscordCheck>('/api/admin/discord/check', { fetch }),
+			failure: null
+		};
 	} catch (err) {
 		return { check: null, failure: errorMessage(err, 'The role check failed. Please try again.') };
 	}

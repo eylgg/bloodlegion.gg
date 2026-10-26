@@ -22,6 +22,8 @@ pub fn router() -> Router<State> {
         .nest("/questions", crate::questions::router())
         .nest("/game-items", crate::game_items::router())
         .merge(crate::discord::router())
+        // Only what members never see: what they can read is not under here.
+        .nest("/admin", crate::discord::admin_router())
         .merge(crate::raids::router())
         .nest("/auth", crate::auth::api::router())
 }

@@ -30,7 +30,7 @@
 		error = '';
 		saved = false;
 		try {
-			await api.put<GuildSettings>('/api/guild/settings', {
+			await api.put<GuildSettings>('/api/guild', {
 				time_zone: timeZone,
 				default_raid_time: defaultRaidTime
 			});

@@ -93,7 +93,7 @@ async fn view<E>(state: &State) -> Result<SettingsView, E> {
     })
 }
 
-/// `GET /api/discord/settings`: superusers only.
+/// `GET /api/admin/discord`: superusers only.
 async fn settings(state: State, _admin: Admin) -> Result<Json<SettingsView>> {
     Ok(Json(view(&state).await?))
 }
@@ -112,7 +112,7 @@ fn parse_guild_id(input: &str) -> Option<u64> {
     input.trim().parse().ok().filter(|&id| id != 0)
 }
 
-/// `PUT /api/discord/settings`: superusers only. A new token is checked with Discord before it is
+/// `PUT /api/admin/discord`: superusers only. A new token is checked with Discord before it is
 /// kept, then stored encrypted; the bot restarts with whatever changed.
 async fn set_settings(
     state: State,
@@ -169,16 +169,20 @@ async fn check_token(token: &str) -> Result<(), SettingsError> {
     }
 }
 
-/// `GET /api/discord/check`: superusers only. Where the server's roles differ from the site's
+/// `GET /api/admin/discord/check`: superusers only. Where the server's roles differ from the site's
 /// ranks (see `check`), read from Discord now.
 async fn role_check(state: State, _admin: Admin) -> Result<Json<Report>, CheckError> {
     Ok(Json(check::run(&state).await?))
 }
 
 pub fn router() -> Router<State> {
+    Router::new().route("/announcements", get(latest))
+}
+
+/// The superusers' routes, under `/api/admin`.
+pub fn admin_router() -> Router<State> {
     Router::new()
-        .route("/announcements", get(latest))
-        .route("/discord/settings", get(settings).put(set_settings))
+        .route("/discord", get(settings).put(set_settings))
         .route("/discord/check", get(role_check))
 }
 

@@ -25,7 +25,7 @@
 		error = '';
 		saved = '';
 		try {
-			settings = await api.put<DiscordSettings>('/api/discord/settings', change);
+			settings = await api.put<DiscordSettings>('/api/admin/discord', change);
 			guildId = settings.guild_id ?? '';
 			token = '';
 			saved = done;
@@ -52,12 +52,15 @@
 </script>
 
 <form class="panel" onsubmit={save}>
-	<h2>Discord bot</h2>
+	<div class="head">
+		<h2>Discord bot</h2>
+		<Button href={resolve('/admin/discord')} variant="secondary" size="small">Role check</Button>
+	</div>
 	<p class="muted">
 		The bot keeps the guild's Discord server set up like the site: a role for each rank, categories
-		that follow access, and #announcements on the front page. It gives no one a role; the
-		<a href={resolve('/admin/discord')}>role check</a> shows who lacks theirs. It runs once both are set.
-		The token is stored encrypted and never shown again.
+		that follow access, and #announcements on the front page. It gives no one a role; the role check
+		shows who lacks theirs. It runs once both are set. The token is stored encrypted and never shown
+		again.
 	</p>
 	{#if error}<Alert variant="error">{error}</Alert>{/if}
 	{#if saved}<Alert variant="success">{saved}</Alert>{/if}
@@ -105,6 +108,18 @@
 <style>
 	.panel {
 		max-width: 44rem;
+	}
+
+	.head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-2);
+	}
+
+	.head h2 {
+		margin: 0;
 	}
 
 	.small {

@@ -31,12 +31,12 @@ async fn set_rank(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// `GET /api/guild/settings`: the raid time zone and default start. Members only.
+/// `GET /api/guild`: the guild's settings, the raid time zone and default start. Members only.
 async fn settings(state: State, _user: User) -> Result<Json<Settings>> {
     Ok(Json(super::settings(&state.pool).await?))
 }
 
-/// `PUT /api/guild/settings`: superusers only.
+/// `PUT /api/guild`: superusers only.
 async fn set_settings(
     state: State,
     _: SameOrigin,
@@ -48,7 +48,7 @@ async fn set_settings(
 
 pub fn router() -> Router<State> {
     Router::new()
-        .route("/settings", get(settings).put(set_settings))
+        .route("/", get(settings).put(set_settings))
         .route("/members", get(members))
         .route("/members/{id}/rank", put(set_rank))
 }
