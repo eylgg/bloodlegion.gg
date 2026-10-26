@@ -23,12 +23,6 @@ export function providerVariant(slug: string): 'battlenet' | 'discord' | 'second
 }
 
 /**
- * Providers only ever linked from the profile, never offered on the front page: a Discord account
- * adds to a member's account (made through Battle.net) rather than being a way in on its own.
- */
-export const LINK_ONLY_PROVIDERS: ReadonlySet<string> = new Set(['discord']);
-
-/**
  * The name of the provider a sign-in or link came back from: the backend adds `?provider=<slug>`
  * when it knows which one it was. Looked up among the listed providers, so a crafted link cannot
  * put its own words on the page; `null` when absent or unknown.

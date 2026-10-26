@@ -129,11 +129,13 @@ Bootstrap, from a fresh database:
        --slug discord --name Discord \
        --issuer https://discord.com --client-id ... --client-secret ... \
        --scope "openid identify"
+   bloodlegion-server oauth2-providers update discord --connection-only true --allow-disconnection true
    ```
 
-   Discord is an OpenID Connect provider too. Without `--allow-registration` it only adds to an
-   account made through Battle.net, and the front page offers no Discord button: members link it
-   from their profile, one Discord account each.
+   Discord is an OpenID Connect provider too. Connection-only, it is never a way to sign in: the
+   front page offers no Discord button, and a linked Discord account never counts as a way in, so
+   every member keeps at least one Battle.net account. Members link it from their profile, one
+   Discord account each, and may unlink it.
 
 A member may link several Battle.net accounts from their profile page (`/profile`), and sign in
 with any of them. Linking signs in at Battle.net again, asking it to prompt for an account; if
@@ -157,7 +159,7 @@ bloodlegion-server users enable <username>
 bloodlegion-server passwords status | enable
 bloodlegion-server oauth2-providers list
 bloodlegion-server oauth2-providers remove <slug>
-bloodlegion-server oauth2-providers update <slug> --allow-registration <bool> --allow-disconnection <bool> --allow-multiple-connections <bool>
+bloodlegion-server oauth2-providers update <slug> --allow-registration <bool> --allow-disconnection <bool> --allow-multiple-connections <bool> --connection-only <bool>
 bloodlegion-server oauth2-providers add --help  # any OpenID Connect or plain OAuth2 provider
 bloodlegion-server rotate-jwk                   # rotate the OpenID Connect signing key
 ```

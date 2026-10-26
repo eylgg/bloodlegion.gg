@@ -89,6 +89,8 @@ pub struct ProviderListing {
     pub name: String,
     /// Whether a member may link more than one account at the provider.
     pub is_multiple_connections_allowed: bool,
+    /// Whether accounts at the provider are only linked from the profile, never a way to sign in.
+    pub is_connection_only: bool,
 }
 
 /// A provider listing plus whether the signed-in user is currently connected to

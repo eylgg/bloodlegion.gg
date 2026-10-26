@@ -25,6 +25,11 @@
 	// only, naming only a listed provider, so a crafted link cannot put arbitrary words on the page.
 	const linked = $derived(page.url.searchParams.get('linked'));
 	const linkedProvider = $derived(returnedProviderName(data.providers, page.url));
+	// The linked accounts that are ways in: any not at a connection-only provider (Discord).
+	const waysIn = $derived(
+		accounts.filter((a) => !data.providers.find((p) => p.slug === a.provider_slug)?.connection_only)
+			.length
+	);
 	// Which provider's section the outcome shows in: the one it came back from, when listed.
 	const linkedSlug = $derived(
 		data.providers.find((p) => p.slug === page.url.searchParams.get('provider'))?.slug ?? null
@@ -169,10 +174,12 @@
 				<li class="muted">Not linked.</li>
 			{/each}
 		</ul>
-		{#if linkedHere.length > 0 && !linkedHere.some((a) => a.can_unlink)}
+		<!-- Why a sign-in account has no Unlink. A connection-only one (Discord) is never a way in,
+		     so the reasons do not apply to it. -->
+		{#if !provider.connection_only && linkedHere.length > 0 && !linkedHere.some((a) => a.can_unlink)}
 			<p class="muted small">
-				{accounts.length === 1
-					? 'Your only linked account is how you sign in, so it cannot be unlinked.'
+				{waysIn === 1
+					? `Your only ${provider.name} account is how you sign in, so it cannot be unlinked.`
 					: `Unlinking ${provider.name} accounts is turned off for now.`}
 			</p>
 		{/if}

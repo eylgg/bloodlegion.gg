@@ -7,16 +7,16 @@
 	import Alert from '$lib/components/Alert.svelte';
 	import { api } from '$lib/api';
 	import { resolve } from '$app/paths';
-	import { LINK_ONLY_PROVIDERS, providerVariant, returnedProviderName } from '$lib/auth';
+	import { providerVariant, returnedProviderName } from '$lib/auth';
 
 	let { data }: PageProps = $props();
 	let signingOut = $state(false);
 
-	// Link-only providers (Discord) are offered on the profile page instead.
+	// Connection-only providers (Discord) are never a way in: they are linked from the profile.
 	const providers = $derived(
 		data.providers.filter(
 			(p): p is Exclude<LoginProvider, { kind: 'local' }> =>
-				p.kind === 'oauth2' && !LINK_ONLY_PROVIDERS.has(p.slug)
+				p.kind === 'oauth2' && !p.connection_only
 		)
 	);
 

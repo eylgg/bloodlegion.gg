@@ -1259,6 +1259,7 @@ mod tests {
             is_disconnection_allowed: false,
             is_unclaimed_username_connection_allowed: false,
             is_multiple_connections_allowed: false,
+            is_connection_only: false,
             is_oidc: false,
             claims,
             scope: "identify".into(),

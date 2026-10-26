@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.is_disconnection_allowed, p.is_connection_only\n        FROM auth_oauth2_provider_credentials c\n        JOIN auth_providers p ON p.id = c.provider_id\n        WHERE c.id = $1 AND c.user_id = $2 AND c.disconnected_at IS NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "is_disconnection_allowed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_disconnection_allowed"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "is_connection_only",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_connection_only"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "854eea8845330462a6b2dde9dbff75a5809c0d7b7f628c263e99b0c830c9a7cb"
+}

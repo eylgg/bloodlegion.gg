@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE auth_providers SET is_connection_only = $2 WHERE slug = $1 AND kind = 'oauth2'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "736afe7f3d423343afc0e3b8228a0a72366b78003729f8e671794393d5020aeb"
+}

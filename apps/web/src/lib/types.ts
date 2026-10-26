@@ -16,8 +16,18 @@ export type User = {
 
 export type LoginProvider =
 	| { kind: 'local' }
-	/** `multiple_connections_allowed`: a member may link more than one account there (Battle.net). */
-	| { kind: 'oauth2'; slug: string; name: string; multiple_connections_allowed: boolean };
+	/**
+	 * `multiple_connections_allowed`: a member may link more than one account there (Battle.net).
+	 * `connection_only`: accounts there are only linked from the profile, never a way to sign in
+	 * (Discord).
+	 */
+	| {
+			kind: 'oauth2';
+			slug: string;
+			name: string;
+			multiple_connections_allowed: boolean;
+			connection_only: boolean;
+	  };
 
 export type LoginOptions = {
 	providers: LoginProvider[];

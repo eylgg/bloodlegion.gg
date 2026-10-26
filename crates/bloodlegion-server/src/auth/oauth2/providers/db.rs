@@ -27,6 +27,8 @@ pub struct Provider {
     pub is_unclaimed_username_connection_allowed: bool,
     /// Whether a member may link more than one account here (see `links::link`).
     pub is_multiple_connections_allowed: bool,
+    /// Whether accounts here are only linked from the profile, never a way to sign in.
+    pub is_connection_only: bool,
     /// OIDC (id_token + nonce + JWKS) vs plain OAuth2 (access token + userinfo).
     pub is_oidc: bool,
     /// Claim->target mapping: `[{ "claim": <id_token claim>, "target": <field> }]`.
@@ -107,7 +109,8 @@ pub async fn list_login_providers(pool: &PgPool) -> sqlx::Result<Vec<ProviderLis
     sqlx::query_as!(
         ProviderListing,
         r#"
-        SELECT p.slug AS "slug: Slug", p.name, p.is_multiple_connections_allowed
+        SELECT p.slug AS "slug: Slug", p.name, p.is_multiple_connections_allowed,
+               p.is_connection_only
         FROM auth_oauth2_providers o
         JOIN auth_providers p ON p.id = o.provider_id
         ORDER BY p.name
@@ -153,7 +156,7 @@ pub async fn find_provider_by_slug(pool: &PgPool, slug: &Slug) -> sqlx::Result<O
                o.client_secret_ciphertext AS "client_secret: Ciphertext",
                p.is_registration_allowed, p.is_auto_connection_allowed, p.is_email_verified,
                p.is_disconnection_allowed, p.is_unclaimed_username_connection_allowed,
-               p.is_multiple_connections_allowed, o.is_oidc, o.claims, o.scope
+               p.is_multiple_connections_allowed, p.is_connection_only, o.is_oidc, o.claims, o.scope
         FROM auth_oauth2_providers o
         JOIN auth_providers p ON p.id = o.provider_id
         WHERE p.slug = $1
@@ -174,7 +177,7 @@ pub async fn find_provider_by_id(pool: &PgPool, id: ProviderId) -> sqlx::Result<
                o.client_secret_ciphertext AS "client_secret: Ciphertext",
                p.is_registration_allowed, p.is_auto_connection_allowed, p.is_email_verified,
                p.is_disconnection_allowed, p.is_unclaimed_username_connection_allowed,
-               p.is_multiple_connections_allowed, o.is_oidc, o.claims, o.scope
+               p.is_multiple_connections_allowed, p.is_connection_only, o.is_oidc, o.claims, o.scope
         FROM auth_oauth2_providers o
         JOIN auth_providers p ON p.id = o.provider_id
         WHERE p.id = $1
@@ -494,6 +497,7 @@ pub struct LinkedCredential {
     pub provider_name: String,
     pub raw_userinfo: serde_json::Value,
     pub is_disconnection_allowed: bool,
+    pub is_connection_only: bool,
     pub created_at: OffsetDateTime,
 }
 
@@ -506,7 +510,7 @@ pub async fn list_linked_credentials(
         LinkedCredential,
         r#"
         SELECT c.id, p.slug AS "provider_slug: Slug", p.name AS provider_name, c.raw_userinfo,
-               p.is_disconnection_allowed, c.created_at
+               p.is_disconnection_allowed, p.is_connection_only, c.created_at
         FROM auth_oauth2_provider_credentials c
         JOIN auth_providers p ON p.id = c.provider_id
         WHERE c.user_id = $1 AND c.disconnected_at IS NULL
@@ -519,8 +523,9 @@ pub async fn list_linked_credentials(
 }
 
 /// The ways the user can still sign in besides the credential `except`: their other live
-/// credentials, and whether they have a local password. Locks the user's row first, so two
-/// unlinks at once serialize and cannot both pass the last-login-method check.
+/// credentials at providers they can sign in through (not connection-only ones), and whether they
+/// have a local password. Locks the user's row first, so two unlinks at once serialize and cannot
+/// both pass the last-login-method check.
 pub struct OtherLoginMethods {
     pub credentials: i64,
     pub has_password: bool,
@@ -541,8 +546,10 @@ pub async fn lock_other_login_methods(
         OtherLoginMethods,
         r#"
         SELECT
-            (SELECT count(*) FROM auth_oauth2_provider_credentials
-             WHERE user_id = $1 AND id <> $2 AND disconnected_at IS NULL) AS "credentials!",
+            (SELECT count(*) FROM auth_oauth2_provider_credentials c
+             JOIN auth_providers p ON p.id = c.provider_id
+             WHERE c.user_id = $1 AND c.id <> $2 AND c.disconnected_at IS NULL
+               AND NOT p.is_connection_only) AS "credentials!",
             EXISTS (SELECT 1 FROM auth_local_credentials WHERE user_id = $1) AS "has_password!"
         "#,
         user_id.0,
@@ -552,16 +559,24 @@ pub async fn lock_other_login_methods(
     .await
 }
 
-/// Whether the user's live credential `id` is at a provider that lets people disconnect it, or
-/// `None` when the user has no such credential.
-pub async fn credential_disconnection_allowed(
+/// What the provider of a user's live credential allows of unlinking it.
+pub struct CredentialPolicy {
+    pub is_disconnection_allowed: bool,
+    /// A connection-only credential is never a way in, so unlinking it never strands the member.
+    pub is_connection_only: bool,
+}
+
+/// The unlinking policy of the user's live credential `id`, or `None` when the user has no such
+/// credential.
+pub async fn credential_policy(
     conn: &mut PgConnection,
     user_id: UserId,
     id: i64,
-) -> sqlx::Result<Option<bool>> {
-    sqlx::query_scalar!(
+) -> sqlx::Result<Option<CredentialPolicy>> {
+    sqlx::query_as!(
+        CredentialPolicy,
         r#"
-        SELECT p.is_disconnection_allowed
+        SELECT p.is_disconnection_allowed, p.is_connection_only
         FROM auth_oauth2_provider_credentials c
         JOIN auth_providers p ON p.id = c.provider_id
         WHERE c.id = $1 AND c.user_id = $2 AND c.disconnected_at IS NULL
@@ -687,6 +702,19 @@ pub async fn set_multiple_connections_allowed(
     let result = sqlx::query!(
         "UPDATE auth_providers SET is_multiple_connections_allowed = $2
          WHERE slug = $1 AND kind = 'oauth2'",
+        slug.as_ref(),
+        value,
+    )
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// Sets whether the provider is connection-only (never a way to sign in), returning whether an
+/// OAuth2 provider with that slug existed.
+pub async fn set_connection_only(pool: &PgPool, slug: &Slug, value: bool) -> sqlx::Result<bool> {
+    let result = sqlx::query!(
+        "UPDATE auth_providers SET is_connection_only = $2 WHERE slug = $1 AND kind = 'oauth2'",
         slug.as_ref(),
         value,
     )

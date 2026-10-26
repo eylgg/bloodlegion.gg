@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            (SELECT count(*) FROM auth_oauth2_provider_credentials c\n             JOIN auth_providers p ON p.id = c.provider_id\n             WHERE c.user_id = $1 AND c.id <> $2 AND c.disconnected_at IS NULL\n               AND NOT p.is_connection_only) AS \"credentials!\",\n            EXISTS (SELECT 1 FROM auth_local_credentials WHERE user_id = $1) AS \"has_password!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "credentials!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "has_password!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "7a12464b9551723f73d6f55c9c4b97e22751991fb6678e036f62930ea61d1050"
+}

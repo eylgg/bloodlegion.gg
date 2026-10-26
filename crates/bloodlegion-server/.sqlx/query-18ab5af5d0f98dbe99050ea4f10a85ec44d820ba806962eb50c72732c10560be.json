@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT p.id AS \"id: ProviderId\", p.slug AS \"slug: Slug\", p.name, o.issuer, o.client_id,\n               o.client_secret_ciphertext AS \"client_secret: Ciphertext\",\n               p.is_registration_allowed, p.is_auto_connection_allowed, p.is_email_verified,\n               p.is_disconnection_allowed, p.is_unclaimed_username_connection_allowed,\n               p.is_multiple_connections_allowed, o.is_oidc, o.claims, o.scope\n        FROM auth_oauth2_providers o\n        JOIN auth_providers p ON p.id = o.provider_id\n        WHERE p.id = $1\n        ",
+  "query": "\n        SELECT p.id AS \"id: ProviderId\", p.slug AS \"slug: Slug\", p.name, o.issuer, o.client_id,\n               o.client_secret_ciphertext AS \"client_secret: Ciphertext\",\n               p.is_registration_allowed, p.is_auto_connection_allowed, p.is_email_verified,\n               p.is_disconnection_allowed, p.is_unclaimed_username_connection_allowed,\n               p.is_multiple_connections_allowed, p.is_connection_only, o.is_oidc, o.claims, o.scope\n        FROM auth_oauth2_providers o\n        JOIN auth_providers p ON p.id = o.provider_id\n        WHERE p.slug = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -137,6 +137,17 @@
       },
       {
         "ordinal": 12,
+        "name": "is_connection_only",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_connection_only"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
         "name": "is_oidc",
         "type_info": "Bool",
         "origin": {
@@ -147,7 +158,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "claims",
         "type_info": "Jsonb",
         "origin": {
@@ -158,7 +169,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "scope",
         "type_info": "Text",
         "origin": {
@@ -171,7 +182,7 @@
     ],
     "parameters": {
       "Left": [
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -189,8 +200,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "afef34a50f25adaec89b6f8fd46a0d6a1c2c20430b9088d2ea8c9d71c122b6d0"
+  "hash": "18ab5af5d0f98dbe99050ea4f10a85ec44d820ba806962eb50c72732c10560be"
 }

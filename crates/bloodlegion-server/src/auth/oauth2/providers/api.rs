@@ -131,6 +131,10 @@ async fn start_login(
         .await
         .context("looking up the provider")?
         .ok_or(crate::Error::External(ProviderError::UnknownProvider))?;
+    // A connection-only provider (Discord) is never a way to sign in: only a link may start there.
+    if provider.is_connection_only && user_id.is_none() {
+        return Err(crate::Error::External(ProviderError::UnknownProvider));
+    }
     let metadata = resolve_metadata(&state, &provider).await?;
 
     let auth_state = crate::crypto::generate_token::<32>();

@@ -120,8 +120,8 @@ pub struct LinkedAccount {
     pub provider_name: String,
     /// How the provider names the account (a BattleTag), when it said.
     pub identity: Option<String>,
-    /// Whether unlinking it is allowed now: the provider permits it and the member has another
-    /// way to sign in.
+    /// Whether unlinking it is allowed now: the provider permits it and, unless it is
+    /// connection-only (never a way in), the member has another way to sign in.
     pub can_unlink: bool,
     #[serde(with = "iso8601")]
     pub linked_at: OffsetDateTime,
@@ -138,7 +138,10 @@ pub async fn list(pool: &PgPool, user_id: UserId) -> anyhow::Result<Vec<LinkedAc
         && crate::auth::local::has_password(pool, user_id)
             .await
             .context("checking the local password")?;
-    let has_another = credentials.len() > 1 || password_usable;
+    // Connection-only accounts (Discord) are not ways in, so they never make another one
+    // unlinkable.
+    let ways_in = credentials.iter().filter(|c| !c.is_connection_only).count();
+    let has_another = ways_in > 1 || password_usable;
     Ok(credentials
         .into_iter()
         .map(|credential| LinkedAccount {
@@ -146,26 +149,33 @@ pub async fn list(pool: &PgPool, user_id: UserId) -> anyhow::Result<Vec<LinkedAc
             provider_slug: credential.provider_slug,
             provider_name: credential.provider_name,
             identity: identity_label(&credential.raw_userinfo),
-            can_unlink: credential.is_disconnection_allowed && has_another,
+            can_unlink: credential.is_disconnection_allowed
+                && (credential.is_connection_only || has_another),
             linked_at: credential.created_at,
         })
         .collect())
 }
 
-/// Unlinks the member's linked account `id`, unless the provider forbids it or it is their last
-/// way to sign in.
+/// Unlinks the member's linked account `id`, unless the provider forbids it or it is their last way
+/// to sign in. A connection-only account (Discord) is never a way in, so it never counts as one:
+/// with only Battle.net to sign in through, a member always keeps one Battle.net account.
 pub async fn unlink(pool: &PgPool, user_id: UserId, id: i64) -> Result<(), LinkError> {
     let local_enabled = crate::auth::local::is_enabled(pool)
         .await
         .context("checking whether local login is enabled")?;
     let mut tx = pool.begin().await?;
     let others = db::lock_other_login_methods(&mut tx, user_id, id).await?;
-    match db::credential_disconnection_allowed(&mut tx, user_id, id).await? {
+    let policy = match db::credential_policy(&mut tx, user_id, id).await? {
         None => return Err(Error::External(LinkError::NotFound)),
-        Some(false) => return Err(Error::External(LinkError::DisconnectionNotAllowed)),
-        Some(true) => {}
-    }
-    if others.credentials == 0 && !(others.has_password && local_enabled) {
+        Some(policy) if !policy.is_disconnection_allowed => {
+            return Err(Error::External(LinkError::DisconnectionNotAllowed));
+        }
+        Some(policy) => policy,
+    };
+    if !policy.is_connection_only
+        && others.credentials == 0
+        && !(others.has_password && local_enabled)
+    {
         return Err(Error::External(LinkError::LastLoginMethod));
     }
     db::delete_credential(&mut tx, user_id, id).await?;
@@ -228,6 +238,38 @@ mod tests {
         db::set_multiple_connections_allowed(pool, &slug, true)
             .await
             .unwrap();
+        db::find_provider_by_slug(pool, &slug)
+            .await
+            .unwrap()
+            .unwrap()
+    }
+
+    /// Discord as deployed: connection-only, one account per member, unlinkable.
+    async fn discord(pool: &PgPool) -> db::Provider {
+        let slug = Slug::try_from("discord").unwrap();
+        let mut tx = pool.begin().await.unwrap();
+        db::insert_provider(
+            &mut tx,
+            &slug,
+            "Discord",
+            Some("https://discord.test"),
+            "discord-client",
+            &crate::crypto::Ciphertext::for_test("secret"),
+            crate::auth::ProviderFlags {
+                is_registration_allowed: false,
+                is_auto_connection_allowed: false,
+                is_email_verified: false,
+                is_disconnection_allowed: true,
+                is_unclaimed_username_connection_allowed: false,
+            },
+            &serde_json::json!([]),
+            "openid identify",
+            true,
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+        db::set_connection_only(pool, &slug, true).await.unwrap();
         db::find_provider_by_slug(pool, &slug)
             .await
             .unwrap()
@@ -337,6 +379,42 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(theirs, Linked::New);
+    }
+
+    #[sqlx::test]
+    async fn a_connection_only_account_never_counts_as_a_way_in(pool: PgPool) {
+        let battlenet = battlenet(&pool, true).await;
+        let discord = discord(&pool).await;
+        let ey = member(&pool, "Ey").await;
+        link(&pool, &battlenet, ey, "Ey#1111", &userinfo("Ey#1111"))
+            .await
+            .unwrap();
+        link(
+            &pool,
+            &discord,
+            ey,
+            "1234",
+            &serde_json::json!({ "sub": "1234" }),
+        )
+        .await
+        .unwrap();
+
+        // Discord is unlinkable; the only Battle.net account is not, Discord notwithstanding.
+        let accounts = list(&pool, ey).await.unwrap();
+        let at = |slug: &str| {
+            accounts
+                .iter()
+                .find(|a| a.provider_slug.as_ref() == slug)
+                .unwrap()
+        };
+        assert!(!at("battlenet").can_unlink);
+        assert!(at("discord").can_unlink);
+        assert!(matches!(
+            unlink(&pool, ey, at("battlenet").id).await,
+            Err(Error::External(LinkError::LastLoginMethod))
+        ));
+        unlink(&pool, ey, at("discord").id).await.unwrap();
+        assert_eq!(list(&pool, ey).await.unwrap().len(), 1);
     }
 
     #[sqlx::test]

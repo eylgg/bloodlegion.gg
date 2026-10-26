@@ -161,14 +161,16 @@ pub(crate) async fn remove(pool: &PgPool, slug: &crate::Slug) -> sqlx::Result<bo
     db::delete_provider(pool, slug).await
 }
 
-/// Changes a provider's registration, disconnection, and multiple-connections flags (each left
-/// alone when `None`), returning whether a provider matched. The CLI's entry point.
+/// Changes a provider's registration, disconnection, multiple-connections, and connection-only
+/// flags (each left alone when `None`), returning whether a provider matched. The CLI's entry
+/// point.
 pub(crate) async fn update_flags(
     pool: &PgPool,
     slug: &crate::Slug,
     is_registration_allowed: Option<bool>,
     is_disconnection_allowed: Option<bool>,
     is_multiple_connections_allowed: Option<bool>,
+    is_connection_only: Option<bool>,
 ) -> sqlx::Result<bool> {
     let found = db::update_provider_flags(
         pool,
@@ -180,10 +182,16 @@ pub(crate) async fn update_flags(
         None,
     )
     .await?;
-    match is_multiple_connections_allowed {
-        Some(value) if found => db::set_multiple_connections_allowed(pool, slug, value).await,
-        _ => Ok(found),
+    if !found {
+        return Ok(false);
     }
+    if let Some(value) = is_multiple_connections_allowed {
+        db::set_multiple_connections_allowed(pool, slug, value).await?;
+    }
+    if let Some(value) = is_connection_only {
+        db::set_connection_only(pool, slug, value).await?;
+    }
+    Ok(true)
 }
 
 impl ProviderError {

@@ -30,12 +30,14 @@ pub enum LoginProvider {
     /// while local login is enabled (the built-in local provider is not disabled).
     Local,
     /// One row from `auth_oauth2_providers`. The frontend navigates to
-    /// `/api/auth/oauth2/providers/{slug}`. `multiple_connections_allowed` says the profile
-    /// page offers to link more than one account at it.
+    /// `/api/auth/oauth2/providers/{slug}`. `multiple_connections_allowed` says the profile page
+    /// offers to link more than one account at it; `connection_only` that it is only linked from
+    /// the profile, never offered for signing in.
     Oauth2 {
         slug: Slug,
         name: String,
         multiple_connections_allowed: bool,
+        connection_only: bool,
     },
 }
 
@@ -52,6 +54,7 @@ pub async fn providers(state: State) -> Result<Json<LoginOptions>> {
         slug,
         name,
         is_multiple_connections_allowed,
+        is_connection_only,
     } in oauth2::providers::list_login_providers(&state.pool)
         .await
         .context("listing OAuth2 providers")?
@@ -60,6 +63,7 @@ pub async fn providers(state: State) -> Result<Json<LoginOptions>> {
             slug,
             name,
             multiple_connections_allowed: is_multiple_connections_allowed,
+            connection_only: is_connection_only,
         });
     }
     Ok(Json(LoginOptions { providers }))
