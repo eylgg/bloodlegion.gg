@@ -300,8 +300,10 @@ pub fn verify_rs256<C: DeserializeOwned>(
     }
     // When the token names more than one audience, OIDC requires an `azp` that
     // identifies the intended client, without it a token minted for a different
-    // RP at the same IdP (but co-listing us in `aud`) would verify.
-    if let Audience::Many(_) = registered.aud
+    // RP at the same IdP (but co-listing us in `aud`) would verify. A list of one
+    // (Discord's `["<client id>"]`) is a single audience, which needs none.
+    if let Audience::Many(audiences) = &registered.aud
+        && audiences.len() > 1
         && registered.azp.as_deref() != Some(audience)
     {
         return Err(JwtError::InvalidAudience);
@@ -424,7 +426,7 @@ mod tests {
     }
 
     #[test]
-    fn verify_rs256_requires_azp_for_a_multi_valued_audience() {
+    fn verify_rs256_requires_azp_only_for_several_audiences() {
         let mut rng = rand::rng();
         let private_key = RsaPrivateKey::new(&mut rng, 2048).expect("generate key");
         let signing_key = SigningKey::<Sha256>::new(private_key.clone());
@@ -435,10 +437,10 @@ mod tests {
         )
         .unwrap();
         let future = (OffsetDateTime::now_utc() + Duration::hours(1)).unix_timestamp();
-        let multi_aud = |azp: Option<&str>| {
+        let aud_list = |aud: &[&str], azp: Option<&str>| {
             let mut claims = serde_json::json!({
                 "iss": ISSUER,
-                "aud": [AUDIENCE, "another-client"],
+                "aud": aud,
                 "exp": future,
                 "sub": "subject-1",
             });
@@ -447,6 +449,7 @@ mod tests {
             }
             generate_signed_jwt(&signing_key, &header(), &claims).unwrap()
         };
+        let multi_aud = |azp: Option<&str>| aud_list(&[AUDIENCE, "another-client"], azp);
 
         // Multi-valued aud with no azp, or an azp naming another client, is rejected.
         assert!(matches!(
@@ -461,6 +464,20 @@ mod tests {
         let verified: TestClaims =
             verify_rs256(&multi_aud(Some(AUDIENCE)), &key, ISSUER, AUDIENCE).expect("verifies");
         assert_eq!(verified.sub, "subject-1");
+        // A list of just our client_id is a single audience: no azp needed (Discord's shape).
+        let verified: TestClaims =
+            verify_rs256(&aud_list(&[AUDIENCE], None), &key, ISSUER, AUDIENCE).expect("verifies");
+        assert_eq!(verified.sub, "subject-1");
+        // A list of one naming another client is still rejected.
+        assert!(matches!(
+            verify_rs256::<TestClaims>(
+                &aud_list(&["another-client"], None),
+                &key,
+                ISSUER,
+                AUDIENCE
+            ),
+            Err(JwtError::InvalidAudience)
+        ));
     }
 
     #[test]
