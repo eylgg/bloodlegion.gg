@@ -478,6 +478,7 @@ pub async fn providers_update(
     slug: String,
     allow_registration: Option<bool>,
     allow_disconnection: Option<bool>,
+    allow_multiple_connections: Option<bool>,
 ) -> Result<()> {
     let pool = State::load_pool().await?;
     let slug = crate::Slug::try_from(slug.as_str()).context("invalid slug")?;
@@ -486,6 +487,7 @@ pub async fn providers_update(
         &slug,
         allow_registration,
         allow_disconnection,
+        allow_multiple_connections,
     )
     .await
     .context("updating the provider")?;

@@ -219,13 +219,17 @@ enum ProvidersCommand {
     /// Remove a provider (and every credential linked through it).
     Remove { slug: String },
     /// Change a provider's flags. `--allow-disconnection true` lets members unlink accounts at it
-    /// from their profile (never their last way to sign in).
+    /// from their profile (never their last way to sign in); `--allow-multiple-connections true`
+    /// lets each member link more than one account at it (Battle.net), where by default they link
+    /// one (Discord).
     Update {
         slug: String,
         #[arg(long)]
         allow_registration: Option<bool>,
         #[arg(long)]
         allow_disconnection: Option<bool>,
+        #[arg(long)]
+        allow_multiple_connections: Option<bool>,
     },
 }
 
@@ -397,7 +401,13 @@ fn main() -> Result<()> {
                 slug,
                 allow_registration,
                 allow_disconnection,
-            } => cli::providers_update(slug, allow_registration, allow_disconnection),
+                allow_multiple_connections,
+            } => cli::providers_update(
+                slug,
+                allow_registration,
+                allow_disconnection,
+                allow_multiple_connections,
+            ),
         },
     }
 }

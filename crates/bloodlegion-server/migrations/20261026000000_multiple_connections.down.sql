@@ -1,0 +1,1 @@
+ALTER TABLE auth_providers DROP COLUMN is_multiple_connections_allowed;

@@ -25,6 +25,10 @@
 	// only, naming only a listed provider, so a crafted link cannot put arbitrary words on the page.
 	const linked = $derived(page.url.searchParams.get('linked'));
 	const linkedProvider = $derived(returnedProviderName(data.providers, page.url));
+	// Which provider's section the outcome shows in: the one it came back from, when listed.
+	const linkedSlug = $derived(
+		data.providers.find((p) => p.slug === page.url.searchParams.get('provider'))?.slug ?? null
+	);
 	const linkError = $derived.by(() => {
 		const code = page.url.searchParams.get('error');
 		if (!code) return null;
@@ -33,6 +37,9 @@
 			already_linked:
 				`That ${linkedProvider ? `${linkedProvider} ` : ''}account is already linked to ` +
 				'another Blood Legion account. Unlink it there first.',
+			one_account_only:
+				`You already have a ${provider} account linked, and only one can be. Unlink it first ` +
+				'to link a different one.',
 			permissions_required:
 				`Linking needs every permission the site asks for, and ${provider} remembers what you ` +
 				`allowed before. Remove Blood Legion from the applications connected to that account ` +
@@ -122,13 +129,9 @@
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
 
-<section>
-	<h2>Linked accounts</h2>
-	<p class="muted">
-		The accounts linked to yours. Characters will come from the game accounts once Blizzard's API
-		serves WoW: Forever.
-	</p>
-
+<!-- How a link came out, in the section of the provider it came back from (or above them all
+     when that is not known). -->
+{#snippet outcome()}
 	{#if linked === 'new'}
 		<Alert variant="success">Account linked.</Alert>
 	{:else if linked === 'existing'}
@@ -139,45 +142,59 @@
 		</Alert>
 	{/if}
 	{#if linkError}<Alert variant="error">{linkError}</Alert>{/if}
+{/snippet}
 
-	<ul class="accounts">
-		{#each accounts as account (account.id)}
-			<li>
-				<div>
-					<span class="identity">{account.identity ?? 'Unnamed account'}</span>
-					<span class="muted">{account.provider_name} · linked {formatDate(account.linked_at)}</span
-					>
-				</div>
-				{#if account.can_unlink}
-					<Button size="small" variant="danger" onclick={() => unlink(account)}>Unlink</Button>
-				{/if}
-			</li>
-		{:else}
-			<li class="muted">No accounts linked.</li>
-		{/each}
-	</ul>
-	{#if accounts.length > 0 && !accounts.some((a) => a.can_unlink)}
-		<p class="muted small">
-			{accounts.length === 1
-				? 'Your only linked account is how you sign in, so it cannot be unlinked.'
-				: 'Unlinking is turned off for now.'}
-		</p>
-	{/if}
+{#if !linkedSlug}{@render outcome()}{/if}
 
-	<div class="link-buttons">
-		{#each data.providers as provider (provider.slug)}
-			<!-- A full page load: the backend sends the browser on to the provider. -->
-			<Button
-				data-sveltekit-reload
-				href={`/api/auth/oauth2/providers/${provider.slug}/link`}
-				variant={providerVariant(provider.slug)}
-			>
-				Link {accounts.some((a) => a.provider_slug === provider.slug) ? 'another' : 'a'}
-				{provider.name} account
-			</Button>
-		{/each}
-	</div>
-</section>
+<!-- One section per provider: Battle.net takes every account a member plays on; a
+     provider without multiple connections (Discord) takes one, and offers no second once it has it. -->
+{#each data.providers as provider (provider.slug)}
+	{@const linkedHere = accounts.filter((a) => a.provider_slug === provider.slug)}
+	<section>
+		<h2>{provider.name}</h2>
+		{#if linkedSlug === provider.slug}{@render outcome()}{/if}
+
+		<ul class="accounts">
+			{#each linkedHere as account (account.id)}
+				<li>
+					<div>
+						<span class="identity">{account.identity ?? 'Unnamed account'}</span>
+						<span class="muted">Linked {formatDate(account.linked_at)}</span>
+					</div>
+					{#if account.can_unlink}
+						<Button size="small" variant="danger" onclick={() => unlink(account)}>Unlink</Button>
+					{/if}
+				</li>
+			{:else}
+				<li class="muted">Not linked.</li>
+			{/each}
+		</ul>
+		{#if linkedHere.length > 0 && !linkedHere.some((a) => a.can_unlink)}
+			<p class="muted small">
+				{accounts.length === 1
+					? 'Your only linked account is how you sign in, so it cannot be unlinked.'
+					: `Unlinking ${provider.name} accounts is turned off for now.`}
+			</p>
+		{/if}
+
+		{#if provider.multiple_connections_allowed || linkedHere.length === 0}
+			<div class="link-buttons">
+				<!-- A full page load: the backend sends the browser on to the provider. -->
+				<Button
+					data-sveltekit-reload
+					href={`/api/auth/oauth2/providers/${provider.slug}/link`}
+					variant={providerVariant(provider.slug)}
+				>
+					{#if provider.multiple_connections_allowed}
+						Link {linkedHere.length > 0 ? 'another' : 'a'} {provider.name} account
+					{:else}
+						Link your {provider.name} account
+					{/if}
+				</Button>
+			</div>
+		{/if}
+	</section>
+{/each}
 
 <section>
 	<h2>Your characters</h2>

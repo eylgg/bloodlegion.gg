@@ -100,6 +100,13 @@ pub enum ProviderError {
         detail = "That account is already linked to another Blood Legion account."
     )]
     AlreadyLinked,
+    #[error("the member already has an account linked at this provider")]
+    #[problem(
+        status = CONFLICT,
+        title = "Already Linked One",
+        detail = "Only one account at this provider can be linked."
+    )]
+    MultipleConnectionsNotAllowed,
     #[error("registration disabled")]
     #[problem(
         status = FORBIDDEN,
@@ -154,15 +161,16 @@ pub(crate) async fn remove(pool: &PgPool, slug: &crate::Slug) -> sqlx::Result<bo
     db::delete_provider(pool, slug).await
 }
 
-/// Changes a provider's registration and disconnection flags (each left alone when `None`),
-/// returning whether a provider matched. The CLI's entry point.
+/// Changes a provider's registration, disconnection, and multiple-connections flags (each left
+/// alone when `None`), returning whether a provider matched. The CLI's entry point.
 pub(crate) async fn update_flags(
     pool: &PgPool,
     slug: &crate::Slug,
     is_registration_allowed: Option<bool>,
     is_disconnection_allowed: Option<bool>,
+    is_multiple_connections_allowed: Option<bool>,
 ) -> sqlx::Result<bool> {
-    db::update_provider_flags(
+    let found = db::update_provider_flags(
         pool,
         slug,
         is_registration_allowed,
@@ -171,7 +179,11 @@ pub(crate) async fn update_flags(
         is_disconnection_allowed,
         None,
     )
-    .await
+    .await?;
+    match is_multiple_connections_allowed {
+        Some(value) if found => db::set_multiple_connections_allowed(pool, slug, value).await,
+        _ => Ok(found),
+    }
 }
 
 impl ProviderError {
@@ -187,6 +199,7 @@ impl ProviderError {
             Self::ScopesNotGranted(_) => "permissions_required",
             Self::EmailInUse => "email_in_use",
             Self::AlreadyLinked => "already_linked",
+            Self::MultipleConnectionsNotAllowed => "one_account_only",
             Self::RegistrationDisabled => "registration_closed",
             Self::CreateUser(_) => "account_failed",
             Self::Upstream(_) => "unavailable",

@@ -25,6 +25,8 @@ pub struct Provider {
     /// Whether a first login may claim an unclaimed account (no linked identity) by the asserted
     /// username. Enable only when that username is authoritative (see the login-flow claim branch).
     pub is_unclaimed_username_connection_allowed: bool,
+    /// Whether a member may link more than one account here (see `links::link`).
+    pub is_multiple_connections_allowed: bool,
     /// OIDC (id_token + nonce + JWKS) vs plain OAuth2 (access token + userinfo).
     pub is_oidc: bool,
     /// Claim->target mapping: `[{ "claim": <id_token claim>, "target": <field> }]`.
@@ -105,7 +107,7 @@ pub async fn list_login_providers(pool: &PgPool) -> sqlx::Result<Vec<ProviderLis
     sqlx::query_as!(
         ProviderListing,
         r#"
-        SELECT p.slug AS "slug: Slug", p.name
+        SELECT p.slug AS "slug: Slug", p.name, p.is_multiple_connections_allowed
         FROM auth_oauth2_providers o
         JOIN auth_providers p ON p.id = o.provider_id
         ORDER BY p.name
@@ -151,7 +153,7 @@ pub async fn find_provider_by_slug(pool: &PgPool, slug: &Slug) -> sqlx::Result<O
                o.client_secret_ciphertext AS "client_secret: Ciphertext",
                p.is_registration_allowed, p.is_auto_connection_allowed, p.is_email_verified,
                p.is_disconnection_allowed, p.is_unclaimed_username_connection_allowed,
-               o.is_oidc, o.claims, o.scope
+               p.is_multiple_connections_allowed, o.is_oidc, o.claims, o.scope
         FROM auth_oauth2_providers o
         JOIN auth_providers p ON p.id = o.provider_id
         WHERE p.slug = $1
@@ -172,7 +174,7 @@ pub async fn find_provider_by_id(pool: &PgPool, id: ProviderId) -> sqlx::Result<
                o.client_secret_ciphertext AS "client_secret: Ciphertext",
                p.is_registration_allowed, p.is_auto_connection_allowed, p.is_email_verified,
                p.is_disconnection_allowed, p.is_unclaimed_username_connection_allowed,
-               o.is_oidc, o.claims, o.scope
+               p.is_multiple_connections_allowed, o.is_oidc, o.claims, o.scope
         FROM auth_oauth2_providers o
         JOIN auth_providers p ON p.id = o.provider_id
         WHERE p.id = $1
@@ -673,6 +675,51 @@ pub async fn update_provider_flags(
     .execute(pool)
     .await?;
     Ok(result.rows_affected() > 0)
+}
+
+/// Sets whether a member may link more than one account at the provider, returning whether an
+/// OAuth2 provider with that slug existed.
+pub async fn set_multiple_connections_allowed(
+    pool: &PgPool,
+    slug: &Slug,
+    value: bool,
+) -> sqlx::Result<bool> {
+    let result = sqlx::query!(
+        "UPDATE auth_providers SET is_multiple_connections_allowed = $2
+         WHERE slug = $1 AND kind = 'oauth2'",
+        slug.as_ref(),
+        value,
+    )
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// Whether the user already has a live credential at the provider. Locks the user's row first, so
+/// two links at once serialize and cannot both pass a one-account check.
+pub async fn lock_has_credential_at(
+    conn: &mut PgConnection,
+    user_id: UserId,
+    provider_id: ProviderId,
+) -> sqlx::Result<bool> {
+    sqlx::query!(
+        "SELECT 1 AS locked FROM users WHERE id = $1 FOR UPDATE",
+        user_id.0
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM auth_oauth2_provider_credentials
+            WHERE user_id = $1 AND provider_id = $2 AND disconnected_at IS NULL
+        ) AS "exists!"
+        "#,
+        user_id.0,
+        provider_id.0,
+    )
+    .fetch_one(&mut *conn)
+    .await
 }
 
 /// Deletes the provider, returning whether a row matched. Cascades to the subtype body.

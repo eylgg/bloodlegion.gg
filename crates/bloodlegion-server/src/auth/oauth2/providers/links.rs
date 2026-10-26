@@ -42,7 +42,9 @@ impl Linked {
 }
 
 /// Attaches the verified identity (`subject` at `provider`) to `user_id`. Refused when it already
-/// belongs to someone else, including when another link of the same identity wins a race.
+/// belongs to someone else, including when another link of the same identity wins a race, and
+/// at a provider that does not allow multiple connections (Discord) when the member already has
+/// an account there.
 pub(super) async fn link(
     pool: &PgPool,
     provider: &db::Provider,
@@ -64,8 +66,20 @@ pub(super) async fn link(
         None => {}
     }
     let profile = build_profile(provider, userinfo)?;
-    let mut conn = pool.acquire().await.context("acquiring a connection")?;
-    db::insert_credential(&mut conn, provider.id, subject, user_id, userinfo, &profile)
+    let mut tx = pool
+        .begin()
+        .await
+        .context("beginning a transaction to link")?;
+    if !provider.is_multiple_connections_allowed
+        && db::lock_has_credential_at(&mut tx, user_id, provider.id)
+            .await
+            .context("checking for an account already linked at the provider")?
+    {
+        return Err(Error::External(
+            ProviderError::MultipleConnectionsNotAllowed,
+        ));
+    }
+    db::insert_credential(&mut tx, provider.id, subject, user_id, userinfo, &profile)
         .await
         .map_err(|error| {
             crate::error::classify_db_error(error, |constraint| {
@@ -73,6 +87,7 @@ pub(super) async fn link(
                     .then_some(ProviderError::AlreadyLinked)
             })
         })?;
+    tx.commit().await.context("committing the link")?;
     Ok(Linked::New)
 }
 
@@ -209,6 +224,10 @@ mod tests {
         .await
         .unwrap();
         tx.commit().await.unwrap();
+        // As deployed: Battle.net takes several accounts per member.
+        db::set_multiple_connections_allowed(pool, &slug, true)
+            .await
+            .unwrap();
         db::find_provider_by_slug(pool, &slug)
             .await
             .unwrap()
@@ -272,6 +291,52 @@ mod tests {
                 .unwrap(),
             Some(ey)
         );
+    }
+
+    #[sqlx::test]
+    async fn without_multiple_connections_a_member_links_one_account(pool: PgPool) {
+        let slug = Slug::try_from("battlenet").unwrap();
+        battlenet(&pool, true).await;
+        assert!(
+            db::set_multiple_connections_allowed(&pool, &slug, false)
+                .await
+                .unwrap()
+        );
+        let provider = db::find_provider_by_slug(&pool, &slug)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(!provider.is_multiple_connections_allowed);
+        let ey = member(&pool, "Ey").await;
+        let other = member(&pool, "Other").await;
+
+        let linked = link(&pool, &provider, ey, "Ey#1111", &userinfo("Ey#1111"))
+            .await
+            .unwrap();
+        assert_eq!(linked, Linked::New);
+        // Signing straight back into the linked one is still fine...
+        let again = link(&pool, &provider, ey, "Ey#1111", &userinfo("Ey#1111"))
+            .await
+            .unwrap();
+        assert_eq!(again, Linked::Existing);
+        // ...but a second account is refused.
+        assert!(matches!(
+            link(&pool, &provider, ey, "EyAlt#2222", &userinfo("EyAlt#2222")).await,
+            Err(Error::External(
+                ProviderError::MultipleConnectionsNotAllowed
+            ))
+        ));
+        // The limit is per member: someone else links theirs.
+        let theirs = link(
+            &pool,
+            &provider,
+            other,
+            "EyAlt#2222",
+            &userinfo("EyAlt#2222"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(theirs, Linked::New);
     }
 
     #[sqlx::test]

@@ -90,13 +90,16 @@ Bootstrap, from a fresh database:
        --slug battlenet --name Battle.net \
        --issuer https://oauth.battle.net/oauth --client-id ... --client-secret ... \
        --scope "openid wow.profile" --allow-registration
+   bloodlegion-server oauth2-providers update battlenet --allow-multiple-connections true
    ```
 
    Battle.net is a standard OpenID Connect provider, discovered from its issuer. Its `openid`
    scope asserts no email and no username, only a BattleTag, so on a first sign-in the person
    chooses their own username (the page suggests one from the tag) and the account has no
    email. `wow.profile` additionally asks the person for access to their WoW account profile
-   (their characters); the site keeps each account's token from its latest sign-in.
+   (their characters); the site keeps each account's token from its latest sign-in. A member
+   may link only one account at a provider unless it allows multiple connections, as Battle.net
+   does, since many keep characters on several.
 
 2. Sign in with the button under the logo on the front page, then make that account an admin and
    the guild leader, and turn password login off (the site has no password form, so it only
@@ -116,6 +119,21 @@ Bootstrap, from a fresh database:
    ```sh
    bloodlegion-server oauth2-providers update battlenet --allow-disconnection true
    ```
+
+4. Optionally, let members link their Discord account. Create an application at
+   <https://discord.com/developers/applications> with the redirect URL
+   `<ORIGIN>/auth/oauth2/callback`, then:
+
+   ```sh
+   bloodlegion-server oauth2-providers add \
+       --slug discord --name Discord \
+       --issuer https://discord.com --client-id ... --client-secret ... \
+       --scope "openid identify"
+   ```
+
+   Discord is an OpenID Connect provider too. Without `--allow-registration` it only adds to an
+   account made through Battle.net, and the front page offers no Discord button: members link it
+   from their profile, one Discord account each.
 
 A member may link several Battle.net accounts from their profile page (`/profile`), and sign in
 with any of them. Linking signs in at Battle.net again, asking it to prompt for an account; if
@@ -139,7 +157,7 @@ bloodlegion-server users enable <username>
 bloodlegion-server passwords status | enable
 bloodlegion-server oauth2-providers list
 bloodlegion-server oauth2-providers remove <slug>
-bloodlegion-server oauth2-providers update <slug> --allow-registration <bool> --allow-disconnection <bool>
+bloodlegion-server oauth2-providers update <slug> --allow-registration <bool> --allow-disconnection <bool> --allow-multiple-connections <bool>
 bloodlegion-server oauth2-providers add --help  # any OpenID Connect or plain OAuth2 provider
 bloodlegion-server rotate-jwk                   # rotate the OpenID Connect signing key
 ```

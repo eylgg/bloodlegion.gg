@@ -14,7 +14,10 @@ export type User = {
 	updated_at: string;
 };
 
-export type LoginProvider = { kind: 'local' } | { kind: 'oauth2'; slug: string; name: string };
+export type LoginProvider =
+	| { kind: 'local' }
+	/** `multiple_connections_allowed`: a member may link more than one account there (Battle.net). */
+	| { kind: 'oauth2'; slug: string; name: string; multiple_connections_allowed: boolean };
 
 export type LoginOptions = {
 	providers: LoginProvider[];

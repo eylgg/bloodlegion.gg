@@ -87,6 +87,8 @@ pub struct ProviderFlags {
 pub struct ProviderListing {
     pub slug: Slug,
     pub name: String,
+    /// Whether a member may link more than one account at the provider.
+    pub is_multiple_connections_allowed: bool,
 }
 
 /// A provider listing plus whether the signed-in user is currently connected to
