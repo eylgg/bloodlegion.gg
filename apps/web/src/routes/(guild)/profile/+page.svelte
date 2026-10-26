@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { api, errorMessage } from '$lib/api';
 	import { RANK_LABEL, formatDate } from '$lib/guild';
+	import { providerVariant, returnedProviderName } from '$lib/auth';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
@@ -19,27 +20,30 @@
 	let characters = $state<GuildCharacter[]>(data.characters);
 	let error = $state('');
 
-	// A link comes back as `/profile?linked=new|existing` or `/profile?error=<code>` (see the
-	// backend's `links` module and `ProviderError::code`). Known codes only, so a crafted link
-	// cannot put arbitrary words on the page.
-	const LINK_ERRORS: Record<string, string> = {
-		already_linked:
-			'That Battle.net account is already linked to another Blood Legion account. Unlink it ' +
-			'there first.',
-		permissions_required:
-			'Linking needs every permission the site asks for, and Battle.net remembers what you ' +
-			'allowed before. Remove Blood Legion from the applications connected to that account at ' +
-			'account.battle.net, then link it again and leave every permission ticked.',
-		cancelled: 'Linking was cancelled.',
-		expired: 'That took too long or was already used. Please try again.',
-		verification_failed: 'We could not verify that account. Please try again.',
-		unknown_provider: 'That sign-in method is not available.',
-		unavailable: 'Linking is unavailable right now. Please try again later.'
-	};
+	// A link comes back as `/profile?linked=new|existing` or `/profile?error=<code>`, with
+	// `&provider=<slug>` (see the backend's `links` module and `ProviderError::code`). Known codes
+	// only, naming only a listed provider, so a crafted link cannot put arbitrary words on the page.
 	const linked = $derived(page.url.searchParams.get('linked'));
+	const linkedProvider = $derived(returnedProviderName(data.providers, page.url));
 	const linkError = $derived.by(() => {
 		const code = page.url.searchParams.get('error');
-		return code ? (LINK_ERRORS[code] ?? 'Linking failed. Please try again.') : null;
+		if (!code) return null;
+		const provider = linkedProvider ?? 'the provider';
+		const errors: Record<string, string> = {
+			already_linked:
+				`That ${linkedProvider ? `${linkedProvider} ` : ''}account is already linked to ` +
+				'another Blood Legion account. Unlink it there first.',
+			permissions_required:
+				`Linking needs every permission the site asks for, and ${provider} remembers what you ` +
+				`allowed before. Remove Blood Legion from the applications connected to that account ` +
+				`at ${provider}, then link it again and leave every permission ticked.`,
+			cancelled: 'Linking was cancelled.',
+			expired: 'That took too long or was already used. Please try again.',
+			verification_failed: 'We could not verify that account. Please try again.',
+			unknown_provider: 'That sign-in method is not available.',
+			unavailable: 'Linking is unavailable right now. Please try again later.'
+		};
+		return errors[code] ?? 'Linking failed. Please try again.';
 	});
 
 	async function unlink(account: LinkedAccount) {
@@ -119,19 +123,19 @@
 {#if error}<Alert variant="error">{error}</Alert>{/if}
 
 <section>
-	<h2>Battle.net accounts</h2>
+	<h2>Linked accounts</h2>
 	<p class="muted">
-		Link every Battle.net account you play on, and sign in with any of them. Characters will come
-		from these accounts once Blizzard's API serves WoW: Forever.
+		The accounts linked to yours. Characters will come from the game accounts once Blizzard's API
+		serves WoW: Forever.
 	</p>
 
 	{#if linked === 'new'}
 		<Alert variant="success">Account linked.</Alert>
 	{:else if linked === 'existing'}
 		<Alert variant="info">
-			Battle.net signed you straight back into an account that is already linked. To link a
-			different one, sign out at battle.net first (or pick another account when it asks), then try
-			again.
+			{linkedProvider ?? 'The provider'} signed you straight back into an account that is already linked.
+			To link a different one, sign out at {linkedProvider ?? 'the provider'} first (or pick another account
+			when it asks), then try again.
 		</Alert>
 	{/if}
 	{#if linkError}<Alert variant="error">{linkError}</Alert>{/if}
@@ -166,9 +170,10 @@
 			<Button
 				data-sveltekit-reload
 				href={`/api/auth/oauth2/providers/${provider.slug}/link`}
-				variant={provider.slug === 'battlenet' ? 'battlenet' : 'secondary'}
+				variant={providerVariant(provider.slug)}
 			>
-				Link another {provider.name} account
+				Link {accounts.some((a) => a.provider_slug === provider.slug) ? 'another' : 'a'}
+				{provider.name} account
 			</Button>
 		{/each}
 	</div>

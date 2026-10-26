@@ -42,14 +42,22 @@ pub struct CallbackQuery {
 }
 
 /// Where a browser sign-in lands when it fails: the front page, with a code it turns into a
-/// message. Both endpoints here are full-page navigations, so a JSON problem would strand the
-/// person on raw JSON. Internal failures are logged and reported as `unavailable`.
-fn to_front_page<T: IntoResponse>(result: Result<T, ProviderError>) -> Response {
-    on_error_to("/", result)
+/// message, and the provider's slug when it is known so the message can name the provider. Both
+/// endpoints here are full-page navigations, so a JSON problem would strand the person on raw
+/// JSON. Internal failures are logged and reported as `unavailable`.
+fn to_front_page<T: IntoResponse>(
+    provider: Option<&Slug>,
+    result: Result<T, ProviderError>,
+) -> Response {
+    on_error_to("/", provider, result)
 }
 
 /// [`to_front_page`], landing on `path` instead (the profile page, for a link flow).
-fn on_error_to<T: IntoResponse>(path: &str, result: Result<T, ProviderError>) -> Response {
+fn on_error_to<T: IntoResponse>(
+    path: &str,
+    provider: Option<&Slug>,
+    result: Result<T, ProviderError>,
+) -> Response {
     let code = match result {
         Ok(response) => return response.into_response(),
         Err(crate::Error::External(error)) => {
@@ -65,7 +73,13 @@ fn on_error_to<T: IntoResponse>(path: &str, result: Result<T, ProviderError>) ->
             "unavailable"
         }
     };
-    Redirect::to(&format!("{path}?error={code}")).into_response()
+    Redirect::to(&format!("{path}?error={code}{}", provider_param(provider))).into_response()
+}
+
+/// `&provider=<slug>`, for the page a sign-in or link lands on to name the provider; empty when
+/// it is not known. A slug is URL-safe as it is.
+fn provider_param(provider: Option<&Slug>) -> String {
+    provider.map_or_else(String::new, |slug| format!("&provider={slug}"))
 }
 
 /// `GET /api/auth/oauth2/providers/{slug}`: starts a sign-in (see [`to_front_page`]).
@@ -75,7 +89,10 @@ async fn login(
     Query(LoginQuery { params, prompt }): Query<LoginQuery>,
 ) -> Response {
     let prompt = (prompt.as_deref() == Some("consent")).then_some("consent");
-    to_front_page(start_login(state, slug, None, params.next, prompt).await)
+    to_front_page(
+        Some(&slug),
+        start_login(state, slug.clone(), None, params.next, prompt).await,
+    )
 }
 
 /// `GET /api/auth/oauth2/providers/{slug}/link`: starts linking another account at the provider
@@ -89,9 +106,10 @@ async fn link(state: State, user: Option<User>, Path(slug): Path<Slug>) -> Respo
     };
     on_error_to(
         PROFILE_PATH,
+        Some(&slug),
         start_login(
             state,
-            slug,
+            slug.clone(),
             Some(user.id),
             Next::fixed(PROFILE_PATH),
             Some("login"),
@@ -166,14 +184,19 @@ pub async fn callback(
     client: crate::extract::ClientInfo,
 ) -> Response {
     let on_error = if user.is_some() { PROFILE_PATH } else { "/" };
-    on_error_to(on_error, finish_login(state, query, jar, client).await)
+    let mut provider = None;
+    let result = finish_login(state, query, jar, client, &mut provider).await;
+    on_error_to(on_error, provider.as_ref(), result)
 }
 
+/// Finishes the sign-in or link the callback is for, setting `provider_slug` as soon as the
+/// stored request says which provider it is (for the failure redirect's message).
 async fn finish_login(
     state: State,
     Query(query): Query<CallbackQuery>,
     jar: CookieJar,
     client: crate::extract::ClientInfo,
+    provider_slug: &mut Option<Slug>,
 ) -> Result<(CookieJar, Redirect), ProviderError> {
     // The provider reports a refusal on the callback itself; `access_denied` is the person
     // pressing cancel on its consent screen.
@@ -199,6 +222,7 @@ async fn finish_login(
         .await
         .context("looking up the provider")?
         .ok_or(crate::Error::External(ProviderError::UnknownProvider))?;
+    *provider_slug = Some(provider.slug.clone());
 
     let metadata = resolve_metadata(&state, &provider).await?;
     let client_secret = state
@@ -336,7 +360,12 @@ async fn finish_login(
     // A link attaches the identity to the member who started it; their session stays as it is.
     if let Some(user_id) = request.user_id {
         let linked = links::link(&state.pool, &provider, user_id, &subject, &userinfo).await?;
-        let target = format!("{}?linked={}", &*request.next, linked.code());
+        let target = format!(
+            "{}?linked={}{}",
+            &*request.next,
+            linked.code(),
+            provider_param(Some(&provider.slug))
+        );
         return Ok((jar, Redirect::to(&target)));
     }
 
@@ -506,4 +535,24 @@ pub fn router() -> Router<State> {
             get(login).delete(delete_provider).patch(update_provider),
         )
         .route("/{slug}/link", get(link))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn location(response: Response) -> String {
+        response.headers()["location"].to_str().unwrap().to_string()
+    }
+
+    #[test]
+    fn a_failure_lands_with_its_code_and_the_provider_when_known() {
+        let discord = Slug::try_from("discord").unwrap();
+        let denied = || Err::<Redirect, _>(crate::Error::External(ProviderError::Denied));
+        assert_eq!(
+            location(on_error_to(PROFILE_PATH, Some(&discord), denied())),
+            "/profile?error=cancelled&provider=discord"
+        );
+        assert_eq!(location(to_front_page(None, denied())), "/?error=cancelled");
+    }
 }

@@ -7,13 +7,16 @@
 	import Alert from '$lib/components/Alert.svelte';
 	import { api } from '$lib/api';
 	import { resolve } from '$app/paths';
+	import { LINK_ONLY_PROVIDERS, providerVariant, returnedProviderName } from '$lib/auth';
 
 	let { data }: PageProps = $props();
 	let signingOut = $state(false);
 
+	// Link-only providers (Discord) are offered on the profile page instead.
 	const providers = $derived(
 		data.providers.filter(
-			(p): p is Exclude<LoginProvider, { kind: 'local' }> => p.kind === 'oauth2'
+			(p): p is Exclude<LoginProvider, { kind: 'local' }> =>
+				p.kind === 'oauth2' && !LINK_ONLY_PROVIDERS.has(p.slug)
 		)
 	);
 
@@ -31,29 +34,31 @@
 		return parts.length ? `?${parts.join('&')}` : '';
 	});
 
-	// A failed sign-in comes back as `/?error=<code>` (see the backend's `ProviderError::code`).
-	// Only known codes get their own words; anything else is the generic message, so a crafted
-	// link cannot put arbitrary text on the page.
-	const ERRORS: Record<string, string> = {
-		// Battle.net remembers what was allowed the first time and silently re-grants exactly that,
-		// ignoring requests to ask again, so "try again" alone loops; the reset is on their side.
-		permissions_required:
-			'Signing in needs every permission the site asks for, and Battle.net remembers what you ' +
-			'allowed before. Go to account.battle.net, remove Blood Legion from the applications ' +
-			'connected to your account, then sign in again and leave every permission ticked.',
-		cancelled: 'Sign-in was cancelled.',
-		expired: 'That sign-in took too long or was already used. Please try again.',
-		verification_failed: 'We could not verify your sign-in. Please try again.',
-		registration_closed: 'New accounts are not being created right now.',
-		email_in_use: 'That email address already belongs to another account.',
-		unknown_provider: 'That sign-in method is not available.',
-		account_failed: 'Your account could not be created. Please try again.',
-		unavailable: 'Sign-in is unavailable right now. Please try again later.'
-	};
+	// A failed sign-in comes back as `/?error=<code>&provider=<slug>` (see the backend's
+	// `ProviderError::code`). Only known codes get their own words, naming only a listed provider;
+	// anything else is the generic message, so a crafted link cannot put arbitrary text on the page.
 	const loginError = $derived.by(() => {
 		const code = page.url.searchParams.get('error');
 		if (!code) return null;
-		return ERRORS[code] ?? 'Sign-in failed. Please try again.';
+		const provider = returnedProviderName(data.providers, page.url) ?? 'the provider';
+		const errors: Record<string, string> = {
+			// A provider (Battle.net) may remember what was allowed the first time and silently
+			// re-grant exactly that, ignoring requests to ask again, so "try again" alone loops; the
+			// reset is on their side.
+			permissions_required:
+				`Signing in needs every permission the site asks for, and ${provider} remembers what ` +
+				`you allowed before. Remove Blood Legion from the applications connected to your ` +
+				`account at ${provider}, then sign in again and leave every permission ticked.`,
+			cancelled: 'Sign-in was cancelled.',
+			expired: 'That sign-in took too long or was already used. Please try again.',
+			verification_failed: 'We could not verify your sign-in. Please try again.',
+			registration_closed: 'New accounts are not being created right now.',
+			email_in_use: 'That email address already belongs to another account.',
+			unknown_provider: 'That sign-in method is not available.',
+			account_failed: 'Your account could not be created. Please try again.',
+			unavailable: 'Sign-in is unavailable right now. Please try again later.'
+		};
+		return errors[code] ?? 'Sign-in failed. Please try again.';
 	});
 
 	async function signOut() {
@@ -86,14 +91,14 @@
 	{/if}
 	{#if !data.user}
 		{#each providers as provider (provider.slug)}
-			<!-- Battle.net gets its own blue; any other provider the house style. The link leaves
+			<!-- Battle.net gets its own blue (see `providerVariant`). The link leaves
 			     the app for the backend (which redirects to the provider), so it must be a full page
 			     load: `data-sveltekit-reload` stops the client router from treating `/api/...` as one
 			     of its own pages and rendering its 404. -->
 			<Button
 				data-sveltekit-reload
 				href={`/api/auth/oauth2/providers/${provider.slug}${nextQuery}`}
-				variant={provider.slug === 'battlenet' ? 'battlenet' : 'secondary'}
+				variant={providerVariant(provider.slug)}
 				full
 			>
 				Log in with {provider.name}

@@ -2,8 +2,9 @@
 	import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
 	import type { Snippet } from 'svelte';
 
-	// `battlenet` is the one provider-branded variant: Battle.net's blue, for its sign-in button.
-	type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'battlenet';
+	// `battlenet` and `discord` are the provider-branded variants: each provider's own blue, for its
+	// sign-in and link buttons.
+	type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'battlenet' | 'discord';
 	type ButtonSize = 'default' | 'small';
 
 	type AnchorProps = HTMLAnchorAttributes & {
@@ -123,6 +124,15 @@
 		background-color: #148eff;
 		&:hover {
 			background-color: #0b7be6;
+		}
+	}
+
+	/* Discord's "blurple". */
+	.btn-discord {
+		color: #fff;
+		background-color: #5865f2;
+		&:hover {
+			background-color: #4752c4;
 		}
 	}
 </style>
