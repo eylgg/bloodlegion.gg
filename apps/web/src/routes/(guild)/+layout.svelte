@@ -36,7 +36,7 @@
 <div class="shell">
 	<header>
 		<a href={resolve('/')} class="brand">
-			<img src="/wordmark-claws.svg" alt="Blood Legion" width="830" height="221" />
+			<img src="/wordmark-claws.svg" alt="Blood Legion" width="817" height="221" />
 		</a>
 		<nav aria-label="Guild">
 			{#each links as link (link.href)}
@@ -76,7 +76,7 @@
 	/* Cropped to the artwork, so the lettering is as wide as the plain wordmark's at 7.5rem. */
 	.brand img {
 		display: block;
-		width: 9.5rem;
+		width: 9.3rem;
 		height: auto;
 	}
 
