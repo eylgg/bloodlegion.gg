@@ -36,9 +36,7 @@
 <div class="shell">
 	<header>
 		<a href={resolve('/')} class="brand">
-			<!-- The claw mark (the favicon's tight crop of it) beside the wordmark; decorative. -->
-			<img class="claws" src="/favicon.svg" alt="" width="32" height="32" />
-			<img src="/wordmark.svg" alt="Blood Legion" width="659" height="201" />
+			<img src="/wordmark-claws.svg" alt="Blood Legion" width="830" height="221" />
 		</a>
 		<nav aria-label="Guild">
 			{#each links as link (link.href)}
@@ -75,20 +73,11 @@
 		padding: var(--space-4) var(--space-4) 0;
 	}
 
-	.brand {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-	}
-
+	/* Cropped to the artwork, so the lettering is as wide as the plain wordmark's at 7.5rem. */
 	.brand img {
 		display: block;
-		width: 7.5rem;
+		width: 9.5rem;
 		height: auto;
-	}
-
-	.brand .claws {
-		width: 2rem;
 	}
 
 	nav {
