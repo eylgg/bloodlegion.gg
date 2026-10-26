@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { api, errorMessage } from '$lib/api';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
@@ -53,8 +54,9 @@
 <form class="panel" onsubmit={save}>
 	<h2>Discord bot</h2>
 	<p class="muted">
-		The bot keeps the guild's Discord server in step with the site: roles that follow ranks,
-		categories that follow access, and #announcements on the front page. It runs once both are set.
+		The bot keeps the guild's Discord server set up like the site: a role for each rank, categories
+		that follow access, and #announcements on the front page. It gives no one a role; the
+		<a href={resolve('/admin/discord')}>role check</a> shows who lacks theirs. It runs once both are set.
 		The token is stored encrypted and never shown again.
 	</p>
 	{#if error}<Alert variant="error">{error}</Alert>{/if}

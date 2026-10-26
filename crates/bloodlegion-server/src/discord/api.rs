@@ -4,6 +4,7 @@ use axum::{Json, Router};
 use serenity::all::{Http, HttpError};
 use time::{OffsetDateTime, serde::iso8601};
 
+use super::check::{self, CheckError, Report};
 use super::db;
 use super::markdown::{self, Mentions};
 use crate::extract::{Admin, SameOrigin};
@@ -168,10 +169,17 @@ async fn check_token(token: &str) -> Result<(), SettingsError> {
     }
 }
 
+/// `GET /api/discord/check`: superusers only. Where the server's roles differ from the site's
+/// ranks (see `check`), read from Discord now.
+async fn role_check(state: State, _admin: Admin) -> Result<Json<Report>, CheckError> {
+    Ok(Json(check::run(&state).await?))
+}
+
 pub fn router() -> Router<State> {
     Router::new()
         .route("/announcements", get(latest))
         .route("/discord/settings", get(settings).put(set_settings))
+        .route("/discord/check", get(role_check))
 }
 
 #[cfg(test)]

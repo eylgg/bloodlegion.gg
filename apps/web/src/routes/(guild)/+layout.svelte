@@ -17,7 +17,10 @@
 		{ href: resolve('/characters'), label: 'Characters' },
 		{ href: resolve('/questions'), label: 'Questions' },
 		...(data.officer ? [{ href: resolve('/notes'), label: 'Notes' }] : []),
-		...(data.user.is_superuser ? [{ href: resolve('/settings'), label: 'Settings' }] : [])
+		// Superusers only, and in red, so it reads as the admin's corner rather than a guild page.
+		...(data.user.is_superuser
+			? [{ href: resolve('/admin'), label: 'Administration', admin: true }]
+			: [])
 	]);
 
 	const isActive = (href: string) =>
@@ -40,7 +43,11 @@
 		</a>
 		<nav aria-label="Guild">
 			{#each links as link (link.href)}
-				<a href={link.href} aria-current={isActive(link.href) ? 'page' : undefined}>{link.label}</a>
+				<a
+					href={link.href}
+					class:admin={'admin' in link}
+					aria-current={isActive(link.href) ? 'page' : undefined}>{link.label}</a
+				>
 			{/each}
 		</nav>
 		<div class="account">
@@ -110,6 +117,20 @@
 	.account a[aria-current='page'] {
 		color: var(--foreground);
 		background-color: var(--grey-surface);
+	}
+
+	nav a.admin {
+		color: var(--red-text);
+	}
+
+	nav a.admin:hover {
+		color: var(--red-text);
+		background-color: var(--red-bg);
+	}
+
+	nav a.admin[aria-current='page'] {
+		color: var(--red-text);
+		background-color: var(--red-surface);
 	}
 
 	.account {

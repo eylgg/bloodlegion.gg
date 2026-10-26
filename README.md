@@ -149,7 +149,7 @@ The rest:
 bloodlegion-server users list
 bloodlegion-server users demote <username>
 bloodlegion-server users rename <username> <new username>
-bloodlegion-server users rank <username> <rank>  # leader, officer, raider, trial, member, friend, retired
+bloodlegion-server users rank <username> <rank>  # leader, officer, raider, trial, member, friend
 bloodlegion-server users characters <username>   # the WoW characters on each linked Battle.net account
 bloodlegion-server characters seed              # test characters: four per class, linked to no one
 bloodlegion-server characters unseed            # remove them (keeps any that raided or won loot)
@@ -180,7 +180,7 @@ The loot tracker from the old site (Project Blood Legion, a Django app for a Cla
 for WoW: Forever. Every page needs a signed-in member; leaders and officers (and superusers) make
 the changes.
 
-- **Ranks**: leader, officer, raider, trial, member, friend, retired. New accounts are members.
+- **Ranks**: leader, officer, raider, trial, member, friend. New accounts are members.
   Officers set ranks from the roster; only the leader makes or unmakes officers, and nobody sets
   their own.
 - **Characters** have a first and a last name (2 to 24 letters each) and no realm: Forever has
@@ -194,7 +194,7 @@ the changes.
   Lair (40). A raid's start is stored as local time (`starts_local`, the guild's clock: 8 PM) with
   its time zone; the database derives the instant (`starts_at`). A raid keeps the zone it was
   scheduled in.
-- **Settings** (`/settings`, superusers): the guild's time zone (default `America/New_York`) and
+- **Administration** (`/admin`, superusers): the guild's time zone (default `America/New_York`) and
   the time raids usually start (default 20:00), which a new raid is scheduled in and defaults to.
 - **The raid builder**, on each raid's page: the raid's groups of five (two for the Barrow Deeps,
   four for Hyjal Summit, eight for Onyxia's Lair), with the roster beside them. Everyone on a raid
@@ -239,24 +239,26 @@ the changes.
 ## The Discord server
 
 The guild's Discord server is kept by a bot, the same Discord application members link (step 4
-above). It makes three roles, Officer, Raider, and Member, and gives each member who linked Discord
-the one their rank calls for: the leader and officers are officers, raiders and trials raiders,
-everyone else members. It makes four categories that follow the site's access levels, each open to
-its level and those above it: Public (everyone), Members, Raiders, and Officers. In Public it makes
-#announcements, which everyone reads and officers post in; its posts show on the front page, kept
-in step as they are edited or deleted.
+above). It makes a role for each rank (Leader, Officer, Raider, Trial, Member, Friend) and four
+categories that follow the site's access levels, each open to its level and those above it: Public
+(everyone), Members (every role), Raiders (leader, officers, raiders, trials), and Officers (leader
+and officers). In Public it makes #announcements, which everyone reads and the leader and officers
+post in; its posts show on the front page, kept in step as they are edited or deleted.
 
-It never deletes anything. It makes what is missing (taking over a role or category of the same
-name made by hand), and on its own categories sets only its own permission entries, so others added
-by hand stay. Renaming its roles or categories is fine: it keeps track by id. Roles follow ranks as
-they change, a member joining, and a link or unlink, and are checked every ten minutes besides.
+It never removes anything, and gives no one a role. It makes what is missing (taking over a role or
+category of the same name made by hand), and on its own categories sets only its own permission
+entries, so others added by hand stay. Renaming its roles or categories is fine: it keeps track by
+id. The **role check** (`/admin/discord`, superusers) reads the server and lists where it differs
+from the site: linked members not in the server, without their rank's role, or holding another of
+the bot's roles besides, and people holding one of the bot's roles who have not linked Discord.
 
-To set it up, in the application's **Bot** page turn on the **Server Members** and **Message
-Content** intents, and invite it to the server (**OAuth2 → URL Generator**, scope `bot`) with
-Manage Roles, Manage Channels, View Channels, Send Messages, and Read Message History. Then, as a
-superuser, enter the bot's token and the Discord server's id (right-click the server with Developer
-Mode on, **Copy Server ID**) under **Discord bot** on the settings page (`/settings`). The token is
-checked with Discord, stored encrypted with `ENCRYPTION_KEY`, and never shown again.
+To set it up, in the application's **Bot** page turn on the **Message Content** intent (for the
+announcements) and **Server Members** (for the role check), and invite it to the server (**OAuth2 →
+URL Generator**, scope `bot`) with Manage Roles, Manage Channels, View Channels, Send Messages, and
+Read Message History. Then, as a superuser, enter the bot's token and the Discord server's id
+(right-click the server with Developer Mode on, **Copy Server ID**) under **Discord bot** on the
+Administration page (`/admin`). The token is checked with Discord, stored encrypted with
+`ENCRYPTION_KEY`, and never shown again.
 
 Until both are set there is no bot, and changing either restarts it. With several instances
 running, one runs the bot at a time (a Postgres advisory lock), and another takes over within a

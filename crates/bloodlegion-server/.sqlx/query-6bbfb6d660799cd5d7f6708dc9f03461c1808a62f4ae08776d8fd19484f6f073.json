@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.subject, u.username, u.guild_rank AS \"rank: Rank\"\n        FROM auth_oauth2_provider_credentials c\n        JOIN auth_providers p ON p.id = c.provider_id\n        JOIN users u ON u.id = c.user_id\n        WHERE p.slug = $1 AND c.disconnected_at IS NULL AND u.disabled_at IS NULL\n        ORDER BY u.username\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "subject",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_credentials",
+            "name": "subject"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "rank: Rank",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "guild_rank"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6bbfb6d660799cd5d7f6708dc9f03461c1808a62f4ae08776d8fd19484f6f073"
+}

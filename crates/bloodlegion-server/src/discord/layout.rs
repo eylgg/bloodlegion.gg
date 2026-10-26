@@ -1,9 +1,10 @@
-//! What the bot keeps in the server, as the site has it: three roles that follow the guild ranks
-//! (officers, the raiding roster, everyone else), and four categories that follow the access
-//! levels, each open to its level and the ones above it. #announcements, in Public, is the one
-//! channel the bot makes: everyone reads it, officers post.
+//! What the bot keeps in the server, as the site has it: a role for each rank (the leader,
+//! officers, raiders, trials, members, friends), and four categories that follow the access levels, each
+//! open to its level and the ones above it. #announcements, in Public, is the one channel the bot
+//! makes: everyone reads it, the leader and officers post.
 //!
-//! Pure: the permission entries and role changes are worked out here and applied by `sync`.
+//! The bot makes the roles but does not hand them out: the role check (`check`) lists who lacks
+//! theirs. Pure: the permission entries are worked out here and applied by `sync`.
 
 use serenity::all::{
     ChannelId, PermissionOverwrite, PermissionOverwriteType, Permissions, RoleId, UserId,
@@ -11,66 +12,70 @@ use serenity::all::{
 
 use crate::guild::Rank;
 
-/// A level of access to the guild, and the Discord role a member gets for it, highest first.
+/// A rank, and the Discord role for it, highest access first.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Access {
-    /// The leader and officers.
+    Leader,
     Officer,
-    /// The raiding roster: raiders and trials.
     Raider,
-    /// Everyone else with an account.
+    Trial,
     Member,
+    Friend,
 }
 
 impl Access {
-    pub const ALL: [Access; 3] = [Access::Officer, Access::Raider, Access::Member];
+    pub const ALL: [Access; 6] = [
+        Access::Leader,
+        Access::Officer,
+        Access::Raider,
+        Access::Trial,
+        Access::Member,
+        Access::Friend,
+    ];
 
     pub fn of(rank: Rank) -> Access {
         match rank {
-            _ if rank.is_officer() => Access::Officer,
-            Rank::Raider | Rank::Trial => Access::Raider,
-            _ => Access::Member,
+            Rank::Leader => Access::Leader,
+            Rank::Officer => Access::Officer,
+            Rank::Raider => Access::Raider,
+            Rank::Trial => Access::Trial,
+            Rank::Member => Access::Member,
+            Rank::Friend => Access::Friend,
         }
     }
 
     /// The bot's key for the role (`discord_objects`).
     pub fn key(self) -> &'static str {
         match self {
+            Access::Leader => "role:leader",
             Access::Officer => "role:officer",
             Access::Raider => "role:raider",
+            Access::Trial => "role:trial",
             Access::Member => "role:member",
+            Access::Friend => "role:friend",
         }
     }
 
     /// The role's name when the bot makes it; renaming it by hand afterwards is fine.
     pub fn role_name(self) -> &'static str {
         match self {
+            Access::Leader => "Leader",
             Access::Officer => "Officer",
             Access::Raider => "Raider",
+            Access::Trial => "Trial",
             Access::Member => "Member",
+            Access::Friend => "Friend",
         }
     }
 }
 
-/// The ids of the three roles.
+/// The ids of the roles, one per [`Access`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Roles {
-    pub officer: RoleId,
-    pub raider: RoleId,
-    pub member: RoleId,
-}
+pub struct Roles(pub [RoleId; 6]);
 
 impl Roles {
     pub fn get(&self, access: Access) -> RoleId {
-        match access {
-            Access::Officer => self.officer,
-            Access::Raider => self.raider,
-            Access::Member => self.member,
-        }
-    }
-
-    pub fn all(&self) -> [RoleId; 3] {
-        [self.officer, self.raider, self.member]
+        self.0[access as usize]
     }
 }
 
@@ -100,12 +105,12 @@ pub const CATEGORIES: [Category; 4] = [
     Category {
         key: "category:members",
         name: "Members",
-        audience: Audience::AtLeast(Access::Member),
+        audience: Audience::AtLeast(Access::Friend),
     },
     Category {
         key: "category:raiders",
         name: "Raiders",
-        audience: Audience::AtLeast(Access::Raider),
+        audience: Audience::AtLeast(Access::Trial),
     },
     Category {
         key: "category:officers",
@@ -167,60 +172,45 @@ pub fn category_overwrites(
     }
 }
 
-/// #announcements: everyone reads it, and only officers post (or start threads).
+/// #announcements: everyone reads it, and only the leader and officers post (or start threads).
 pub fn announcements_overwrites(roles: &Roles, everyone: RoleId) -> Vec<PermissionOverwrite> {
     let read = Permissions::VIEW_CHANNEL | Permissions::READ_MESSAGE_HISTORY;
     let post = Permissions::SEND_MESSAGES
         | Permissions::SEND_MESSAGES_IN_THREADS
         | Permissions::CREATE_PUBLIC_THREADS
         | Permissions::CREATE_PRIVATE_THREADS;
-    vec![
-        role(everyone, read, post),
-        role(roles.officer, read | post, Permissions::empty()),
-    ]
-}
-
-/// The bot's roles to give and take so a member holding `current` ends up with exactly the one
-/// for `access` (none when they have no linked account, or it is disabled). Roles the bot does not
-/// keep are left alone.
-pub fn role_changes(
-    current: &[RoleId],
-    access: Option<Access>,
-    roles: &Roles,
-) -> (Vec<RoleId>, Vec<RoleId>) {
-    let wanted = access.map(|access| roles.get(access));
-    let add = wanted
-        .filter(|id| !current.contains(id))
-        .into_iter()
-        .collect();
-    let remove = roles
-        .all()
-        .into_iter()
-        .filter(|id| Some(*id) != wanted && current.contains(id))
-        .collect();
-    (add, remove)
+    let mut overwrites = vec![role(everyone, read, post)];
+    overwrites.extend(
+        [Access::Leader, Access::Officer]
+            .map(|access| role(roles.get(access), read | post, Permissions::empty())),
+    );
+    overwrites
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const ROLES: Roles = Roles {
-        officer: RoleId::new(1),
-        raider: RoleId::new(2),
-        member: RoleId::new(3),
-    };
+    const LEADER: RoleId = RoleId::new(1);
+    const OFFICER: RoleId = RoleId::new(2);
+    const RAIDER: RoleId = RoleId::new(3);
+    const TRIAL: RoleId = RoleId::new(4);
+    const MEMBER: RoleId = RoleId::new(5);
+    const FRIEND: RoleId = RoleId::new(6);
+    const ROLES: Roles = Roles([LEADER, OFFICER, RAIDER, TRIAL, MEMBER, FRIEND]);
     const EVERYONE: RoleId = RoleId::new(100);
     const BOT: UserId = UserId::new(200);
 
     #[test]
-    fn ranks_fall_into_the_sites_access_levels() {
-        assert_eq!(Access::of(Rank::Leader), Access::Officer);
+    fn each_rank_has_its_role() {
+        assert_eq!(Access::of(Rank::Leader), Access::Leader);
         assert_eq!(Access::of(Rank::Officer), Access::Officer);
         assert_eq!(Access::of(Rank::Raider), Access::Raider);
-        assert_eq!(Access::of(Rank::Trial), Access::Raider);
-        for rank in [Rank::Member, Rank::Friend, Rank::Retired] {
-            assert_eq!(Access::of(rank), Access::Member);
+        assert_eq!(Access::of(Rank::Trial), Access::Trial);
+        assert_eq!(Access::of(Rank::Member), Access::Member);
+        assert_eq!(Access::of(Rank::Friend), Access::Friend);
+        for (n, access) in Access::ALL.into_iter().enumerate() {
+            assert_eq!(ROLES.get(access), ROLES.0[n]);
         }
     }
 
@@ -235,10 +225,12 @@ mod tests {
     #[test]
     fn each_category_opens_to_its_level_and_those_above() {
         use PermissionOverwriteType::{Member, Role};
-        let public = category_overwrites(Audience::Everyone, &ROLES, EVERYONE, BOT);
+        let audience = |key: &str| CATEGORIES.iter().find(|c| c.key == key).unwrap().audience;
+
+        let public = category_overwrites(audience("category:public"), &ROLES, EVERYONE, BOT);
         assert_eq!(viewers(&public), vec![Role(EVERYONE)]);
 
-        let raiders = category_overwrites(Audience::AtLeast(Access::Raider), &ROLES, EVERYONE, BOT);
+        let raiders = category_overwrites(audience("category:raiders"), &ROLES, EVERYONE, BOT);
         assert!(
             raiders
                 .iter()
@@ -246,19 +238,38 @@ mod tests {
         );
         assert_eq!(
             viewers(&raiders),
-            vec![Member(BOT), Role(ROLES.officer), Role(ROLES.raider)]
+            vec![
+                Member(BOT),
+                Role(LEADER),
+                Role(OFFICER),
+                Role(RAIDER),
+                Role(TRIAL)
+            ]
         );
 
-        let officers =
-            category_overwrites(Audience::AtLeast(Access::Officer), &ROLES, EVERYONE, BOT);
-        assert_eq!(viewers(&officers), vec![Member(BOT), Role(ROLES.officer)]);
+        let officers = category_overwrites(audience("category:officers"), &ROLES, EVERYONE, BOT);
+        assert_eq!(
+            viewers(&officers),
+            vec![Member(BOT), Role(LEADER), Role(OFFICER)]
+        );
 
-        let members = category_overwrites(Audience::AtLeast(Access::Member), &ROLES, EVERYONE, BOT);
-        assert_eq!(viewers(&members).len(), 4);
+        let members = category_overwrites(audience("category:members"), &ROLES, EVERYONE, BOT);
+        assert_eq!(
+            viewers(&members),
+            vec![
+                Member(BOT),
+                Role(LEADER),
+                Role(OFFICER),
+                Role(RAIDER),
+                Role(TRIAL),
+                Role(MEMBER),
+                Role(FRIEND)
+            ]
+        );
     }
 
     #[test]
-    fn only_officers_post_announcements() {
+    fn only_the_leader_and_officers_post_announcements() {
         let overwrites = announcements_overwrites(&ROLES, EVERYONE);
         let everyone = overwrites
             .iter()
@@ -266,35 +277,12 @@ mod tests {
             .unwrap();
         assert!(everyone.allow.contains(Permissions::VIEW_CHANNEL));
         assert!(everyone.deny.contains(Permissions::SEND_MESSAGES));
-        let officer = overwrites
-            .iter()
-            .find(|o| o.kind == PermissionOverwriteType::Role(ROLES.officer))
-            .unwrap();
-        assert!(officer.allow.contains(Permissions::SEND_MESSAGES));
-    }
-
-    #[test]
-    fn role_changes_leave_exactly_the_one_role() {
-        let other = RoleId::new(50);
-        // A new raider gets Raider.
-        assert_eq!(
-            role_changes(&[other], Some(Access::Raider), &ROLES),
-            (vec![ROLES.raider], vec![])
-        );
-        // A raider made an officer swaps Raider for Officer.
-        assert_eq!(
-            role_changes(&[ROLES.raider, other], Some(Access::Officer), &ROLES),
-            (vec![ROLES.officer], vec![ROLES.raider])
-        );
-        // Already right: nothing.
-        assert_eq!(
-            role_changes(&[ROLES.member], Some(Access::Member), &ROLES),
-            (vec![], vec![])
-        );
-        // Unlinked: the bot's roles go, anyone else's stay.
-        assert_eq!(
-            role_changes(&[ROLES.officer, ROLES.member, other], None, &ROLES),
-            (vec![], vec![ROLES.officer, ROLES.member])
-        );
+        for poster in [LEADER, OFFICER] {
+            let entry = overwrites
+                .iter()
+                .find(|o| o.kind == PermissionOverwriteType::Role(poster))
+                .unwrap();
+            assert!(entry.allow.contains(Permissions::SEND_MESSAGES));
+        }
     }
 }

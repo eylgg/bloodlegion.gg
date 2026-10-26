@@ -46,13 +46,13 @@
 </script>
 
 <svelte:head>
-	<title>Settings | Blood Legion</title>
+	<title>Administration | Blood Legion</title>
 </svelte:head>
 
 <div class="page-head">
 	<div>
-		<p class="kicker">Admin</p>
-		<h1>Settings</h1>
+		<p class="kicker">Superusers only</p>
+		<h1>Administration</h1>
 	</div>
 </div>
 

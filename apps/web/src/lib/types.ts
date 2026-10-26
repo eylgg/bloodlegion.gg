@@ -36,6 +36,28 @@ export type DiscordSettings = {
 	has_bot_token: boolean;
 };
 
+/** Where the Discord server's roles differ from the site's ranks (the backend's `discord::check`). */
+export type DiscordCheck = {
+	/** The bot's roles the server lacks, by the name the bot gives them. */
+	missing_roles: string[];
+	/** How many members have linked Discord. */
+	linked: number;
+	/** Linked members out of line: not in the server, lacking their role, or holding another. */
+	members: {
+		username: string;
+		rank: Rank;
+		discord_id: string;
+		/** `null` when they are not in the server. */
+		discord_name: string | null;
+		/** The role their rank calls for, as the server names it. */
+		role: string;
+		has_role: boolean;
+		other_roles: string[];
+	}[];
+	/** People in the server holding one of the bot's roles with no linked account. */
+	unlinked: { discord_id: string; discord_name: string; roles: string[] }[];
+};
+
 /** A post from the Discord server's #announcements, rendered by the backend. */
 export type Announcement = {
 	/** The Discord message id: a string, as it does not fit a JavaScript number. */
@@ -128,7 +150,7 @@ export type RosterEntry = {
 /* --- the guild --- */
 
 /** A guild rank, highest first (see `RANKS`). Leaders and officers run the guild's records. */
-export type Rank = 'leader' | 'officer' | 'raider' | 'trial' | 'member' | 'friend' | 'retired';
+export type Rank = 'leader' | 'officer' | 'raider' | 'trial' | 'member' | 'friend';
 
 /** One account at a provider linked to the signed-in member, from `GET /api/auth/linked-accounts`. */
 export type LinkedAccount = {

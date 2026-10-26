@@ -1,8 +1,9 @@
 //! Bringing the server in line with the site, through Discord's HTTP API: the bot's roles and
-//! categories (made when missing, its own permission entries set), each linked member's role, and
-//! the stored copy of #announcements.
+//! categories (made when missing, its own permission entries set), and the stored copy of
+//! #announcements.
 //!
-//! It never deletes anything in Discord. What it made is found by the id it stored; failing that,
+//! It never removes anything in Discord, and gives no member a role: it only makes what is
+//! missing. What it made is found by the id it stored; failing that,
 //! by name, so a role or category made by hand before the bot is taken over rather than doubled.
 
 use std::collections::HashMap;
@@ -10,7 +11,7 @@ use std::collections::HashMap;
 use anyhow::Context;
 use serenity::all::{
     ChannelId, ChannelType, CreateChannel, EditRole, GetMessages, GuildChannel, GuildId, Http,
-    Member, Message, MessageType, Permissions, RoleId, UserId,
+    Message, MessageType, Permissions, RoleId, UserId,
 };
 use sqlx::PgPool;
 use time::OffsetDateTime;
@@ -18,7 +19,7 @@ use time::OffsetDateTime;
 use super::db;
 use super::layout::{
     ANNOUNCEMENTS_KEY, ANNOUNCEMENTS_NAME, Access, CATEGORIES, Layout, PUBLIC, Roles,
-    announcements_overwrites, category_overwrites, role_changes,
+    announcements_overwrites, category_overwrites,
 };
 use super::markdown::Mentions;
 
@@ -74,11 +75,7 @@ pub async fn layout(
         };
         ids.insert(access, id);
     }
-    let roles = Roles {
-        officer: ids[&Access::Officer],
-        raider: ids[&Access::Raider],
-        member: ids[&Access::Member],
-    };
+    let roles = Roles(Access::ALL.map(|access| ids[&access]));
     // @everyone's id is the server's.
     let everyone = RoleId::new(guild.get());
 
@@ -178,75 +175,6 @@ async fn ensure_channel(
     };
     db::set_object_id(pool, key, id.get()).await?;
     Ok(id)
-}
-
-/// Gives every member in the server exactly the bot's role their linked account's rank calls for,
-/// and takes the bot's roles from anyone without one. A member that fails is logged and skipped.
-pub async fn members(
-    http: &Http,
-    pool: &PgPool,
-    guild: GuildId,
-    roles: &Roles,
-) -> anyhow::Result<()> {
-    let ranks: HashMap<String, Access> = db::linked_ranks(pool)
-        .await?
-        .into_iter()
-        .map(|(subject, rank)| (subject, Access::of(rank)))
-        .collect();
-    let mut after = None;
-    loop {
-        let page = guild
-            .members(http, Some(1000), after)
-            .await
-            .context("listing the server's members")?;
-        for member in page.iter().filter(|member| !member.user.bot) {
-            let access = ranks.get(&member.user.id.get().to_string()).copied();
-            if let Err(error) = apply(http, guild, member, access, roles).await {
-                let error = format!("{error:#}");
-                tracing::warn!(user = %member.user.id, error, "discord: could not set roles");
-            }
-        }
-        if page.len() < 1000 {
-            return Ok(());
-        }
-        after = page.last().map(|member| member.user.id);
-    }
-}
-
-/// [`members`], for one member (one who just joined).
-pub async fn member(
-    http: &Http,
-    pool: &PgPool,
-    guild: GuildId,
-    roles: &Roles,
-    member: &Member,
-) -> anyhow::Result<()> {
-    if member.user.bot {
-        return Ok(());
-    }
-    let rank = db::linked_rank(pool, &member.user.id.get().to_string()).await?;
-    apply(http, guild, member, rank.map(Access::of), roles).await
-}
-
-async fn apply(
-    http: &Http,
-    guild: GuildId,
-    member: &Member,
-    access: Option<Access>,
-    roles: &Roles,
-) -> anyhow::Result<()> {
-    let (add, remove) = role_changes(&member.roles, access, roles);
-    for role in add {
-        http.add_member_role(guild, member.user.id, role, Some(REASON))
-            .await
-            .context("giving a role")?;
-    }
-    for role in remove {
-        http.remove_member_role(guild, member.user.id, role, Some(REASON))
-            .await
-            .context("taking a role")?;
-    }
-    Ok(())
 }
 
 /// The names of the server's roles and channels, for the mentions in a post.

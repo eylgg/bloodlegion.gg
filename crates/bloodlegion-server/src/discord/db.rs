@@ -72,42 +72,30 @@ pub async fn set_object_id(pool: &PgPool, key: &str, id: u64) -> sqlx::Result<()
     Ok(())
 }
 
-/// The rank of each member with a linked Discord account (by its Discord user id), leaving out
-/// disabled accounts.
-pub async fn linked_ranks(pool: &PgPool) -> sqlx::Result<Vec<(String, Rank)>> {
-    let rows = sqlx::query!(
+/// A member's linked Discord account: its Discord user id (the credential's subject), and the
+/// member's username and rank.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct LinkedAccount {
+    pub subject: String,
+    pub username: String,
+    pub rank: Rank,
+}
+
+/// Every linked Discord account of a member whose account is not disabled.
+pub async fn linked_accounts(pool: &PgPool) -> sqlx::Result<Vec<LinkedAccount>> {
+    sqlx::query_as!(
+        LinkedAccount,
         r#"
-        SELECT c.subject, u.guild_rank AS "guild_rank: Rank"
+        SELECT c.subject, u.username, u.guild_rank AS "rank: Rank"
         FROM auth_oauth2_provider_credentials c
         JOIN auth_providers p ON p.id = c.provider_id
         JOIN users u ON u.id = c.user_id
         WHERE p.slug = $1 AND c.disconnected_at IS NULL AND u.disabled_at IS NULL
+        ORDER BY u.username
         "#,
         DISCORD_PROVIDER_SLUG,
     )
     .fetch_all(pool)
-    .await?;
-    Ok(rows
-        .into_iter()
-        .map(|row| (row.subject, row.guild_rank))
-        .collect())
-}
-
-/// The rank of the member who linked Discord user `subject`, if one has and is not disabled.
-pub async fn linked_rank(pool: &PgPool, subject: &str) -> sqlx::Result<Option<Rank>> {
-    sqlx::query_scalar!(
-        r#"
-        SELECT u.guild_rank AS "guild_rank: Rank"
-        FROM auth_oauth2_provider_credentials c
-        JOIN auth_providers p ON p.id = c.provider_id
-        JOIN users u ON u.id = c.user_id
-        WHERE p.slug = $1 AND c.subject = $2
-          AND c.disconnected_at IS NULL AND u.disabled_at IS NULL
-        "#,
-        DISCORD_PROVIDER_SLUG,
-        subject,
-    )
-    .fetch_optional(pool)
     .await
 }
 
@@ -324,15 +312,19 @@ mod tests {
             .await
             .unwrap();
 
-        let mut ranks = linked_ranks(&pool).await.unwrap();
-        ranks.sort();
+        let linked = linked_accounts(&pool).await.unwrap();
+        let account = |subject: &str, username: &str, rank| LinkedAccount {
+            subject: subject.into(),
+            username: username.into(),
+            rank,
+        };
         assert_eq!(
-            ranks,
-            vec![("111".into(), Rank::Officer), ("222".into(), Rank::Raider)]
+            linked,
+            vec![
+                account("111", "Ey", Rank::Officer),
+                account("222", "Raid", Rank::Raider)
+            ]
         );
-        assert_eq!(linked_rank(&pool, "222").await.unwrap(), Some(Rank::Raider));
-        assert_eq!(linked_rank(&pool, "333").await.unwrap(), None);
-        assert_eq!(linked_rank(&pool, "Raid#1234").await.unwrap(), None);
     }
 
     #[sqlx::test]

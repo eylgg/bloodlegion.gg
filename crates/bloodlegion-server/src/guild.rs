@@ -34,18 +34,16 @@ pub enum Rank {
     Trial,
     Member,
     Friend,
-    Retired,
 }
 
 impl Rank {
-    pub const ALL: [Rank; 7] = [
+    pub const ALL: [Rank; 6] = [
         Rank::Leader,
         Rank::Officer,
         Rank::Raider,
         Rank::Trial,
         Rank::Member,
         Rank::Friend,
-        Rank::Retired,
     ];
 
     pub fn is_officer(self) -> bool {
@@ -60,7 +58,6 @@ impl Rank {
             Rank::Trial => "trial",
             Rank::Member => "member",
             Rank::Friend => "friend",
-            Rank::Retired => "retired",
         }
     }
 
@@ -259,7 +256,7 @@ pub(crate) mod tests {
         for rank in Rank::ALL {
             assert_eq!(Rank::parse(rank.slug()), Some(rank));
         }
-        assert!(Rank::Leader < Rank::Officer && Rank::Trial < Rank::Retired);
+        assert!(Rank::Leader < Rank::Officer && Rank::Trial < Rank::Friend);
         assert!(Rank::Officer.is_officer() && !Rank::Raider.is_officer());
     }
 

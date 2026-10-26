@@ -1,15 +1,7 @@
 import type { Quality, Rank, User, Zone } from '$lib/types';
 
 /** Highest first, as the backend orders them. */
-export const RANKS: Rank[] = [
-	'leader',
-	'officer',
-	'raider',
-	'trial',
-	'member',
-	'friend',
-	'retired'
-];
+export const RANKS: Rank[] = ['leader', 'officer', 'raider', 'trial', 'member', 'friend'];
 
 export const RANK_LABEL: Record<Rank, string> = {
 	leader: 'Leader',
@@ -17,8 +9,7 @@ export const RANK_LABEL: Record<Rank, string> = {
 	raider: 'Raider',
 	trial: 'Trial',
 	member: 'Member',
-	friend: 'Friend',
-	retired: 'Retired'
+	friend: 'Friend'
 };
 
 /** The raiding roster: leaders through trials. */

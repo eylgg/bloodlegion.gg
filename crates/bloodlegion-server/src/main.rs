@@ -100,7 +100,7 @@ enum UsersCommand {
     Promote { username: String },
     /// Remove an account's superuser status.
     Demote { username: String },
-    /// Set an account's guild rank: leader, officer, raider, trial, member, friend, or retired.
+    /// Set an account's guild rank: leader, officer, raider, trial, member, or friend.
     /// Leaders and officers run raids and record loot.
     Rank { username: String, rank: String },
     /// Suspend an account: its sessions stop resolving and it can no longer log in.

@@ -1,6 +1,6 @@
 //! The guild's Discord server, run by a bot: it keeps the bot's roles and categories as the site
-//! has them (`layout`), gives each member who linked Discord the role their rank calls for, and
-//! mirrors the public #announcements channel for the site (`markdown` renders it).
+//! has them (`layout`) and mirrors the public #announcements channel for the site (`markdown`
+//! renders it). It hands out no roles; the role check (`check`) shows a superuser who lacks theirs.
 //!
 //! One bot connection serves every instance of the server. Each instance waits on a Postgres
 //! advisory lock held on a connection of its own, and the one holding it runs the bot; when that
@@ -11,6 +11,7 @@
 //! encrypted). Until both are set there is no bot, and changing either restarts it.
 
 mod api;
+mod check;
 mod db;
 mod layout;
 mod markdown;
@@ -21,8 +22,8 @@ use std::time::Duration;
 
 use anyhow::Context as _;
 use serenity::all::{
-    ChannelId, Client, Context, EventHandler, GatewayIntents, GuildId, Http, Member, Message,
-    MessageId, MessageUpdateEvent, UserId,
+    ChannelId, Client, Context, EventHandler, GatewayIntents, GuildId, Http, Message, MessageId,
+    MessageUpdateEvent, UserId,
 };
 use sqlx::PgPool;
 use sqlx::postgres::PgListener;
@@ -45,23 +46,15 @@ const RETRY: Duration = Duration::from_secs(30);
 /// How often the running bot checks it still holds the lock.
 const LOCK_CHECK: Duration = Duration::from_secs(15);
 
-/// How often every member's roles are checked, besides when a rank or link changes.
-const MEMBERS_EVERY: Duration = Duration::from_secs(10 * 60);
-
 /// How often the roles and categories are checked, in case someone changed them by hand.
 const LAYOUT_EVERY: Duration = Duration::from_secs(60 * 60);
-
-/// Where ranks, disabled accounts, and links changing (on any instance) are announced.
-const ROLES_CHANNEL: &str = "discord_roles";
 
 /// Where the bot's settings changing is announced.
 const SETTINGS_CHANNEL: &str = "discord_settings";
 
-/// What the bot hears from the gateway: messages (with their text) and members joining. Members
-/// and message content are privileged: both need turning on for the bot in Discord's developer
-/// portal.
+/// What the bot hears from the gateway: messages, with their text. Message content is privileged:
+/// it needs turning on for the bot in Discord's developer portal.
 const INTENTS: GatewayIntents = GatewayIntents::GUILDS
-    .union(GatewayIntents::GUILD_MEMBERS)
     .union(GatewayIntents::GUILD_MESSAGES)
     .union(GatewayIntents::MESSAGE_CONTENT);
 
@@ -122,7 +115,7 @@ async fn lead(state: &State) -> anyhow::Result<()> {
         .await
         .context("listening for changes")?;
     changes
-        .listen_all([ROLES_CHANNEL, SETTINGS_CHANNEL])
+        .listen(SETTINGS_CHANNEL)
         .await
         .context("listening for changes")?;
     loop {
@@ -195,13 +188,6 @@ impl Bot {
             .expect("the layout lock is never poisoned") = Some(layout);
         Ok(layout)
     }
-
-    async fn sync_members(&self, http: &Http) {
-        let Some(layout) = self.layout() else { return };
-        if let Err(error) = sync::members(http, &self.pool, self.guild, &layout.roles).await {
-            warn("could not sync roles", &error);
-        }
-    }
 }
 
 /// Runs the bot until it fails (an error) or its settings change (`Ok`).
@@ -231,12 +217,10 @@ async fn run(
     if let Err(error) = sync::announcements(&http, pool, config.guild, layout.announcements).await {
         warn("could not catch up #announcements", &error);
     }
-    bot.sync_members(&http).await;
 
     let shards = client.shard_manager.clone();
     let mut gateway = tokio::spawn(async move { client.start().await });
-    let (mut lock_check, mut members, mut layout_check) =
-        (later(LOCK_CHECK), later(MEMBERS_EVERY), later(LAYOUT_EVERY));
+    let (mut lock_check, mut layout_check) = (later(LOCK_CHECK), later(LAYOUT_EVERY));
 
     let result = loop {
         tokio::select! {
@@ -246,11 +230,9 @@ async fn run(
                 Err(error) => Err(error).context("the Discord gateway task"),
             },
             notification = changes.recv() => match notification {
-                Ok(notification) if notification.channel() == SETTINGS_CHANNEL => break Ok(()),
-                Ok(_) => bot.sync_members(&http).await,
+                Ok(_) => break Ok(()),
                 Err(error) => break Err(error).context("listening for changes"),
             },
-            _ = members.tick() => bot.sync_members(&http).await,
             _ = layout_check.tick() => if let Err(error) = bot.sync_layout(&http, me).await {
                 warn("could not check the roles and categories", &error);
             },
@@ -265,8 +247,7 @@ async fn run(
 }
 
 /// Why the gateway most often refuses the bot.
-const GATEWAY_FAILED: &str =
-    "the Discord gateway failed (are the server members and message content intents on?)";
+const GATEWAY_FAILED: &str = "the Discord gateway failed (is the message content intent on?)";
 
 /// Whether the lock's connection is still there (and with it the lock).
 async fn still_locked(lock: &mut sqlx::PgConnection) -> anyhow::Result<()> {
@@ -337,26 +318,6 @@ impl EventHandler for Handler {
         _guild: Option<GuildId>,
     ) {
         self.deleted(channel, &messages).await;
-    }
-
-    async fn guild_member_addition(&self, ctx: Context, member: Member) {
-        let Some(layout) = self.0.layout() else {
-            return;
-        };
-        if member.guild_id != self.0.guild {
-            return;
-        }
-        if let Err(error) = sync::member(
-            &ctx.http,
-            &self.0.pool,
-            self.0.guild,
-            &layout.roles,
-            &member,
-        )
-        .await
-        {
-            warn("could not set a new member's roles", &error);
-        }
     }
 }
 
