@@ -2,6 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { RANK_LABEL } from '$lib/guild';
+	import { api, errorMessage } from '$lib/api';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import type { PageProps } from './$types';
@@ -47,15 +48,27 @@
 		return relative.format(Math.round(seconds), 'second');
 	}
 
-	const outOfLine = $derived(
-		report !== null &&
-			(report.members.length > 0 ||
-				report.unlinked.length > 0 ||
-				report.roles.some((role) => !role.exists) ||
-				report.categories.some((category) => !category.exists) ||
-				!report.categories_in_order ||
-				report.announcements === null)
-	);
+	let fixing = $state<'categories' | 'roles' | null>(null);
+	let fixError = $state('');
+	let fixed = $state('');
+
+	/** Moves the bot's categories or roles into order, among their own slots, when asked. */
+	async function fix(list: 'categories' | 'roles') {
+		const what = list === 'roles' ? "the bot's roles" : "the bot's categories";
+		if (!confirm(`Put ${what} in order? Only they move; everything else keeps its place.`)) return;
+		fixing = list;
+		fixError = '';
+		fixed = '';
+		try {
+			await api.post(`/api/admin/discord/fix/${list}`);
+			await invalidateAll();
+			fixed = list;
+		} catch (err) {
+			fixError = errorMessage(err, 'That did not work. Please try again.');
+		} finally {
+			fixing = null;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -73,8 +86,9 @@
 </div>
 
 <p class="muted intro">
-	How the bot and the server stand, read from Discord now. The bot gives and takes no roles and
-	removes nothing: fix what is listed here in Discord, then check again.
+	How the bot and the server stand, read from Discord now. The bot gives and takes no roles, removes
+	nothing, and orders nothing on its own: fix what is listed here in Discord (or with a button
+	here), then check again.
 </p>
 
 {#if data.failure}
@@ -156,9 +170,10 @@
 					<dt>Announcements</dt>
 					<dd>
 						{#if report.announcements}
-							#{report.announcements[0]}{report.announcements[1]
-								? ` in ${report.announcements[1]}`
-								: ''}, {overview.posts.stored}
+							#{report.announcements.name}{report.announcements.category
+								? ` in ${report.announcements.category}`
+								: ''}
+							<code class="id">{report.announcements.id}</code>, {overview.posts.stored}
 							{overview.posts.stored === 1 ? 'post' : 'posts'} kept{overview.posts.latest
 								? `, latest ${ago(overview.posts.latest)}`
 								: ''}
@@ -170,65 +185,111 @@
 			</dl>
 		</section>
 
+		{#if fixError}<Alert variant="error">{fixError}</Alert>{/if}
+
 		<section>
-			<h2>Roles</h2>
+			<div class="head">
+				<h2>Roles</h2>
+				{#if report.roles_in_order}
+					<span class="tag ok">In order</span>
+				{:else}
+					<span class="tag warn">Out of order</span>
+				{/if}
+			</div>
 			<p class="muted">
-				Holders: everyone in the server with the role. Due: linked members in the server whose rank
-				calls for it.
+				The bot's roles, top to bottom, as they should stand in Server Settings, Roles. Holders:
+				everyone in the server with the role. Due: linked members in the server whose rank calls for
+				it.
 			</p>
+			{#if fixed === 'roles'}<Alert variant="success">The roles are in order.</Alert>{/if}
+			{#if report.roles_out_of_reach.length > 0}
+				<Alert variant="info">
+					{report.roles_out_of_reach.join(', ')}
+					{report.roles_out_of_reach.length === 1 ? 'is' : 'are'} not below the bot's own role, so it
+					cannot move {report.roles_out_of_reach.length === 1 ? 'it' : 'them'}. Drag the bot's role
+					above them first.
+				</Alert>
+			{/if}
 			<table>
 				<thead>
-					<tr><th>Role</th><th>Holders</th><th>Due</th><th></th></tr>
+					<tr><th>Role</th><th>ID</th><th class="num">Holders</th><th class="num">Due</th></tr>
 				</thead>
 				<tbody>
 					{#each report.roles as role (role.name)}
 						<tr>
 							<td>{role.name}</td>
-							<td>{role.exists ? role.holders : '–'}</td>
-							<td>{role.due}</td>
-							<td
-								>{#if !role.exists}<span class="tag warn">Missing</span>{/if}</td
-							>
+							<td>
+								{#if role.id}<code class="id">{role.id}</code>{:else}<span class="tag warn"
+										>Missing</span
+									>{/if}
+							</td>
+							<td class="num">{role.id ? role.holders : '–'}</td>
+							<td class="num">{role.due}</td>
 						</tr>
 					{/each}
 				</tbody>
 			</table>
+			{#if !report.roles_in_order}
+				<div class="actions">
+					<Button variant="secondary" disabled={fixing !== null} onclick={() => fix('roles')}>
+						{fixing === 'roles' ? 'Fixing...' : 'Fix order'}
+					</Button>
+				</div>
+			{/if}
 		</section>
 
 		<section>
-			<h2>Categories</h2>
-			<p class="muted">
+			<div class="head">
+				<h2>Categories</h2>
 				{#if report.categories_in_order}
-					In the bot's order, top to bottom.
+					<span class="tag ok">In order</span>
 				{:else}
-					<span class="tag warn">Out of order</span> Drag them in Discord into this order, top to bottom.
+					<span class="tag warn">Out of order</span>
 				{/if}
-			</p>
+			</div>
+			<p class="muted">The bot's categories, top to bottom, as they should stand in the server.</p>
+			{#if fixed === 'categories'}<Alert variant="success">The categories are in order.</Alert>{/if}
 			<table>
 				<thead>
-					<tr><th>Category</th><th>Channels</th><th></th></tr>
+					<tr><th>Category</th><th>ID</th><th class="num">Channels</th></tr>
 				</thead>
 				<tbody>
 					{#each report.categories as category (category.name)}
 						<tr>
 							<td>{category.name}</td>
-							<td>{category.exists ? category.channels : '–'}</td>
-							<td
-								>{#if !category.exists}<span class="tag warn">Missing</span>{/if}</td
-							>
+							<td>
+								{#if category.id}<code class="id">{category.id}</code>{:else}<span class="tag warn"
+										>Missing</span
+									>{/if}
+							</td>
+							<td class="num">{category.id ? category.channels : '–'}</td>
 						</tr>
 					{/each}
 				</tbody>
 			</table>
+			{#if !report.categories_in_order}
+				<div class="actions">
+					<Button variant="secondary" disabled={fixing !== null} onclick={() => fix('categories')}>
+						{fixing === 'categories' ? 'Fixing...' : 'Fix order'}
+					</Button>
+				</div>
+			{/if}
 		</section>
 
-		{#if !outOfLine}
-			<Alert variant="success">Everything is as the site has it.</Alert>
-		{/if}
-
-		{#if report.members.length > 0}
-			<section>
-				<h2>Linked members out of line</h2>
+		<section>
+			<div class="head">
+				<h2>Linked members</h2>
+				{#if report.members.length === 0}
+					<span class="tag ok">All have their role</span>
+				{:else}
+					<span class="tag warn">{report.members.length} out of line</span>
+				{/if}
+			</div>
+			<p class="muted">
+				Members who linked Discord on the site and are not in the server, lack their rank's role, or
+				hold another of the bot's roles besides.
+			</p>
+			{#if report.members.length > 0}
 				<ul class="list">
 					{#each report.members as member (member.discord_id)}
 						<li>
@@ -251,16 +312,22 @@
 						</li>
 					{/each}
 				</ul>
-			</section>
-		{/if}
+			{/if}
+		</section>
 
-		{#if report.unlinked.length > 0}
-			<section>
+		<section>
+			<div class="head">
 				<h2>Roles without a linked account</h2>
-				<p class="muted">
-					People in the server holding one of the bot's roles who have not linked Discord on the
-					site.
-				</p>
+				{#if report.unlinked.length === 0}
+					<span class="tag ok">None</span>
+				{:else}
+					<span class="tag warn">{report.unlinked.length}</span>
+				{/if}
+			</div>
+			<p class="muted">
+				People in the server holding one of the bot's roles who have not linked Discord on the site.
+			</p>
+			{#if report.unlinked.length > 0}
 				<ul class="list">
 					{#each report.unlinked as person (person.discord_id)}
 						<li>
@@ -273,8 +340,8 @@
 						</li>
 					{/each}
 				</ul>
-			</section>
-		{/if}
+			{/if}
+		</section>
 	{/if}
 {/if}
 
@@ -286,6 +353,19 @@
 
 	.kicker a {
 		color: inherit;
+	}
+
+	.head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--space-2) var(--space-3);
+	}
+
+	.actions {
+		display: flex;
+		justify-content: flex-end;
+		margin-top: var(--space-3);
 	}
 
 	.facts {
@@ -332,10 +412,15 @@
 		font-weight: 500;
 	}
 
-	td:nth-child(n + 2):not(:last-child),
-	th:nth-child(n + 2):not(:last-child) {
+	.num {
 		text-align: right;
 		font-variant-numeric: tabular-nums;
+	}
+
+	/* Discord ids: long, and for copying into Discord's search or the API. */
+	.id {
+		color: var(--grey-text);
+		user-select: all;
 	}
 
 	.list {

@@ -66,13 +66,20 @@ export type DiscordReport = {
 	/** Members who linked Discord, and how many of them are in the server. */
 	linked: number;
 	linked_in_server: number;
-	/** The bot's roles: who holds each, and how many linked members' ranks call for it. */
-	roles: { name: string; exists: boolean; holders: number; due: number }[];
+	/**
+	 * The bot's roles, top first: its Discord id (a string; `null` when the server lacks it), who
+	 * holds it, and how many linked members' ranks call for it.
+	 */
+	roles: { id: string | null; name: string; holders: number; due: number }[];
+	/** Whether the bot's roles stand in that order in Discord's list. */
+	roles_in_order: boolean;
+	/** The bot's roles not below its own highest role, which it cannot move. */
+	roles_out_of_reach: string[];
 	/** The bot's categories, in the order it keeps them. */
-	categories: { name: string; exists: boolean; channels: number }[];
+	categories: { id: string | null; name: string; channels: number }[];
 	categories_in_order: boolean;
-	/** #announcements' name and its category's, when it exists. */
-	announcements: [string, string | null] | null;
+	/** #announcements, when it exists. */
+	announcements: { id: string; name: string; category: string | null } | null;
 	/** Linked members out of line: not in the server, lacking their role, or holding another. */
 	members: {
 		username: string;

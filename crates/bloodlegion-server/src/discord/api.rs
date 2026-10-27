@@ -1,5 +1,6 @@
 use anyhow::Context;
-use axum::routing::get;
+use axum::http::StatusCode;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use serenity::all::{Http, HttpError};
 use time::{OffsetDateTime, serde::iso8601};
@@ -7,6 +8,7 @@ use time::{OffsetDateTime, serde::iso8601};
 use super::check::{self, Overview};
 use super::db;
 use super::markdown::{self, Mentions};
+use super::order::{self, FixError};
 use crate::extract::{Admin, SameOrigin};
 use crate::{Error, Problem, Result, State};
 
@@ -175,6 +177,24 @@ async fn role_check(state: State, _admin: Admin) -> Result<Json<Overview>> {
     Ok(Json(check::overview(&state).await?))
 }
 
+/// `POST /api/admin/discord/fix/categories`: superusers only. Puts the bot's categories in order
+/// (see `order`); nothing else moves.
+async fn fix_categories(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+) -> Result<StatusCode, FixError> {
+    order::fix_categories(&state).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/admin/discord/fix/roles`: superusers only. Puts the bot's roles in order (see
+/// `order`); nothing else moves.
+async fn fix_roles(state: State, _: SameOrigin, _admin: Admin) -> Result<StatusCode, FixError> {
+    order::fix_roles(&state).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn router() -> Router<State> {
     Router::new().route("/announcements", get(latest))
 }
@@ -184,6 +204,8 @@ pub fn admin_router() -> Router<State> {
     Router::new()
         .route("/discord", get(settings).put(set_settings))
         .route("/discord/check", get(role_check))
+        .route("/discord/fix/categories", post(fix_categories))
+        .route("/discord/fix/roles", post(fix_roles))
 }
 
 #[cfg(test)]

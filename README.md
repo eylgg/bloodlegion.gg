@@ -250,13 +250,17 @@ category of the same name made by hand), and on its own categories sets only its
 entries, so others added by hand stay. Renaming its roles or categories is fine: it keeps track by
 id.
 
-The **Discord page** (`/admin/discord`, superusers) reads the server and shows how it stands: the
-bot's state (running, since when, last seen, its last check and error), the server's people and
-bots, how many members linked Discord and are in it, each role's holders against the linked members
-whose rank calls for it, each category's channels and whether they stand in the bot's order, and the
-kept #announcements posts. It lists where the server differs from the site: linked members not in
-the server, without their rank's role, or holding another of the bot's roles besides, and people
-holding one of the bot's roles who have not linked Discord.
+The **Discord page** (`/admin/discord`, superusers) reads the server and shows how it stands, a
+heading per check: the bot's state (running, since when, last seen, its last check and error); the
+server's people and bots, how many members linked Discord and are in it, and #announcements (with
+its id) and its kept posts; its **roles** and **categories** with their Discord ids (each role with
+its holders against the linked members whose rank calls for it, each category with its channels),
+and whether they stand top to bottom as the site has them; linked members not in the server, without
+their rank's role, or holding another of the bot's roles besides; and people holding one of the
+bot's roles who have not linked Discord. The bot never reorders anything on its own: an order that
+is off has a **Fix order** button, which moves only the bot's own roles or categories, among the
+places they already hold, so everything else keeps its place. Discord lets the bot move only roles
+below its own, which the page warns of.
 
 To set it up, in the application's **Bot** page turn on the **Message Content** intent (for the
 announcements) and **Server Members** (for the role check), and invite it to the server (**OAuth2 →

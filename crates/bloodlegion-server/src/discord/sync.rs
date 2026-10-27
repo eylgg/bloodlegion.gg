@@ -24,7 +24,7 @@ use super::layout::{
 use super::markdown::Mentions;
 
 /// Shown in the server's audit log for everything the bot does.
-const REASON: &str = "Blood Legion site sync";
+pub(super) const REASON: &str = "Blood Legion site sync";
 
 /// How many of #announcements' latest posts a catch-up reads.
 const CATCH_UP: u8 = 50;

@@ -15,6 +15,7 @@ mod check;
 mod db;
 mod layout;
 mod markdown;
+mod order;
 mod sync;
 
 use std::sync::{Arc, RwLock};

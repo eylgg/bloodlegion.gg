@@ -13,6 +13,7 @@ use time::OffsetDateTime;
 
 use super::db::{self, LinkedAccount, Status};
 use super::layout::{ANNOUNCEMENTS_KEY, Access, CATEGORIES};
+use super::order::{self, List, Slot};
 use crate::guild::Rank;
 use crate::{Result, State};
 
@@ -41,6 +42,10 @@ pub struct Snapshot {
     /// Everyone in the server, bots included.
     pub members: Vec<ServerMember>,
     pub role_names: HashMap<RoleId, String>,
+    /// Each role's position, `@everyone` left out.
+    pub role_positions: HashMap<RoleId, u16>,
+    /// The bot's own user id: its highest role decides which roles it can move.
+    pub bot_id: u64,
     pub channels: Vec<Channel>,
     /// What the bot made, by its key (`discord_objects`), whether or not it is still there.
     pub objects: HashMap<String, u64>,
@@ -73,9 +78,11 @@ pub struct Unlinked {
 /// One of the bot's roles: whether the server has it, who holds it, and who should.
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
 pub struct RoleSummary {
+    /// Its Discord id, as a string (it does not fit a JavaScript number); `None` when the server
+    /// lacks it.
+    pub id: Option<String>,
     /// As the server names it, or as the bot would when it is missing.
     pub name: String,
-    pub exists: bool,
     /// People in the server holding it.
     pub holders: usize,
     /// Linked members in the server whose rank calls for it.
@@ -85,9 +92,20 @@ pub struct RoleSummary {
 /// One of the bot's categories.
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
 pub struct CategorySummary {
+    /// Its Discord id, as a string; `None` when the server lacks it.
+    pub id: Option<String>,
     pub name: String,
-    pub exists: bool,
     pub channels: usize,
+}
+
+/// #announcements, where it is.
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct ChannelSummary {
+    /// Its Discord id, as a string.
+    pub id: String,
+    pub name: String,
+    /// Its category's name.
+    pub category: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
@@ -99,13 +117,18 @@ pub struct Report {
     /// Members who linked Discord on the site, and how many of them are in the server.
     pub linked: usize,
     pub linked_in_server: usize,
+    /// In the order the bot keeps them, top first.
     pub roles: Vec<RoleSummary>,
+    /// Whether the roles that exist stand in that order in Discord's list.
+    pub roles_in_order: bool,
+    /// The bot's roles not below the bot's own highest role, which it cannot move.
+    pub roles_out_of_reach: Vec<String>,
     /// In the order the bot keeps them.
     pub categories: Vec<CategorySummary>,
     /// Whether the categories that exist stand in that order in Discord's list.
     pub categories_in_order: bool,
-    /// #announcements' name, and its category's, when it exists.
-    pub announcements: Option<(String, Option<String>)>,
+    /// #announcements, when it exists.
+    pub announcements: Option<ChannelSummary>,
     pub members: Vec<MemberStatus>,
     pub unlinked: Vec<Unlinked>,
 }
@@ -191,8 +214,8 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
     let role_summaries = Access::ALL
         .into_iter()
         .map(|access| RoleSummary {
+            id: roles.get(&access).map(|id| id.get().to_string()),
             name: name(access),
-            exists: roles.contains_key(&access),
             holders: people.iter().filter(|m| held(m).contains(&access)).count(),
             due: linked
                 .iter()
@@ -210,8 +233,8 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         .map(|category| {
             let found = channel(category.key).filter(|channel| channel.category);
             let summary = CategorySummary {
+                id: found.map(|c| c.id.to_string()),
                 name: found.map_or(category.name.to_string(), |c| c.name.clone()),
-                exists: found.is_some(),
                 channels: found.map_or(0, |c| {
                     server
                         .channels
@@ -223,18 +246,61 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
             (summary, found)
         })
         .collect();
-    // Discord lists categories by position, then id.
-    let order: Vec<(u16, u64)> = categories
+    let category_slots: Vec<Slot> = server
+        .channels
         .iter()
-        .filter_map(|(_, found)| found.map(|c| (c.position, c.id)))
+        .filter(|channel| channel.category)
+        .map(|channel| Slot {
+            id: channel.id,
+            position: channel.position,
+        })
         .collect();
-    let categories_in_order = order.windows(2).all(|pair| pair[0] < pair[1]);
-    let announcements = channel(ANNOUNCEMENTS_KEY).map(|found| {
-        let parent = found
+    let ours: Vec<u64> = categories
+        .iter()
+        .filter_map(|(_, found)| found.map(|c| c.id))
+        .collect();
+    let categories_in_order = order::in_order(&category_slots, &ours, List::Categories);
+
+    let role_slots: Vec<Slot> = server
+        .role_positions
+        .iter()
+        .map(|(id, position)| Slot {
+            id: id.get(),
+            position: *position,
+        })
+        .collect();
+    let our_roles: Vec<u64> = Access::ALL
+        .into_iter()
+        .filter_map(|access| roles.get(&access).map(|id| id.get()))
+        .collect();
+    let roles_in_order = order::in_order(&role_slots, &our_roles, List::Roles);
+    let bot_top = server
+        .members
+        .iter()
+        .find(|member| member.id == server.bot_id)
+        .into_iter()
+        .flat_map(|bot| &bot.roles)
+        .filter_map(|id| server.role_positions.get(id))
+        .max()
+        .copied()
+        .unwrap_or(0);
+    let roles_out_of_reach = Access::ALL
+        .into_iter()
+        .filter(|access| {
+            roles
+                .get(access)
+                .and_then(|id| server.role_positions.get(id))
+                .is_some_and(|position| *position >= bot_top)
+        })
+        .map(name)
+        .collect();
+    let announcements = channel(ANNOUNCEMENTS_KEY).map(|found| ChannelSummary {
+        id: found.id.to_string(),
+        name: found.name.clone(),
+        category: found
             .parent
             .and_then(|id| server.channels.iter().find(|c| c.id == id))
-            .map(|c| c.name.clone());
-        (found.name.clone(), parent)
+            .map(|c| c.name.clone()),
     });
 
     Report {
@@ -244,6 +310,8 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         linked: linked.len(),
         linked_in_server: linked.iter().filter(|a| linked_member(a).is_some()).count(),
         roles: role_summaries,
+        roles_in_order,
+        roles_out_of_reach,
         categories: categories.into_iter().map(|(summary, _)| summary).collect(),
         categories_in_order,
         announcements,
@@ -315,13 +383,26 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         .await
         .context("reading the server (is the bot in it?)")?
         .name;
-    let role_names = guild
+    let roles = guild
         .roles(http)
         .await
-        .context("listing the server's roles")?
+        .context("listing the server's roles")?;
+    let everyone = RoleId::new(guild.get());
+    let role_positions = roles
+        .values()
+        .filter(|role| role.id != everyone)
+        .map(|role| (role.id, role.position))
+        .collect();
+    let role_names = roles
         .into_iter()
         .map(|(id, role)| (id, role.name))
         .collect();
+    let bot_id = http
+        .get_current_user()
+        .await
+        .context("signing in as the bot")?
+        .id
+        .get();
     let channels = guild
         .channels(http)
         .await
@@ -353,6 +434,8 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         server_name,
         members,
         role_names,
+        role_positions,
+        bot_id,
         channels,
         objects,
     })
@@ -443,10 +526,23 @@ mod tests {
             .collect();
         // Renamed by hand: the check uses the server's name.
         role_names.insert(RoleId::new(3), "Raiders".into());
+        // In order, Leader (1) at the top, under the bot's own role (99, at 10).
+        let mut role_positions: HashMap<RoleId, u16> =
+            (1..=6).map(|id| (RoleId::new(id), 7 - id as u16)).collect();
+        role_positions.insert(RoleId::new(99), 10);
+        let mut members = members;
+        members.push(ServerMember {
+            id: 1000,
+            name: "Blood Legion bot".into(),
+            bot: true,
+            roles: vec![RoleId::new(99)],
+        });
         Snapshot {
             server_name: "Blood Legion".into(),
             members,
             role_names,
+            role_positions,
+            bot_id: 1000,
             channels: vec![
                 category(101, "Public", 0),
                 category(102, "Members", 1),
@@ -522,7 +618,7 @@ mod tests {
                 roles: vec!["Member".into()],
             }]
         );
-        assert_eq!((report.people, report.bots), (5, 1));
+        assert_eq!((report.people, report.bots), (5, 2));
         assert_eq!((report.linked, report.linked_in_server), (4, 3));
     }
 
@@ -541,7 +637,10 @@ mod tests {
         let report = check(&linked, &server(members));
         let officer = report.roles.iter().find(|r| r.name == "Officer").unwrap();
         // Held by a and c; due to a and b (Away is not in the server).
-        assert_eq!((officer.exists, officer.holders, officer.due), (true, 2, 2));
+        assert_eq!(
+            (officer.id.as_deref(), officer.holders, officer.due),
+            (Some("2"), 2, 2)
+        );
     }
 
     #[test]
@@ -564,7 +663,16 @@ mod tests {
         assert!(report.categories_in_order);
         assert_eq!(
             report.announcements,
-            Some(("announcements".into(), Some("Public".into())))
+            Some(ChannelSummary {
+                id: "201".into(),
+                name: "announcements".into(),
+                category: Some("Public".into()),
+            })
+        );
+        let ids: Vec<_> = report.categories.iter().map(|c| c.id.as_deref()).collect();
+        assert_eq!(
+            ids,
+            vec![Some("101"), Some("102"), Some("103"), Some("104")]
         );
 
         // Officers dragged above Raiders.
@@ -574,20 +682,35 @@ mod tests {
     }
 
     #[test]
+    fn says_whether_the_roles_stand_in_order_and_within_reach() {
+        let report = check(&[], &server(vec![]));
+        assert!(report.roles_in_order);
+        assert!(report.roles_out_of_reach.is_empty());
+
+        // Friend dragged above Leader, and Leader above the bot's own role.
+        let mut moved = server(vec![]);
+        moved.role_positions.insert(RoleId::new(6), 8);
+        moved.role_positions.insert(RoleId::new(1), 11);
+        let report = check(&[], &moved);
+        assert!(!report.roles_in_order);
+        assert_eq!(report.roles_out_of_reach, vec!["Leader".to_string()]);
+    }
+
+    #[test]
     fn a_role_or_category_the_server_lacks_is_reported_once_not_against_everyone() {
         let mut lacking = server(vec![member(10, "pal", &[])]);
         lacking.role_names.remove(&RoleId::new(6));
         lacking.channels.retain(|channel| channel.id != 104);
         let report = check(&[account("10", "Pal", Rank::Friend)], &lacking);
         let friend = report.roles.iter().find(|r| r.name == "Friend").unwrap();
-        assert!(!friend.exists);
+        assert_eq!(friend.id, None);
         assert!(report.members.is_empty());
         let officers = report
             .categories
             .iter()
             .find(|c| c.name == "Officers")
             .unwrap();
-        assert!(!officers.exists);
+        assert_eq!(officers.id, None);
         assert!(report.categories_in_order);
     }
 }
