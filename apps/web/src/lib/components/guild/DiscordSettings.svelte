@@ -58,9 +58,9 @@
 	</div>
 	<p class="muted">
 		The bot keeps the guild's Discord server set up like the site: a role for each rank, categories
-		that follow access, and #announcements on the front page. It gives no one a role; the role check
-		shows who lacks theirs. It runs once both are set. The token is stored encrypted and never shown
-		again.
+		that follow access, and #public-announcements on the front page. It gives no one a role; the
+		role check shows who lacks theirs. It runs once both are set. The token is stored encrypted and
+		never shown again.
 	</p>
 	{#if error}<Alert variant="error">{error}</Alert>{/if}
 	{#if saved}<Alert variant="success">{saved}</Alert>{/if}

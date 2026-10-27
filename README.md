@@ -242,8 +242,10 @@ The guild's Discord server is kept by a bot, the same Discord application member
 above). It makes a role for each rank (Leader, Officer, Raider, Trial, Member, Friend) and four
 categories that follow the site's access levels, each open to its level and those above it: Public
 (everyone), Members (every role), Raiders (leader, officers, raiders, trials), and Officers (leader
-and officers). In Public it makes #announcements, which everyone reads and the leader and officers
-post in; its posts show on the front page, kept in step as they are edited or deleted.
+and officers). It makes two announcements channels besides, at the top of the channel list in no
+category, where only the leader and officers post: #public-announcements, which everyone reads and
+whose posts show on the front page (kept in step as they are edited or deleted), and
+#raider-announcements, for the leader, officers, raiders, and trials.
 
 It never removes anything, and gives no one a role. It makes what is missing (taking over a role or
 category of the same name made by hand), and on its own categories sets only its own permission
@@ -252,15 +254,21 @@ id.
 
 The **Discord page** (`/admin/discord`, superusers) reads the server and shows how it stands, a
 heading per check: the bot's state (running, since when, last seen, its last check and error); the
-server's people and bots, how many members linked Discord and are in it, and #announcements (with
-its id) and its kept posts; its **roles** and **categories** with their Discord ids (each role with
-its holders against the linked members whose rank calls for it, each category with its channels),
-and whether they stand top to bottom as the site has them; linked members not in the server, without
-their rank's role, or holding another of the bot's roles besides; and people holding one of the
-bot's roles who have not linked Discord. The bot never reorders anything on its own: an order that
-is off has a **Fix order** button, which moves only the bot's own roles or categories, among the
-places they already hold, so everything else keeps its place. Discord lets the bot move only roles
-below its own, which the page warns of.
+server's people and bots, how many members linked Discord and are in it, and the posts kept from
+#public-announcements; its **roles** and **categories** with their Discord ids (each role with its
+holders against the linked members whose rank calls for it, each category with its channels), and
+whether they stand top to bottom as the site has them; the announcements channels, and whether they
+are at the top under their own names; channels in the bot's categories not synced with them (with
+permissions of their own); linked members not in the server, without their rank's role, or holding
+another of the bot's roles besides; and people holding one of the bot's roles who have not linked
+Discord. The bot never reorders, moves, or syncs anything on its own: an order that is off has a
+**Fix order** button, which moves only the bot's own roles or categories among the places they
+already hold, so everything else keeps its place; announcements channels out of place have a **Fix**
+button that moves them to the top under their own names; and each unsynced channel has a **Sync**
+button that gives it its category's permissions again. The page also checks the bot's own highest
+role: it should be the server's top role, since Discord lets the bot move only roles below it and
+lets no one raise their own (if not, someone above it drags it to the top in Server Settings, Roles),
+and shown separately in the member list, which its **Show separately** button turns on.
 
 To set it up, in the application's **Bot** page turn on the **Message Content** intent (for the
 announcements) and **Server Members** (for the role check), and invite it to the server (**OAuth2 →

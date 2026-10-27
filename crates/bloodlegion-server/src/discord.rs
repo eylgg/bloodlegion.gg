@@ -1,6 +1,7 @@
-//! The guild's Discord server, run by a bot: it keeps the bot's roles and categories as the site
-//! has them (`layout`) and mirrors the public #announcements channel for the site (`markdown`
-//! renders it). It hands out no roles; the role check (`check`) shows a superuser who lacks theirs.
+//! The guild's Discord server, run by a bot: it keeps the bot's roles, categories, and
+//! announcements channels as the site has them (`layout`), and mirrors #public-announcements for
+//! the site (`markdown` renders it). It hands out no roles and fixes nothing by itself; the Discord
+//! page (`check`) shows a superuser what is out of line, and its buttons (`fix`) put it right.
 //!
 //! One bot connection serves every instance of the server. Each instance waits on a Postgres
 //! advisory lock held on a connection of its own, and the one holding it runs the bot; when that
@@ -13,9 +14,9 @@
 mod api;
 mod check;
 mod db;
+mod fix;
 mod layout;
 mod markdown;
-mod order;
 mod sync;
 
 use std::sync::{Arc, RwLock};
@@ -222,7 +223,7 @@ async fn run(
         .await
         .context("recording that the bot runs")?;
     if let Err(error) = sync::announcements(&http, pool, config.guild, layout.announcements).await {
-        warn("could not catch up #announcements", &error);
+        warn("could not catch up #public-announcements", &error);
     }
 
     let shards = client.shard_manager.clone();

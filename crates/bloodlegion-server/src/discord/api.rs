@@ -1,4 +1,5 @@
 use anyhow::Context;
+use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -7,15 +8,15 @@ use time::{OffsetDateTime, serde::iso8601};
 
 use super::check::{self, Overview};
 use super::db;
+use super::fix::{self, FixError};
 use super::markdown::{self, Mentions};
-use super::order::{self, FixError};
 use crate::extract::{Admin, SameOrigin};
 use crate::{Error, Problem, Result, State};
 
 /// How many announcements the site shows.
 const LATEST: i64 = 10;
 
-/// A post from #announcements, rendered for the site.
+/// A post from #public-announcements, rendered for the site.
 #[derive(Debug, serde::Serialize)]
 pub struct Announcement {
     /// The Discord message id, as a string: it does not fit a JavaScript number.
@@ -29,8 +30,8 @@ pub struct Announcement {
     pub edited_at: Option<OffsetDateTime>,
 }
 
-/// `GET /api/announcements`: the latest posts in #announcements, newest first. Public, as the
-/// channel is.
+/// `GET /api/announcements`: the latest posts in #public-announcements, newest first. Public, as
+/// the channel is.
 async fn latest(state: State) -> Result<Json<Vec<Announcement>>> {
     let posts = db::latest_announcements(&state.pool, LATEST)
         .await
@@ -184,14 +185,47 @@ async fn fix_categories(
     _: SameOrigin,
     _admin: Admin,
 ) -> Result<StatusCode, FixError> {
-    order::fix_categories(&state).await?;
+    fix::fix_categories(&state).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
 /// `POST /api/admin/discord/fix/roles`: superusers only. Puts the bot's roles in order (see
 /// `order`); nothing else moves.
 async fn fix_roles(state: State, _: SameOrigin, _admin: Admin) -> Result<StatusCode, FixError> {
-    order::fix_roles(&state).await?;
+    fix::fix_roles(&state).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/admin/discord/fix/bot-role`: superusers only. Shows the bot's own role separately in
+/// the member list (see `fix`).
+async fn fix_bot_role(state: State, _: SameOrigin, _admin: Admin) -> Result<StatusCode, FixError> {
+    fix::fix_bot_role(&state).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/admin/discord/fix/announcements`: superusers only. Moves the announcements channels
+/// to the top of the list under their own names (see `fix`).
+async fn fix_announcements(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+) -> Result<StatusCode, FixError> {
+    fix::fix_announcements(&state).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/admin/discord/fix/sync/{channel}`: superusers only. Syncs a channel in one of the
+/// bot's categories with it again (see `fix`).
+async fn sync_channel(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+    Path(channel): Path<String>,
+) -> Result<StatusCode, FixError> {
+    let channel = channel
+        .parse()
+        .map_err(|_| Error::External(FixError::NotInOurCategory))?;
+    fix::sync_channel(&state, channel).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -206,6 +240,9 @@ pub fn admin_router() -> Router<State> {
         .route("/discord/check", get(role_check))
         .route("/discord/fix/categories", post(fix_categories))
         .route("/discord/fix/roles", post(fix_roles))
+        .route("/discord/fix/bot-role", post(fix_bot_role))
+        .route("/discord/fix/announcements", post(fix_announcements))
+        .route("/discord/fix/sync/{channel}", post(sync_channel))
 }
 
 #[cfg(test)]

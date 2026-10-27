@@ -10,7 +10,7 @@
 	});
 </script>
 
-<!-- The latest posts in the Discord server's #announcements, which the bot mirrors here. -->
+<!-- The latest posts in the Discord server's #public-announcements, which the bot mirrors here. -->
 <section aria-labelledby="announcements-heading">
 	<h2 id="announcements-heading">Announcements</h2>
 	{#each announcements as post (post.id)}

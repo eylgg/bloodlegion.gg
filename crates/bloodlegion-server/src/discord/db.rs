@@ -170,7 +170,7 @@ pub async fn linked_accounts(pool: &PgPool) -> sqlx::Result<Vec<LinkedAccount>> 
     .await
 }
 
-/// A post in #announcements, as stored.
+/// A post in #public-announcements, as stored.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Announcement {
     pub message_id: u64,

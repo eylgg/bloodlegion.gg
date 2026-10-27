@@ -1,18 +1,25 @@
-//! Putting the bot's categories and roles in the site's order, when a superuser asks: it is never
-//! done on its own. Only the bot's own items move, and only among the slots they already hold, so
-//! every other category or role keeps its place.
+//! The fixes a superuser can ask for on the Discord page: none is ever done on its own.
 //!
-//! Discord lists categories top to bottom by position (then id), and roles top to bottom by
-//! position from the highest. A bot can move only roles below its own highest one.
+//! - Putting the bot's categories and roles in the site's order. Only the bot's own items move,
+//!   and only among the slots they already hold, so every other category or role keeps its place.
+//!   Discord lists categories top to bottom by position (then id), and roles top to bottom by
+//!   position from the highest. A bot can move only roles below its own highest one.
+//! - Moving the announcements channels to the top of the list (out of any category) under their
+//!   own names.
+//! - Showing the bot's own role separately in the member list (Discord's "hoist").
+//! - Syncing a channel in one of the bot's categories with it again: its permissions become the
+//!   category's.
 
 use std::cmp::Reverse;
 use std::collections::HashMap;
 
 use anyhow::Context;
-use serenity::all::{ChannelId, ChannelType, GuildId, Http, RoleId, UserId};
+use serenity::all::{
+    ChannelId, ChannelType, EditChannel, EditRole, GuildId, Http, HttpError, RoleId, UserId,
+};
 
 use super::db;
-use super::layout::{Access, CATEGORIES};
+use super::layout::{ANNOUNCEMENTS, Access, CATEGORIES};
 use super::sync::REASON;
 use crate::{Error, Problem, Result, State};
 
@@ -104,6 +111,29 @@ pub enum FixError {
                   bot's role above the guild's roles, then try again."
     )]
     OutOfReach(String),
+    #[error("the bot has no role")]
+    #[problem(
+        status = CONFLICT,
+        title = "No Role",
+        detail = "The bot holds no role in the server to change."
+    )]
+    NoBotRole,
+    #[error("discord refused to change the bot's own role")]
+    #[problem(
+        status = FORBIDDEN,
+        title = "Own Role Refused",
+        detail = "Discord did not let the bot change its own role. In Server Settings, Roles, open \
+                  the bot's role and turn on \"Display role members separately from online \
+                  members\"."
+    )]
+    OwnRoleRefused,
+    #[error("not in one of the bot's categories")]
+    #[problem(
+        status = NOT_FOUND,
+        title = "Not the Bot's",
+        detail = "That channel is not in one of the bot's categories."
+    )]
+    NotInOurCategory,
     #[error("discord: {0}")]
     #[problem(
         status = BAD_GATEWAY,
@@ -238,6 +268,113 @@ pub async fn fix_roles(state: &State) -> Result<(), FixError> {
         return Err(discord(format!("{status}: {text}")));
     }
     tracing::info!("discord: put the roles in order");
+    Ok(())
+}
+
+/// Shows the bot's own highest role separately in the member list.
+pub async fn fix_bot_role(state: &State) -> Result<(), FixError> {
+    let (token, guild) = connection(state).await?;
+    let http = Http::new(&token);
+    let roles = guild.roles(&http).await.map_err(discord)?;
+    let me: UserId = http.get_current_user().await.map_err(discord)?.id;
+    let role = guild
+        .member(&http, me)
+        .await
+        .map_err(discord)?
+        .roles
+        .iter()
+        .filter_map(|id| roles.get(id))
+        .max_by_key(|role| role.position)
+        .ok_or(Error::External(FixError::NoBotRole))?;
+    if role.hoist {
+        return Ok(());
+    }
+    match guild
+        .edit_role(
+            &http,
+            role.id,
+            EditRole::new().hoist(true).audit_log_reason(REASON),
+        )
+        .await
+    {
+        Ok(_) => {}
+        Err(serenity::Error::Http(HttpError::UnsuccessfulRequest(response)))
+            if response.status_code.as_u16() == 403 =>
+        {
+            return Err(Error::External(FixError::OwnRoleRefused));
+        }
+        Err(error) => return Err(discord(error)),
+    }
+    tracing::info!(name = %role.name, "discord: showed the bot's role separately");
+    Ok(())
+}
+
+/// Moves the announcements channels to the top of the list, out of any category, under their own
+/// names. A missing one is left for the bot to make when it next checks.
+pub async fn fix_announcements(state: &State) -> Result<(), FixError> {
+    let (token, guild) = connection(state).await?;
+    let http = Http::new(&token);
+    let channels = guild.channels(&http).await.map_err(discord)?;
+    for wanted in ANNOUNCEMENTS {
+        let Some(id) = db::object_id(&state.pool, wanted.key).await? else {
+            continue;
+        };
+        let Some(channel) = channels.get(&ChannelId::new(id)) else {
+            continue;
+        };
+        if channel.name == wanted.name && channel.parent_id.is_none() {
+            continue;
+        }
+        channel
+            .id
+            .edit(
+                &http,
+                EditChannel::new()
+                    .name(wanted.name)
+                    .category(None)
+                    .audit_log_reason(REASON),
+            )
+            .await
+            .map_err(discord)?;
+        tracing::info!(
+            name = wanted.name,
+            "discord: moved an announcements channel to the top"
+        );
+    }
+    Ok(())
+}
+
+/// Syncs `channel`, in one of the bot's categories, with that category again: its permissions
+/// become the category's, which it then follows.
+pub async fn sync_channel(state: &State, channel: u64) -> Result<(), FixError> {
+    let (token, guild) = connection(state).await?;
+    let http = Http::new(&token);
+    let channels = guild.channels(&http).await.map_err(discord)?;
+    let mut ours = Vec::new();
+    for category in &CATEGORIES {
+        if let Some(id) = db::object_id(&state.pool, category.key).await? {
+            ours.push(ChannelId::new(id));
+        }
+    }
+    let target = channels
+        .get(&ChannelId::new(channel))
+        .ok_or(Error::External(FixError::NotInOurCategory))?;
+    let parent = target
+        .parent_id
+        .filter(|parent| ours.contains(parent))
+        .and_then(|parent| channels.get(&parent))
+        .ok_or(Error::External(FixError::NotInOurCategory))?;
+    target
+        .id
+        .edit(
+            &http,
+            EditChannel::new()
+                .permissions(parent.permission_overwrites.clone())
+                .audit_log_reason(REASON),
+        )
+        .await
+        .map_err(discord)?;
+    tracing::info!(name = %target.name, "discord: synced a channel with its category");
     Ok(())
 }
 

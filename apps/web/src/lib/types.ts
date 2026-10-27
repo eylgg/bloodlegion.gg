@@ -52,7 +52,7 @@ export type DiscordOverview = {
 		last_error: string | null;
 		last_error_at: string | null;
 	};
-	/** The posts stored from #announcements. */
+	/** The posts stored from #public-announcements. */
 	posts: { stored: number; latest: string | null };
 	/** `null` when the bot is not set up or Discord could not be read (`failure` says why). */
 	report: DiscordReport | null;
@@ -73,13 +73,29 @@ export type DiscordReport = {
 	roles: { id: string | null; name: string; holders: number; due: number }[];
 	/** Whether the bot's roles stand in that order in Discord's list. */
 	roles_in_order: boolean;
+	/** The bot's own highest role: it can move only roles below it. */
+	/**
+	 * The bot's own highest role: the server's roles above it (top first; none at the top), and
+	 * whether the member list shows it separately.
+	 */
+	bot_role: { id: string; name: string; above: string[]; shown_separately: boolean } | null;
 	/** The bot's roles not below its own highest role, which it cannot move. */
 	roles_out_of_reach: string[];
 	/** The bot's categories, in the order it keeps them. */
 	categories: { id: string | null; name: string; channels: number }[];
 	categories_in_order: boolean;
-	/** #announcements, when it exists. */
-	announcements: { id: string; name: string; category: string | null } | null;
+	/**
+	 * The announcements channels, public first: the name each should have, its id (`null` when
+	 * missing), its name now when that differs (`named`), and the category it is in, if any.
+	 */
+	announcements: {
+		name: string;
+		id: string | null;
+		named: string | null;
+		category: string | null;
+	}[];
+	/** Channels in the bot's categories not synced with them (permissions of their own). */
+	unsynced: { id: string; name: string; category: string }[];
 	/** Linked members out of line: not in the server, lacking their role, or holding another. */
 	members: {
 		username: string;
@@ -96,7 +112,7 @@ export type DiscordReport = {
 	unlinked: { discord_id: string; discord_name: string; roles: string[] }[];
 };
 
-/** A post from the Discord server's #announcements, rendered by the backend. */
+/** A post from the Discord server's #public-announcements, rendered by the backend. */
 export type Announcement = {
 	/** The Discord message id: a string, as it does not fit a JavaScript number. */
 	id: string;

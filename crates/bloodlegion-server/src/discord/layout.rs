@@ -1,7 +1,8 @@
 //! What the bot keeps in the server, as the site has it: a role for each rank (the leader,
-//! officers, raiders, trials, members, friends), and four categories that follow the access levels, each
-//! open to its level and the ones above it. #announcements, in Public, is the one channel the bot
-//! makes: everyone reads it, the leader and officers post.
+//! officers, raiders, trials, members, friends), and four categories that follow the access levels,
+//! each open to its level and the ones above it. The bot makes two channels besides, at the top of
+//! the list in no category, where only the leader and officers post: #public-announcements, which
+//! everyone reads (and the site shows), and #raider-announcements, for the raiding roster.
 //!
 //! The bot makes the roles but does not hand them out: the role check (`check`) lists who lacks
 //! theirs. Pure: the permission entries are worked out here and applied by `sync`.
@@ -119,11 +120,29 @@ pub const CATEGORIES: [Category; 4] = [
     },
 ];
 
-/// The public category, which holds #announcements.
-pub const PUBLIC: &Category = &CATEGORIES[0];
+/// An announcements channel: at the top of the list, in no category, so it stands apart; read by
+/// `audience`, posted in by the leader and officers.
+pub struct Announcements {
+    pub key: &'static str,
+    pub name: &'static str,
+    pub audience: Audience,
+}
 
-pub const ANNOUNCEMENTS_KEY: &str = "channel:announcements";
-pub const ANNOUNCEMENTS_NAME: &str = "announcements";
+/// The public one, which the site shows on its front page. Its key is the one #announcements had,
+/// so the channel made under that name is this one, its posts kept.
+pub const PUBLIC_ANNOUNCEMENTS: Announcements = Announcements {
+    key: "channel:announcements",
+    name: "public-announcements",
+    audience: Audience::Everyone,
+};
+
+pub const RAIDER_ANNOUNCEMENTS: Announcements = Announcements {
+    key: "channel:raider-announcements",
+    name: "raider-announcements",
+    audience: Audience::AtLeast(Access::Trial),
+};
+
+pub const ANNOUNCEMENTS: [&Announcements; 2] = [&PUBLIC_ANNOUNCEMENTS, &RAIDER_ANNOUNCEMENTS];
 
 /// Where everything the bot keeps is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -172,18 +191,44 @@ pub fn category_overwrites(
     }
 }
 
-/// #announcements: everyone reads it, and only the leader and officers post (or start threads).
-pub fn announcements_overwrites(roles: &Roles, everyone: RoleId) -> Vec<PermissionOverwrite> {
+/// An announcements channel's permission entries: its readers (by `audience`) read it, and only the
+/// leader and officers post (or start threads). Its own, not a category's: it is in none.
+pub fn announcements_overwrites(
+    audience: Audience,
+    roles: &Roles,
+    everyone: RoleId,
+    bot: UserId,
+) -> Vec<PermissionOverwrite> {
     let read = Permissions::VIEW_CHANNEL | Permissions::READ_MESSAGE_HISTORY;
     let post = Permissions::SEND_MESSAGES
         | Permissions::SEND_MESSAGES_IN_THREADS
         | Permissions::CREATE_PUBLIC_THREADS
         | Permissions::CREATE_PRIVATE_THREADS;
-    let mut overwrites = vec![role(everyone, read, post)];
-    overwrites.extend(
-        [Access::Leader, Access::Officer]
-            .map(|access| role(roles.get(access), read | post, Permissions::empty())),
-    );
+    let mut overwrites = match audience {
+        Audience::Everyone => vec![role(everyone, read, post)],
+        Audience::AtLeast(level) => {
+            let mut overwrites = vec![
+                role(everyone, Permissions::empty(), read | post),
+                PermissionOverwrite {
+                    allow: read,
+                    deny: Permissions::empty(),
+                    kind: PermissionOverwriteType::Member(bot),
+                },
+            ];
+            overwrites.extend(
+                Access::ALL
+                    .into_iter()
+                    .filter(|access| *access <= level)
+                    .map(|access| role(roles.get(access), read, post)),
+            );
+            overwrites
+        }
+    };
+    // The posters' entries come last and allow posting, overriding their reader entries' deny.
+    for access in [Access::Leader, Access::Officer] {
+        overwrites.retain(|o| o.kind != PermissionOverwriteType::Role(roles.get(access)));
+        overwrites.push(role(roles.get(access), read | post, Permissions::empty()));
+    }
     overwrites
 }
 
@@ -270,19 +315,35 @@ mod tests {
 
     #[test]
     fn only_the_leader_and_officers_post_announcements() {
-        let overwrites = announcements_overwrites(&ROLES, EVERYONE);
-        let everyone = overwrites
-            .iter()
-            .find(|o| o.kind == PermissionOverwriteType::Role(EVERYONE))
-            .unwrap();
+        let entry = |overwrites: &[PermissionOverwrite], id| {
+            overwrites
+                .iter()
+                .find(|o| o.kind == PermissionOverwriteType::Role(id))
+                .cloned()
+        };
+        let public = announcements_overwrites(Audience::Everyone, &ROLES, EVERYONE, BOT);
+        let everyone = entry(&public, EVERYONE).unwrap();
         assert!(everyone.allow.contains(Permissions::VIEW_CHANNEL));
         assert!(everyone.deny.contains(Permissions::SEND_MESSAGES));
-        for poster in [LEADER, OFFICER] {
-            let entry = overwrites
-                .iter()
-                .find(|o| o.kind == PermissionOverwriteType::Role(poster))
-                .unwrap();
-            assert!(entry.allow.contains(Permissions::SEND_MESSAGES));
+
+        let raider = announcements_overwrites(RAIDER_ANNOUNCEMENTS.audience, &ROLES, EVERYONE, BOT);
+        assert!(
+            entry(&raider, EVERYONE)
+                .unwrap()
+                .deny
+                .contains(Permissions::VIEW_CHANNEL)
+        );
+        let trial = entry(&raider, TRIAL).unwrap();
+        assert!(trial.allow.contains(Permissions::VIEW_CHANNEL));
+        assert!(trial.deny.contains(Permissions::SEND_MESSAGES));
+        assert_eq!(entry(&raider, MEMBER), None);
+
+        for overwrites in [&public, &raider] {
+            for poster in [LEADER, OFFICER] {
+                let poster = entry(overwrites, poster).unwrap();
+                assert!(poster.allow.contains(Permissions::SEND_MESSAGES));
+                assert!(poster.deny.is_empty());
+            }
         }
     }
 }

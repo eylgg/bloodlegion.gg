@@ -5,15 +5,17 @@
 //! counts the server's people, each role's holders, and each category's channels, and says whether
 //! the categories stand in order. It reads Discord and changes nothing.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::Context;
-use serenity::all::{ChannelType, GuildId, Http, Member, RoleId};
+use serenity::all::{
+    ChannelType, GuildId, Http, Member, PermissionOverwrite, PermissionOverwriteType, RoleId,
+};
 use time::OffsetDateTime;
 
 use super::db::{self, LinkedAccount, Status};
-use super::layout::{ANNOUNCEMENTS_KEY, Access, CATEGORIES};
-use super::order::{self, List, Slot};
+use super::fix::{self, List, Slot};
+use super::layout::{ANNOUNCEMENTS, Access, CATEGORIES};
 use crate::guild::Rank;
 use crate::{Result, State};
 
@@ -34,6 +36,7 @@ pub struct Channel {
     pub category: bool,
     pub parent: Option<u64>,
     pub position: u16,
+    pub overwrites: Vec<PermissionOverwrite>,
 }
 
 /// The server as the check reads it, all at once.
@@ -44,6 +47,8 @@ pub struct Snapshot {
     pub role_names: HashMap<RoleId, String>,
     /// Each role's position, `@everyone` left out.
     pub role_positions: HashMap<RoleId, u16>,
+    /// The roles shown separately in the member list (Discord's "hoist").
+    pub hoisted: HashSet<RoleId>,
     /// The bot's own user id: its highest role decides which roles it can move.
     pub bot_id: u64,
     pub channels: Vec<Channel>,
@@ -98,14 +103,39 @@ pub struct CategorySummary {
     pub channels: usize,
 }
 
-/// #announcements, where it is.
+/// The bot's own highest role, which should be the server's top role.
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
-pub struct ChannelSummary {
+pub struct BotRole {
     /// Its Discord id, as a string.
     pub id: String,
     pub name: String,
-    /// Its category's name.
+    /// The server's roles above it, top first; none when it is the top role.
+    pub above: Vec<String>,
+    /// Whether the member list shows its holders (the bot) on their own, apart from everyone else.
+    pub shown_separately: bool,
+}
+
+/// One of the announcements channels: where it is, against where it should be (at the top of the
+/// list, in no category, under its own name).
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct AnnouncementsStatus {
+    /// The name it should have.
+    pub name: String,
+    /// Its Discord id, as a string; `None` when the server lacks it.
+    pub id: Option<String>,
+    /// Its name now, when it is not the one it should have.
+    pub named: Option<String>,
+    /// The category it is in, when it is in one.
     pub category: Option<String>,
+}
+
+/// A channel in one of the bot's categories whose permissions are its own rather than the
+/// category's (Discord calls it not synced): it no longer follows who may see the category.
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct Unsynced {
+    pub id: String,
+    pub name: String,
+    pub category: String,
 }
 
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
@@ -121,14 +151,19 @@ pub struct Report {
     pub roles: Vec<RoleSummary>,
     /// Whether the roles that exist stand in that order in Discord's list.
     pub roles_in_order: bool,
+    /// The bot's own highest role (Discord makes one for a bot when it joins): it can move only
+    /// roles below it, and nobody can raise it but someone above it. `None` when it has none.
+    pub bot_role: Option<BotRole>,
     /// The bot's roles not below the bot's own highest role, which it cannot move.
     pub roles_out_of_reach: Vec<String>,
     /// In the order the bot keeps them.
     pub categories: Vec<CategorySummary>,
     /// Whether the categories that exist stand in that order in Discord's list.
     pub categories_in_order: bool,
-    /// #announcements, when it exists.
-    pub announcements: Option<ChannelSummary>,
+    /// The announcements channels, public first.
+    pub announcements: Vec<AnnouncementsStatus>,
+    /// Channels in the bot's categories not synced with them.
+    pub unsynced: Vec<Unsynced>,
     pub members: Vec<MemberStatus>,
     pub unlinked: Vec<Unlinked>,
 }
@@ -259,7 +294,7 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         .iter()
         .filter_map(|(_, found)| found.map(|c| c.id))
         .collect();
-    let categories_in_order = order::in_order(&category_slots, &ours, List::Categories);
+    let categories_in_order = fix::in_order(&category_slots, &ours, List::Categories);
 
     let role_slots: Vec<Slot> = server
         .role_positions
@@ -273,17 +308,16 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         .into_iter()
         .filter_map(|access| roles.get(&access).map(|id| id.get()))
         .collect();
-    let roles_in_order = order::in_order(&role_slots, &our_roles, List::Roles);
-    let bot_top = server
+    let roles_in_order = fix::in_order(&role_slots, &our_roles, List::Roles);
+    let bot_role = server
         .members
         .iter()
         .find(|member| member.id == server.bot_id)
         .into_iter()
         .flat_map(|bot| &bot.roles)
-        .filter_map(|id| server.role_positions.get(id))
-        .max()
-        .copied()
-        .unwrap_or(0);
+        .filter_map(|id| Some((*server.role_positions.get(id)?, *id)))
+        .max();
+    let bot_top = bot_role.map_or(0, |(position, _)| position);
     let roles_out_of_reach = Access::ALL
         .into_iter()
         .filter(|access| {
@@ -294,14 +328,49 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         })
         .map(name)
         .collect();
-    let announcements = channel(ANNOUNCEMENTS_KEY).map(|found| ChannelSummary {
-        id: found.id.to_string(),
-        name: found.name.clone(),
-        category: found
-            .parent
-            .and_then(|id| server.channels.iter().find(|c| c.id == id))
-            .map(|c| c.name.clone()),
-    });
+    let category_name = |id: u64| {
+        server
+            .channels
+            .iter()
+            .find(|c| c.id == id)
+            .map(|c| c.name.clone())
+    };
+    let announcements: Vec<AnnouncementsStatus> = ANNOUNCEMENTS
+        .iter()
+        .map(|wanted| {
+            let found = channel(wanted.key).filter(|c| !c.category);
+            AnnouncementsStatus {
+                name: wanted.name.to_string(),
+                id: found.map(|c| c.id.to_string()),
+                named: found
+                    .filter(|c| c.name != wanted.name)
+                    .map(|c| c.name.clone()),
+                category: found.and_then(|c| c.parent).and_then(category_name),
+            }
+        })
+        .collect();
+    let announcement_ids: Vec<u64> = ANNOUNCEMENTS
+        .iter()
+        .filter_map(|wanted| server.objects.get(wanted.key).copied())
+        .collect();
+    let mut unsynced: Vec<Unsynced> = categories
+        .iter()
+        .filter_map(|(_, found)| *found)
+        .flat_map(|category| {
+            server
+                .channels
+                .iter()
+                .filter(move |c| c.parent == Some(category.id))
+                .filter(|c| !announcement_ids.contains(&c.id))
+                .filter(move |c| !same_overwrites(&c.overwrites, &category.overwrites))
+                .map(move |c| Unsynced {
+                    id: c.id.to_string(),
+                    name: c.name.clone(),
+                    category: category.name.clone(),
+                })
+        })
+        .collect();
+    unsynced.sort_by(|a, b| (&a.category, &a.name).cmp(&(&b.category, &b.name)));
 
     Report {
         server_name: server.server_name.clone(),
@@ -311,16 +380,56 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         linked_in_server: linked.iter().filter(|a| linked_member(a).is_some()).count(),
         roles: role_summaries,
         roles_in_order,
+        bot_role: bot_role.map(|(position, id)| {
+            let mut above: Vec<(u16, u64)> = server
+                .role_positions
+                .iter()
+                .filter(|(_, p)| **p > position)
+                .map(|(id, p)| (*p, id.get()))
+                .collect();
+            above.sort_by_key(|&(p, id)| (std::cmp::Reverse(p), id));
+            BotRole {
+                id: id.get().to_string(),
+                name: server.role_names.get(&id).cloned().unwrap_or_default(),
+                shown_separately: server.hoisted.contains(&id),
+                above: above
+                    .into_iter()
+                    .filter_map(|(_, id)| server.role_names.get(&RoleId::new(id)).cloned())
+                    .collect(),
+            }
+        }),
         roles_out_of_reach,
         categories: categories.into_iter().map(|(summary, _)| summary).collect(),
         categories_in_order,
         announcements,
+        unsynced,
         members: statuses,
         unlinked,
     }
 }
 
-/// The posts stored from #announcements.
+/// Whether two sets of permission entries are the same, in any order: a channel synced with its
+/// category has exactly the category's.
+fn same_overwrites(a: &[PermissionOverwrite], b: &[PermissionOverwrite]) -> bool {
+    let key = |entries: &[PermissionOverwrite]| {
+        let mut keys: Vec<(u8, u64, u64, u64)> = entries
+            .iter()
+            .map(|o| {
+                let (kind, id) = match o.kind {
+                    PermissionOverwriteType::Role(id) => (0, id.get()),
+                    PermissionOverwriteType::Member(id) => (1, id.get()),
+                    _ => (2, 0),
+                };
+                (kind, id, o.allow.bits(), o.deny.bits())
+            })
+            .collect();
+        keys.sort_unstable();
+        keys
+    };
+    key(a) == key(b)
+}
+
+/// The posts stored from #public-announcements.
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
 pub struct Posts {
     pub stored: i64,
@@ -393,6 +502,11 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         .filter(|role| role.id != everyone)
         .map(|role| (role.id, role.position))
         .collect();
+    let hoisted = roles
+        .values()
+        .filter(|role| role.hoist)
+        .map(|role| role.id)
+        .collect();
     let role_names = roles
         .into_iter()
         .map(|(id, role)| (id, role.name))
@@ -414,6 +528,7 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
             category: channel.kind == ChannelType::Category,
             parent: channel.parent_id.map(|id| id.get()),
             position: channel.position,
+            overwrites: channel.permission_overwrites,
         })
         .collect();
     let members = server_members(http, guild)
@@ -424,7 +539,7 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         .into_iter()
         .map(Access::key)
         .chain(CATEGORIES.iter().map(|c| c.key))
-        .chain([ANNOUNCEMENTS_KEY])
+        .chain(ANNOUNCEMENTS.iter().map(|a| a.key))
     {
         if let Some(id) = db::object_id(pool, key).await? {
             objects.insert(key.to_string(), id);
@@ -435,6 +550,7 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         members,
         role_names,
         role_positions,
+        hoisted,
         bot_id,
         channels,
         objects,
@@ -468,6 +584,7 @@ async fn server_members(http: &Http, guild: GuildId) -> anyhow::Result<Vec<Serve
 
 #[cfg(test)]
 mod tests {
+    use super::super::layout::PUBLIC_ANNOUNCEMENTS;
     use super::*;
 
     fn account(subject: &str, username: &str, rank: Rank) -> LinkedAccount {
@@ -494,6 +611,7 @@ mod tests {
             category: true,
             parent: None,
             position,
+            overwrites: vec![],
         }
     }
 
@@ -504,6 +622,7 @@ mod tests {
             category: false,
             parent: Some(parent),
             position: 0,
+            overwrites: vec![],
         }
     }
 
@@ -518,7 +637,7 @@ mod tests {
         for (n, category) in CATEGORIES.iter().enumerate() {
             objects.insert(category.key.to_string(), 101 + n as u64);
         }
-        objects.insert(ANNOUNCEMENTS_KEY.to_string(), 201);
+        objects.insert(PUBLIC_ANNOUNCEMENTS.key.to_string(), 201);
         let mut role_names: HashMap<RoleId, String> = Access::ALL
             .into_iter()
             .enumerate()
@@ -530,6 +649,7 @@ mod tests {
         let mut role_positions: HashMap<RoleId, u16> =
             (1..=6).map(|id| (RoleId::new(id), 7 - id as u16)).collect();
         role_positions.insert(RoleId::new(99), 10);
+        role_names.insert(RoleId::new(99), "Blood Legion bot".into());
         let mut members = members;
         members.push(ServerMember {
             id: 1000,
@@ -542,6 +662,7 @@ mod tests {
             members,
             role_names,
             role_positions,
+            hoisted: HashSet::from([RoleId::new(99)]),
             bot_id: 1000,
             channels: vec![
                 category(101, "Public", 0),
@@ -661,13 +782,23 @@ mod tests {
             ]
         );
         assert!(report.categories_in_order);
+        // #announcements, as made before: in Public under its old name. The raider one is missing.
         assert_eq!(
             report.announcements,
-            Some(ChannelSummary {
-                id: "201".into(),
-                name: "announcements".into(),
-                category: Some("Public".into()),
-            })
+            vec![
+                AnnouncementsStatus {
+                    name: "public-announcements".into(),
+                    id: Some("201".into()),
+                    named: Some("announcements".into()),
+                    category: Some("Public".into()),
+                },
+                AnnouncementsStatus {
+                    name: "raider-announcements".into(),
+                    id: None,
+                    named: None,
+                    category: None,
+                },
+            ]
         );
         let ids: Vec<_> = report.categories.iter().map(|c| c.id.as_deref()).collect();
         assert_eq!(
@@ -686,6 +817,15 @@ mod tests {
         let report = check(&[], &server(vec![]));
         assert!(report.roles_in_order);
         assert!(report.roles_out_of_reach.is_empty());
+        assert_eq!(
+            report.bot_role,
+            Some(BotRole {
+                id: "99".into(),
+                name: "Blood Legion bot".into(),
+                above: vec![],
+                shown_separately: true,
+            })
+        );
 
         // Friend dragged above Leader, and Leader above the bot's own role.
         let mut moved = server(vec![]);
@@ -694,6 +834,12 @@ mod tests {
         let report = check(&[], &moved);
         assert!(!report.roles_in_order);
         assert_eq!(report.roles_out_of_reach, vec!["Leader".to_string()]);
+        assert_eq!(report.bot_role.unwrap().above, vec!["Leader".to_string()]);
+
+        // Shown in the member list with everyone else.
+        let mut mixed = server(vec![]);
+        mixed.hoisted.clear();
+        assert!(!check(&[], &mixed).bot_role.unwrap().shown_separately);
     }
 
     #[test]
@@ -712,5 +858,29 @@ mod tests {
             .unwrap();
         assert_eq!(officers.id, None);
         assert!(report.categories_in_order);
+    }
+
+    #[test]
+    fn finds_the_channels_not_synced_with_their_category() {
+        let entry = |id: u64, allow: u64| PermissionOverwrite {
+            allow: serenity::all::Permissions::from_bits_truncate(allow),
+            deny: serenity::all::Permissions::empty(),
+            kind: PermissionOverwriteType::Role(RoleId::new(id)),
+        };
+        let mut snapshot = server(vec![]);
+        // Members (102) lets roles 1 and 5 see; #general (202) matches in another order, #chat
+        // (203) has an entry of its own.
+        snapshot.channels[1].overwrites = vec![entry(1, 1024), entry(5, 1024)];
+        snapshot.channels[5].overwrites = vec![entry(5, 1024), entry(1, 1024)];
+        snapshot.channels[6].overwrites = vec![entry(1, 1024), entry(5, 1024), entry(9, 2048)];
+        let report = check(&[], &snapshot);
+        assert_eq!(
+            report.unsynced,
+            vec![Unsynced {
+                id: "203".into(),
+                name: "chat".into(),
+                category: "Members".into(),
+            }]
+        );
     }
 }

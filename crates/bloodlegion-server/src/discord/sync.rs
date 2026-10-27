@@ -1,6 +1,6 @@
 //! Bringing the server in line with the site, through Discord's HTTP API: the bot's roles and
 //! categories (made when missing, its own permission entries set), and the stored copy of
-//! #announcements.
+//! #public-announcements.
 //!
 //! It never removes anything in Discord, and gives no member a role: it only makes what is
 //! missing. What it made is found by the id it stored; failing that,
@@ -18,7 +18,7 @@ use time::OffsetDateTime;
 
 use super::db;
 use super::layout::{
-    ANNOUNCEMENTS_KEY, ANNOUNCEMENTS_NAME, Access, CATEGORIES, Layout, PUBLIC, Roles,
+    ANNOUNCEMENTS, Access, CATEGORIES, Layout, PUBLIC_ANNOUNCEMENTS, Roles,
     announcements_overwrites, category_overwrites,
 };
 use super::markdown::Mentions;
@@ -26,7 +26,7 @@ use super::markdown::Mentions;
 /// Shown in the server's audit log for everything the bot does.
 pub(super) const REASON: &str = "Blood Legion site sync";
 
-/// How many of #announcements' latest posts a catch-up reads.
+/// How many of #public-announcements' latest posts a catch-up reads.
 const CATCH_UP: u8 = 50;
 
 /// Makes whatever of the bot's roles and categories is missing and sets its permission entries on
@@ -83,7 +83,6 @@ pub async fn layout(
         .channels(http)
         .await
         .context("listing the server's channels")?;
-    let mut public = None;
     for category in &CATEGORIES {
         let id = ensure_channel(
             http,
@@ -92,7 +91,7 @@ pub async fn layout(
             &channels,
             category.key,
             category.name,
-            None,
+            ChannelType::Category,
         )
         .await?;
         for overwrite in category_overwrites(category.audience, &roles, everyone, bot) {
@@ -102,36 +101,38 @@ pub async fn layout(
                     format!("setting permissions on the {} category", category.name)
                 })?;
         }
-        if category.key == PUBLIC.key {
+    }
+
+    let mut public = None;
+    for channel in ANNOUNCEMENTS {
+        let id = ensure_channel(
+            http,
+            pool,
+            guild,
+            &channels,
+            channel.key,
+            channel.name,
+            ChannelType::Text,
+        )
+        .await?;
+        for overwrite in announcements_overwrites(channel.audience, &roles, everyone, bot) {
+            id.create_permission(http, overwrite)
+                .await
+                .with_context(|| format!("setting permissions on #{}", channel.name))?;
+        }
+        if channel.key == PUBLIC_ANNOUNCEMENTS.key {
             public = Some(id);
         }
     }
-    let public = public.expect("the categories include Public");
-
-    let announcements = ensure_channel(
-        http,
-        pool,
-        guild,
-        &channels,
-        ANNOUNCEMENTS_KEY,
-        ANNOUNCEMENTS_NAME,
-        Some(public),
-    )
-    .await?;
-    for overwrite in announcements_overwrites(&roles, everyone) {
-        announcements
-            .create_permission(http, overwrite)
-            .await
-            .context("setting permissions on #announcements")?;
-    }
     Ok(Layout {
         roles,
-        announcements,
+        announcements: public.expect("the announcements include the public one"),
     })
 }
 
-/// The channel the bot keeps under `key`: a category when `parent` is `None`, else a text channel
-/// in `parent`. Found by its stored id, else by name (in `parent`), else made.
+/// The channel the bot keeps under `key`: a category, or a text channel at the top of the list (in
+/// no category). Found by its stored id wherever it now is, else by name at the top of the list,
+/// else made there.
 async fn ensure_channel(
     http: &Http,
     pool: &PgPool,
@@ -139,32 +140,24 @@ async fn ensure_channel(
     existing: &HashMap<ChannelId, GuildChannel>,
     key: &str,
     name: &str,
-    parent: Option<ChannelId>,
+    kind: ChannelType,
 ) -> anyhow::Result<ChannelId> {
-    let kind = if parent.is_some() {
-        ChannelType::Text
-    } else {
-        ChannelType::Category
-    };
-    let fits = |channel: &GuildChannel| match parent {
-        None => channel.kind == ChannelType::Category,
+    let fits = |channel: &GuildChannel| match kind {
+        ChannelType::Category => channel.kind == ChannelType::Category,
         // A text channel may have been made an announcement (news) channel since.
-        Some(_) => matches!(channel.kind, ChannelType::Text | ChannelType::News),
+        _ => matches!(channel.kind, ChannelType::Text | ChannelType::News),
     };
     let stored = db::object_id(pool, key).await?.map(ChannelId::new);
     if let Some(id) = stored.filter(|id| existing.get(id).is_some_and(fits)) {
         return Ok(id);
     }
     let adopted = existing.values().find(|channel| {
-        fits(channel) && channel.name.eq_ignore_ascii_case(name) && channel.parent_id == parent
+        fits(channel) && channel.name.eq_ignore_ascii_case(name) && channel.parent_id.is_none()
     });
     let id = match adopted {
         Some(channel) => channel.id,
         None => {
-            let mut builder = CreateChannel::new(name).kind(kind).audit_log_reason(REASON);
-            if let Some(parent) = parent {
-                builder = builder.category(parent);
-            }
+            let builder = CreateChannel::new(name).kind(kind).audit_log_reason(REASON);
             let channel = guild
                 .create_channel(http, builder)
                 .await
@@ -206,7 +199,7 @@ impl Names {
     }
 }
 
-/// Whether a message in #announcements is a post (not a pin notice, a thread starting, ...).
+/// Whether a message in #public-announcements is a post (not a pin notice, a thread starting, ...).
 fn is_post(message: &Message) -> bool {
     matches!(
         message.kind,
@@ -226,7 +219,7 @@ fn timestamp(at: serenity::all::Timestamp) -> anyhow::Result<OffsetDateTime> {
     Ok(OffsetDateTime::from_unix_timestamp(at.unix_timestamp())?)
 }
 
-/// Stores (or updates) a message from #announcements, or drops it when it is not a post.
+/// Stores (or updates) a message from #public-announcements, or drops it when it is not a post.
 pub async fn store(pool: &PgPool, names: &Names, message: &Message) -> anyhow::Result<()> {
     if !is_post(message) {
         return Ok(db::delete_announcements(pool, &[message.id.get()]).await?);
@@ -267,7 +260,7 @@ pub async fn store(pool: &PgPool, names: &Names, message: &Message) -> anyhow::R
     Ok(())
 }
 
-/// Catches the stored copy up with #announcements' latest posts: new and edited ones stored,
+/// Catches the stored copy up with #public-announcements' latest posts: new and edited ones stored,
 /// deleted ones dropped (as far back as the read goes).
 pub async fn announcements(
     http: &Http,
@@ -279,7 +272,7 @@ pub async fn announcements(
     let messages = channel
         .messages(http, GetMessages::new().limit(CATCH_UP))
         .await
-        .context("reading #announcements")?;
+        .context("reading #public-announcements")?;
     for message in &messages {
         store(pool, &names, message).await?;
     }

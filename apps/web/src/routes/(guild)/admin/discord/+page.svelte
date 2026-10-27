@@ -48,27 +48,31 @@
 		return relative.format(Math.round(seconds), 'second');
 	}
 
-	let fixing = $state<'categories' | 'roles' | null>(null);
+	let fixing = $state<string | null>(null);
 	let fixError = $state('');
-	let fixed = $state('');
+	let fixed = $state<string | null>(null);
 
-	/** Moves the bot's categories or roles into order, among their own slots, when asked. */
-	async function fix(list: 'categories' | 'roles') {
-		const what = list === 'roles' ? "the bot's roles" : "the bot's categories";
-		if (!confirm(`Put ${what} in order? Only they move; everything else keeps its place.`)) return;
-		fixing = list;
+	/** Runs one of the fixes (`roles`, `categories`, `bot-role`, `announcements`, `sync/<id>`) once confirmed. */
+	async function fix(action: string, question: string) {
+		if (!confirm(question)) return;
+		fixing = action;
 		fixError = '';
-		fixed = '';
+		fixed = null;
 		try {
-			await api.post(`/api/admin/discord/fix/${list}`);
+			await api.post(`/api/admin/discord/fix/${action}`);
 			await invalidateAll();
-			fixed = list;
+			fixed = action;
 		} catch (err) {
 			fixError = errorMessage(err, 'That did not work. Please try again.');
 		} finally {
 			fixing = null;
 		}
 	}
+
+	const announcementsToFix = $derived(
+		report?.announcements.filter((channel) => channel.id && (channel.named || channel.category)) ??
+			[]
+	);
 </script>
 
 <svelte:head>
@@ -167,25 +171,78 @@
 					<dd>{report.linked}, {report.linked_in_server} of them in the server</dd>
 				</div>
 				<div>
-					<dt>Announcements</dt>
+					<dt>Posts kept for the site</dt>
 					<dd>
-						{#if report.announcements}
-							#{report.announcements.name}{report.announcements.category
-								? ` in ${report.announcements.category}`
-								: ''}
-							<code class="id">{report.announcements.id}</code>, {overview.posts.stored}
-							{overview.posts.stored === 1 ? 'post' : 'posts'} kept{overview.posts.latest
-								? `, latest ${ago(overview.posts.latest)}`
-								: ''}
-						{:else}
-							<span class="tag warn">No channel</span>
-						{/if}
+						{overview.posts.stored}{overview.posts.latest
+							? `, latest ${ago(overview.posts.latest)}`
+							: ''}
 					</dd>
 				</div>
 			</dl>
 		</section>
 
 		{#if fixError}<Alert variant="error">{fixError}</Alert>{/if}
+
+		<section>
+			<div class="head">
+				<h2>The bot's role</h2>
+				{#if !report.bot_role}
+					<span class="tag warn">None</span>
+				{:else}
+					{#if report.bot_role.above.length === 0}
+						<span class="tag ok">At the top</span>
+					{:else}
+						<span class="tag warn">Not at the top</span>
+					{/if}
+					{#if report.bot_role.shown_separately}
+						<span class="tag ok">Shown separately</span>
+					{:else}
+						<span class="tag warn">Not shown separately</span>
+					{/if}
+				{/if}
+			</div>
+			<p class="muted">
+				The bot's highest role should be the server's top role, since it can manage only the roles
+				below it, and shown separately in the member list, so the bot stands apart from everyone
+				else.
+			</p>
+			{#if fixed === 'bot-role'}<Alert variant="success">The bot's role is shown separately.</Alert
+				>{/if}
+			{#if report.bot_role}
+				<dl class="facts">
+					<div>
+						<dt>Role</dt>
+						<dd>{report.bot_role.name} <code class="id">{report.bot_role.id}</code></dd>
+					</div>
+					<div>
+						<dt>Above it</dt>
+						<dd>{report.bot_role.above.length ? report.bot_role.above.join(', ') : 'Nothing'}</dd>
+					</div>
+				</dl>
+			{/if}
+			{#if !report.bot_role || report.bot_role.above.length > 0}
+				<Alert variant="info">
+					There is no button for this: Discord lets no one move their own top role, the bot
+					included, nor any role above it. In Server Settings, Roles, the server's owner (or someone
+					with a role above the bot's) drags the bot's role to the top.
+				</Alert>
+			{/if}
+			{#if report.bot_role && !report.bot_role.shown_separately}
+				<div class="actions">
+					<Button
+						variant="secondary"
+						disabled={fixing !== null}
+						onclick={() =>
+							fix(
+								'bot-role',
+								"Show the bot's role separately from online members in the member list?"
+							)}
+					>
+						{fixing === 'bot-role' ? 'Fixing...' : 'Show separately'}
+					</Button>
+				</div>
+			{/if}
+		</section>
 
 		<section>
 			<div class="head">
@@ -204,10 +261,8 @@
 			{#if fixed === 'roles'}<Alert variant="success">The roles are in order.</Alert>{/if}
 			{#if report.roles_out_of_reach.length > 0}
 				<Alert variant="info">
-					{report.roles_out_of_reach.join(', ')}
-					{report.roles_out_of_reach.length === 1 ? 'is' : 'are'} not below the bot's own role, so it
-					cannot move {report.roles_out_of_reach.length === 1 ? 'it' : 'them'}. Drag the bot's role
-					above them first.
+					The bot cannot move {report.roles_out_of_reach.join(', ')}: they are not below its own
+					role (see the bot's role above).
 				</Alert>
 			{/if}
 			<table>
@@ -231,7 +286,15 @@
 			</table>
 			{#if !report.roles_in_order}
 				<div class="actions">
-					<Button variant="secondary" disabled={fixing !== null} onclick={() => fix('roles')}>
+					<Button
+						variant="secondary"
+						disabled={fixing !== null}
+						onclick={() =>
+							fix(
+								'roles',
+								"Put the bot's roles in order? Only they move; everything else keeps its place."
+							)}
+					>
 						{fixing === 'roles' ? 'Fixing...' : 'Fix order'}
 					</Button>
 				</div>
@@ -269,10 +332,117 @@
 			</table>
 			{#if !report.categories_in_order}
 				<div class="actions">
-					<Button variant="secondary" disabled={fixing !== null} onclick={() => fix('categories')}>
+					<Button
+						variant="secondary"
+						disabled={fixing !== null}
+						onclick={() =>
+							fix(
+								'categories',
+								"Put the bot's categories in order? Only they move; everything else keeps its place."
+							)}
+					>
 						{fixing === 'categories' ? 'Fixing...' : 'Fix order'}
 					</Button>
 				</div>
+			{/if}
+		</section>
+
+		<section>
+			<div class="head">
+				<h2>Announcements</h2>
+				{#if report.announcements.every((c) => c.id && !c.named && !c.category)}
+					<span class="tag ok">In place</span>
+				{:else}
+					<span class="tag warn">Out of place</span>
+				{/if}
+			</div>
+			<p class="muted">
+				At the top of the channel list, in no category, where only the leader and officers post.
+				#public-announcements shows on the site's front page. A missing one is made when the bot
+				next checks (on start, then hourly).
+			</p>
+			{#if fixed === 'announcements'}
+				<Alert variant="success">The announcements channels are in place.</Alert>
+			{/if}
+			<table>
+				<thead>
+					<tr><th>Channel</th><th>ID</th><th></th></tr>
+				</thead>
+				<tbody>
+					{#each report.announcements as channel (channel.name)}
+						<tr>
+							<td>#{channel.name}</td>
+							<td>
+								{#if channel.id}<code class="id">{channel.id}</code>{:else}<span class="tag warn"
+										>Missing</span
+									>{/if}
+							</td>
+							<td class="needs">
+								{#if channel.named}<span class="tag warn">Named #{channel.named}</span>{/if}
+								{#if channel.category}<span class="tag warn">In {channel.category}</span>{/if}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+			{#if announcementsToFix.length > 0}
+				<div class="actions">
+					<Button
+						variant="secondary"
+						disabled={fixing !== null}
+						onclick={() =>
+							fix(
+								'announcements',
+								'Move the announcements channels to the top of the list, out of any category, under their own names?'
+							)}
+					>
+						{fixing === 'announcements' ? 'Fixing...' : 'Fix'}
+					</Button>
+				</div>
+			{/if}
+		</section>
+
+		<section>
+			<div class="head">
+				<h2>Synced channels</h2>
+				{#if report.unsynced.length === 0}
+					<span class="tag ok">All synced</span>
+				{:else}
+					<span class="tag warn">{report.unsynced.length} not synced</span>
+				{/if}
+			</div>
+			<p class="muted">
+				Channels in the bot's categories follow the category's permissions while synced with it.
+				These have permissions of their own, so they no longer follow who may see the category.
+			</p>
+			{#if fixed?.startsWith('sync/')}
+				<Alert variant="success">Synced with its category.</Alert>
+			{/if}
+			{#if report.unsynced.length > 0}
+				<ul class="list">
+					{#each report.unsynced as channel (channel.id)}
+						<li>
+							<div class="who">
+								<span class="name">#{channel.name}</span>
+								<span class="muted small">
+									in {channel.category} · <code class="id">{channel.id}</code>
+								</span>
+							</div>
+							<Button
+								variant="secondary"
+								size="small"
+								disabled={fixing !== null}
+								onclick={() =>
+									fix(
+										`sync/${channel.id}`,
+										`Sync #${channel.name} with ${channel.category}? Its own permissions are replaced with the category's.`
+									)}
+							>
+								{fixing === `sync/${channel.id}` ? 'Syncing...' : 'Sync'}
+							</Button>
+						</li>
+					{/each}
+				</ul>
 			{/if}
 		</section>
 
