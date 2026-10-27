@@ -248,9 +248,15 @@ post in; its posts show on the front page, kept in step as they are edited or de
 It never removes anything, and gives no one a role. It makes what is missing (taking over a role or
 category of the same name made by hand), and on its own categories sets only its own permission
 entries, so others added by hand stay. Renaming its roles or categories is fine: it keeps track by
-id. The **role check** (`/admin/discord`, superusers) reads the server and lists where it differs
-from the site: linked members not in the server, without their rank's role, or holding another of
-the bot's roles besides, and people holding one of the bot's roles who have not linked Discord.
+id.
+
+The **Discord page** (`/admin/discord`, superusers) reads the server and shows how it stands: the
+bot's state (running, since when, last seen, its last check and error), the server's people and
+bots, how many members linked Discord and are in it, each role's holders against the linked members
+whose rank calls for it, each category's channels and whether they stand in the bot's order, and the
+kept #announcements posts. It lists where the server differs from the site: linked members not in
+the server, without their rank's role, or holding another of the bot's roles besides, and people
+holding one of the bot's roles who have not linked Discord.
 
 To set it up, in the application's **Bot** page turn on the **Message Content** intent (for the
 announcements) and **Server Members** (for the role check), and invite it to the server (**OAuth2 →

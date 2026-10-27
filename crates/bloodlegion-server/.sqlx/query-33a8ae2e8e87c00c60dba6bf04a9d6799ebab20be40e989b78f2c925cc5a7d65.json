@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE discord_status SET\n             running_since = NULL,\n             last_error = COALESCE($1, last_error),\n             last_error_at = CASE WHEN $1::text IS NULL THEN last_error_at ELSE now() END",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "33a8ae2e8e87c00c60dba6bf04a9d6799ebab20be40e989b78f2c925cc5a7d65"
+}

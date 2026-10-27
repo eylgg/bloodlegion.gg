@@ -36,12 +36,43 @@ export type DiscordSettings = {
 	has_bot_token: boolean;
 };
 
-/** Where the Discord server's roles differ from the site's ranks (the backend's `discord::check`). */
-export type DiscordCheck = {
-	/** The bot's roles the server lacks, by the name the bot gives them. */
-	missing_roles: string[];
-	/** How many members have linked Discord. */
+/** How the Discord bot and server stand, for a superuser (the backend's `discord::check`). */
+export type DiscordOverview = {
+	/** Whether both the bot's token and the server are set. */
+	set_up: boolean;
+	/** What the bot last said about itself. */
+	status: {
+		bot_user: string | null;
+		/** `null` while it is not running. */
+		running_since: string | null;
+		/** Written every few seconds while it runs. */
+		seen_at: string | null;
+		/** When it last checked its roles and categories. */
+		checked_at: string | null;
+		last_error: string | null;
+		last_error_at: string | null;
+	};
+	/** The posts stored from #announcements. */
+	posts: { stored: number; latest: string | null };
+	/** `null` when the bot is not set up or Discord could not be read (`failure` says why). */
+	report: DiscordReport | null;
+	failure: string | null;
+};
+
+export type DiscordReport = {
+	server_name: string;
+	people: number;
+	bots: number;
+	/** Members who linked Discord, and how many of them are in the server. */
 	linked: number;
+	linked_in_server: number;
+	/** The bot's roles: who holds each, and how many linked members' ranks call for it. */
+	roles: { name: string; exists: boolean; holders: number; due: number }[];
+	/** The bot's categories, in the order it keeps them. */
+	categories: { name: string; exists: boolean; channels: number }[];
+	categories_in_order: boolean;
+	/** #announcements' name and its category's, when it exists. */
+	announcements: [string, string | null] | null;
 	/** Linked members out of line: not in the server, lacking their role, or holding another. */
 	members: {
 		username: string;

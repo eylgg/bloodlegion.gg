@@ -54,7 +54,7 @@
 <form class="panel" onsubmit={save}>
 	<div class="head">
 		<h2>Discord bot</h2>
-		<Button href={resolve('/admin/discord')} variant="secondary" size="small">Role check</Button>
+		<Button href={resolve('/admin/discord')} variant="secondary" size="small">Check</Button>
 	</div>
 	<p class="muted">
 		The bot keeps the guild's Discord server set up like the site: a role for each rank, categories

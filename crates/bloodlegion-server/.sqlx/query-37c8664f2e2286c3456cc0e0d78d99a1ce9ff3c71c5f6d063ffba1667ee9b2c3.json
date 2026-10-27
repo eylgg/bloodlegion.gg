@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE discord_status\n         SET bot_user = $1, running_since = now(), seen_at = now(), checked_at = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "37c8664f2e2286c3456cc0e0d78d99a1ce9ff3c71c5f6d063ffba1667ee9b2c3"
+}

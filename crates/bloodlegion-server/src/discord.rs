@@ -88,6 +88,7 @@ pub fn spawn(state: State) {
         loop {
             if let Err(error) = lead(&state).await {
                 warn("the bot stopped", &error);
+                stopped(&state.pool, Some(&format!("{error:#}"))).await;
             }
             tokio::time::sleep(RETRY).await;
         }
@@ -124,11 +125,13 @@ async fn lead(state: &State) -> anyhow::Result<()> {
                 tracing::info!("discord: this instance runs the bot");
                 run(&state.pool, &config, &mut lock, &mut changes).await?;
                 tracing::info!("discord: the bot's settings changed; starting it again");
+                stopped(&state.pool, None).await;
             }
             None => {
                 tracing::info!(
                     "discord: waiting for a superuser to set the bot's token and server"
                 );
+                stopped(&state.pool, None).await;
                 wait_for_settings(&mut lock, &mut changes).await?;
             }
         }
@@ -207,13 +210,16 @@ async fn run(
         .await
         .context("setting up the Discord client")?;
     let http = client.http.clone();
-    let me = http
+    let current = http
         .get_current_user()
         .await
-        .context("signing in as the bot (is its token right?)")?
-        .id;
+        .context("signing in as the bot (is its token right?)")?;
+    let me = current.id;
 
     let layout = bot.sync_layout(&http, me).await?;
+    db::status_started(pool, &current.name)
+        .await
+        .context("recording that the bot runs")?;
     if let Err(error) = sync::announcements(&http, pool, config.guild, layout.announcements).await {
         warn("could not catch up #announcements", &error);
     }
@@ -233,11 +239,16 @@ async fn run(
                 Ok(_) => break Ok(()),
                 Err(error) => break Err(error).context("listening for changes"),
             },
-            _ = layout_check.tick() => if let Err(error) = bot.sync_layout(&http, me).await {
-                warn("could not check the roles and categories", &error);
+            _ = layout_check.tick() => match bot.sync_layout(&http, me).await {
+                Ok(_) => {
+                    if let Err(error) = db::status_checked(pool).await {
+                        tracing::warn!(%error, "discord: could not record the check");
+                    }
+                }
+                Err(error) => warn("could not check the roles and categories", &error),
             },
-            _ = lock_check.tick() => if let Err(error) = still_locked(lock).await {
-                break Err(error);
+            _ = lock_check.tick() => if let Err(error) = db::status_seen(lock).await {
+                break Err(error).context("lost the bot's lock");
             },
         }
     };
@@ -256,6 +267,13 @@ async fn still_locked(lock: &mut sqlx::PgConnection) -> anyhow::Result<()> {
         .await
         .context("lost the bot's lock")?;
     Ok(())
+}
+
+/// Records that the bot stopped (for the role check page); a failure to is only logged.
+async fn stopped(pool: &PgPool, error: Option<&str>) {
+    if let Err(error) = db::status_stopped(pool, error).await {
+        tracing::warn!(%error, "discord: could not record that the bot stopped");
+    }
 }
 
 fn warn(what: &str, error: &anyhow::Error) {

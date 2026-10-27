@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE discord_status SET checked_at = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "1adc2941642cb2d2ab1027243a23be4c669791235310eac6c5f15999f5c9fae1"
+}

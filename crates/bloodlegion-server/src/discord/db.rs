@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use time::OffsetDateTime;
 
 use super::DISCORD_PROVIDER_SLUG;
@@ -46,6 +46,77 @@ pub async fn set_bot_token(pool: &PgPool, bot_token: Option<&Ciphertext>) -> sql
     sqlx::query!(
         "UPDATE discord_settings SET bot_token_ciphertext = $1",
         bot_token.map(AsRef::<str>::as_ref),
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// What the bot last said about itself.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Status {
+    /// The bot's name in Discord, as it signed in.
+    pub bot_user: Option<String>,
+    /// When it started; `None` while it is not running.
+    #[serde(with = "time::serde::iso8601::option")]
+    pub running_since: Option<OffsetDateTime>,
+    /// When the instance running it last wrote (every few seconds while it runs).
+    #[serde(with = "time::serde::iso8601::option")]
+    pub seen_at: Option<OffsetDateTime>,
+    /// When it last checked its roles and categories.
+    #[serde(with = "time::serde::iso8601::option")]
+    pub checked_at: Option<OffsetDateTime>,
+    pub last_error: Option<String>,
+    #[serde(with = "time::serde::iso8601::option")]
+    pub last_error_at: Option<OffsetDateTime>,
+}
+
+pub async fn status(pool: &PgPool) -> sqlx::Result<Status> {
+    sqlx::query_as!(
+        Status,
+        "SELECT bot_user, running_since, seen_at, checked_at, last_error, last_error_at
+         FROM discord_status"
+    )
+    .fetch_one(pool)
+    .await
+}
+
+/// The bot started, signed in as `bot_user`, and set up its roles and categories.
+pub async fn status_started(pool: &PgPool, bot_user: &str) -> sqlx::Result<()> {
+    sqlx::query!(
+        "UPDATE discord_status
+         SET bot_user = $1, running_since = now(), seen_at = now(), checked_at = now()",
+        bot_user,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// The bot checked its roles and categories again.
+pub async fn status_checked(pool: &PgPool) -> sqlx::Result<()> {
+    sqlx::query!("UPDATE discord_status SET checked_at = now()")
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+/// The running bot is still there. On the lock's own connection, so it also proves the lock is.
+pub async fn status_seen(conn: &mut PgConnection) -> sqlx::Result<()> {
+    sqlx::query!("UPDATE discord_status SET seen_at = now()")
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+/// The bot stopped, with the error that stopped it if one did.
+pub async fn status_stopped(pool: &PgPool, error: Option<&str>) -> sqlx::Result<()> {
+    sqlx::query!(
+        "UPDATE discord_status SET
+             running_since = NULL,
+             last_error = COALESCE($1, last_error),
+             last_error_at = CASE WHEN $1::text IS NULL THEN last_error_at ELSE now() END",
+        error,
     )
     .execute(pool)
     .await?;
@@ -169,6 +240,16 @@ pub async fn prune_announcements(
     .execute(pool)
     .await?;
     Ok(())
+}
+
+/// How many posts are stored, and when the latest was posted.
+pub async fn announcement_totals(pool: &PgPool) -> sqlx::Result<(i64, Option<OffsetDateTime>)> {
+    let row = sqlx::query!(
+        r#"SELECT count(*) AS "stored!", max(posted_at) AS latest FROM discord_announcements"#
+    )
+    .fetch_one(pool)
+    .await?;
+    Ok((row.stored, row.latest))
 }
 
 /// The latest `limit` posts, newest first.
@@ -345,6 +426,25 @@ mod tests {
             (stored.guild_id, stored.bot_token.is_some()),
             (Some(123), false)
         );
+    }
+
+    #[sqlx::test]
+    async fn keeps_the_bots_word_on_itself(pool: PgPool) {
+        assert_eq!(status(&pool).await.unwrap().running_since, None);
+        status_started(&pool, "Blood Legion#0001").await.unwrap();
+        let running = status(&pool).await.unwrap();
+        assert_eq!(running.bot_user.as_deref(), Some("Blood Legion#0001"));
+        assert!(running.running_since.is_some() && running.seen_at.is_some());
+        // A restart for new settings leaves the last error alone; a failure records its own.
+        status_stopped(&pool, None).await.unwrap();
+        status_stopped(&pool, Some("the gateway closed"))
+            .await
+            .unwrap();
+        status_stopped(&pool, None).await.unwrap();
+        let stopped = status(&pool).await.unwrap();
+        assert_eq!(stopped.running_since, None);
+        assert_eq!(stopped.last_error.as_deref(), Some("the gateway closed"));
+        assert!(stopped.last_error_at.is_some());
     }
 
     #[sqlx::test]

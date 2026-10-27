@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT bot_user, running_since, seen_at, checked_at, last_error, last_error_at\n         FROM discord_status",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "bot_user",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "discord_status",
+            "name": "bot_user"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "running_since",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "discord_status",
+            "name": "running_since"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "seen_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "discord_status",
+            "name": "seen_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "checked_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "discord_status",
+            "name": "checked_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "last_error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "discord_status",
+            "name": "last_error"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "last_error_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "discord_status",
+            "name": "last_error_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "8a5ff321fc7940508ec17865fe0fa38c171f7ff395c49fcb30e2b333141bd885"
+}

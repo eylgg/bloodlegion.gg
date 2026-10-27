@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"stored!\", max(posted_at) AS latest FROM discord_announcements",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "stored!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "latest",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "3f6aa6067f26385f96ef5c7fd62abb1a20198995a7a87ba82ace0bfd38394152"
+}

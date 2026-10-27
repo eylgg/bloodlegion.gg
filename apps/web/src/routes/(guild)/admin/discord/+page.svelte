@@ -18,22 +18,54 @@
 		}
 	}
 
-	const inOrder = $derived(
-		data.check !== null &&
-			data.check.missing_roles.length === 0 &&
-			data.check.members.length === 0 &&
-			data.check.unlinked.length === 0
+	const overview = $derived(data.overview);
+	const report = $derived(overview?.report ?? null);
+	const status = $derived(overview?.status ?? null);
+
+	/** The running instance writes every 15 seconds; a minute without means it has gone. */
+	const SEEN_WITHIN_MS = 60_000;
+
+	const botState = $derived.by(() => {
+		if (!overview?.set_up) return 'unset';
+		if (!status?.running_since) return 'stopped';
+		const seen = status.seen_at ? Date.now() - new Date(status.seen_at).getTime() : Infinity;
+		return seen < SEEN_WITHIN_MS ? 'running' : 'silent';
+	});
+
+	const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+	/** "3 minutes ago", "yesterday". */
+	function ago(iso: string): string {
+		const seconds = (new Date(iso).getTime() - Date.now()) / 1000;
+		const units: [Intl.RelativeTimeFormatUnit, number][] = [
+			['day', 86_400],
+			['hour', 3_600],
+			['minute', 60]
+		];
+		for (const [unit, size] of units) {
+			if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit);
+		}
+		return relative.format(Math.round(seconds), 'second');
+	}
+
+	const outOfLine = $derived(
+		report !== null &&
+			(report.members.length > 0 ||
+				report.unlinked.length > 0 ||
+				report.roles.some((role) => !role.exists) ||
+				report.categories.some((category) => !category.exists) ||
+				!report.categories_in_order ||
+				report.announcements === null)
 	);
 </script>
 
 <svelte:head>
-	<title>Discord roles | Blood Legion</title>
+	<title>Discord | Blood Legion</title>
 </svelte:head>
 
 <div class="page-head">
 	<div>
 		<p class="kicker"><a href={resolve('/admin')}>Administration</a></p>
-		<h1>Discord roles</h1>
+		<h1>Discord</h1>
 	</div>
 	<Button variant="secondary" disabled={checking} onclick={recheck}>
 		{checking ? 'Checking...' : 'Check again'}
@@ -41,84 +73,214 @@
 </div>
 
 <p class="muted intro">
-	Where the Discord server's roles differ from the site's ranks. The bot gives and takes no roles:
-	change them in Discord, then check again.
+	How the bot and the server stand, read from Discord now. The bot gives and takes no roles and
+	removes nothing: fix what is listed here in Discord, then check again.
 </p>
 
 {#if data.failure}
 	<Alert variant="error">{data.failure}</Alert>
-{:else if data.check}
-	{#if data.check.missing_roles.length > 0}
-		<Alert variant="info">
-			The server has no {data.check.missing_roles.join(', ')} role yet. The bot makes it when it next
-			starts or checks its roles (hourly), so it is left out below.
-		</Alert>
+{:else if overview && status}
+	<section>
+		<h2>The bot</h2>
+		<dl class="facts">
+			<div>
+				<dt>State</dt>
+				<dd>
+					{#if botState === 'unset'}
+						<span class="tag warn">Not set up</span>
+						<a href={resolve('/admin')}>Set its token and server</a>
+					{:else if botState === 'running'}
+						<span class="tag ok">Running</span>
+					{:else if botState === 'silent'}
+						<span class="tag warn">Not seen lately</span>
+						its server may have stopped
+					{:else}
+						<span class="tag warn">Stopped</span>
+					{/if}
+				</dd>
+			</div>
+			{#if status.bot_user}
+				<div>
+					<dt>Signed in as</dt>
+					<dd>{status.bot_user}</dd>
+				</div>
+			{/if}
+			{#if status.running_since}
+				<div>
+					<dt>Running since</dt>
+					<dd>{ago(status.running_since)}</dd>
+				</div>
+			{/if}
+			{#if status.seen_at}
+				<div>
+					<dt>Last seen</dt>
+					<dd>{ago(status.seen_at)}</dd>
+				</div>
+			{/if}
+			{#if status.checked_at}
+				<div>
+					<dt>Roles and categories checked</dt>
+					<dd>{ago(status.checked_at)}</dd>
+				</div>
+			{/if}
+			{#if status.last_error && status.last_error_at}
+				<div class="wide">
+					<dt>Last error, {ago(status.last_error_at)}</dt>
+					<dd><code>{status.last_error}</code></dd>
+				</div>
+			{/if}
+		</dl>
+	</section>
+
+	{#if overview.failure}
+		<Alert variant="error">Discord could not be read: {overview.failure}</Alert>
 	{/if}
 
-	{#if inOrder}
-		<Alert variant="success">
-			Everyone's roles match their ranks ({data.check.linked}
-			{data.check.linked === 1 ? 'member has' : 'members have'} linked Discord).
-		</Alert>
-	{/if}
-
-	{#if data.check.members.length > 0}
+	{#if report}
 		<section>
-			<h2>Linked members</h2>
-			<p class="muted">
-				{data.check.members.length} of the {data.check.linked} members who linked Discord.
-			</p>
-			<ul class="list">
-				{#each data.check.members as member (member.discord_id)}
-					<li>
-						<div class="who">
-							<span class="name">{member.username}</span>
-							<span class="muted small">
-								{RANK_LABEL[member.rank]} · {member.discord_name ?? 'not in the server'}
-							</span>
-						</div>
-						<div class="needs">
-							{#if member.discord_name === null}
-								<span class="tag">Not in the server</span>
-							{:else if !member.has_role}
-								<span class="tag give">Give {member.role}</span>
-							{/if}
-							{#each member.other_roles as role (role)}
-								<span class="tag extra">Also has {role}</span>
-							{/each}
-						</div>
-					</li>
-				{/each}
-			</ul>
+			<h2>{report.server_name}</h2>
+			<dl class="facts">
+				<div>
+					<dt>People</dt>
+					<dd>{report.people}</dd>
+				</div>
+				<div>
+					<dt>Bots</dt>
+					<dd>{report.bots}</dd>
+				</div>
+				<div>
+					<dt>Linked Discord on the site</dt>
+					<dd>{report.linked}, {report.linked_in_server} of them in the server</dd>
+				</div>
+				<div>
+					<dt>Announcements</dt>
+					<dd>
+						{#if report.announcements}
+							#{report.announcements[0]}{report.announcements[1]
+								? ` in ${report.announcements[1]}`
+								: ''}, {overview.posts.stored}
+							{overview.posts.stored === 1 ? 'post' : 'posts'} kept{overview.posts.latest
+								? `, latest ${ago(overview.posts.latest)}`
+								: ''}
+						{:else}
+							<span class="tag warn">No channel</span>
+						{/if}
+					</dd>
+				</div>
+			</dl>
 		</section>
-	{/if}
 
-	{#if data.check.unlinked.length > 0}
 		<section>
-			<h2>Roles without a linked account</h2>
+			<h2>Roles</h2>
 			<p class="muted">
-				People in the server holding one of the bot's roles who have not linked Discord on the site.
+				Holders: everyone in the server with the role. Due: linked members in the server whose rank
+				calls for it.
 			</p>
-			<ul class="list">
-				{#each data.check.unlinked as person (person.discord_id)}
-					<li>
-						<div class="who">
-							<span class="name">{person.discord_name}</span>
-						</div>
-						<div class="needs">
-							{#each person.roles as role (role)}
-								<span class="tag extra">{role}</span>
-							{/each}
-						</div>
-					</li>
-				{/each}
-			</ul>
+			<table>
+				<thead>
+					<tr><th>Role</th><th>Holders</th><th>Due</th><th></th></tr>
+				</thead>
+				<tbody>
+					{#each report.roles as role (role.name)}
+						<tr>
+							<td>{role.name}</td>
+							<td>{role.exists ? role.holders : '–'}</td>
+							<td>{role.due}</td>
+							<td
+								>{#if !role.exists}<span class="tag warn">Missing</span>{/if}</td
+							>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
 		</section>
+
+		<section>
+			<h2>Categories</h2>
+			<p class="muted">
+				{#if report.categories_in_order}
+					In the bot's order, top to bottom.
+				{:else}
+					<span class="tag warn">Out of order</span> Drag them in Discord into this order, top to bottom.
+				{/if}
+			</p>
+			<table>
+				<thead>
+					<tr><th>Category</th><th>Channels</th><th></th></tr>
+				</thead>
+				<tbody>
+					{#each report.categories as category (category.name)}
+						<tr>
+							<td>{category.name}</td>
+							<td>{category.exists ? category.channels : '–'}</td>
+							<td
+								>{#if !category.exists}<span class="tag warn">Missing</span>{/if}</td
+							>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</section>
+
+		{#if !outOfLine}
+			<Alert variant="success">Everything is as the site has it.</Alert>
+		{/if}
+
+		{#if report.members.length > 0}
+			<section>
+				<h2>Linked members out of line</h2>
+				<ul class="list">
+					{#each report.members as member (member.discord_id)}
+						<li>
+							<div class="who">
+								<span class="name">{member.username}</span>
+								<span class="muted small">
+									{RANK_LABEL[member.rank]} · {member.discord_name ?? 'not in the server'}
+								</span>
+							</div>
+							<div class="needs">
+								{#if member.discord_name === null}
+									<span class="tag">Not in the server</span>
+								{:else if !member.has_role}
+									<span class="tag warn">Give {member.role}</span>
+								{/if}
+								{#each member.other_roles as role (role)}
+									<span class="tag extra">Also has {role}</span>
+								{/each}
+							</div>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
+		{#if report.unlinked.length > 0}
+			<section>
+				<h2>Roles without a linked account</h2>
+				<p class="muted">
+					People in the server holding one of the bot's roles who have not linked Discord on the
+					site.
+				</p>
+				<ul class="list">
+					{#each report.unlinked as person (person.discord_id)}
+						<li>
+							<div class="who"><span class="name">{person.discord_name}</span></div>
+							<div class="needs">
+								{#each person.roles as role (role)}
+									<span class="tag extra">{role}</span>
+								{/each}
+							</div>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
 	{/if}
 {/if}
 
 <style>
-	.intro {
+	.intro,
+	section {
 		max-width: 44rem;
 	}
 
@@ -126,11 +288,60 @@
 		color: inherit;
 	}
 
+	.facts {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+		gap: var(--space-3) var(--space-4);
+		margin: 0;
+	}
+
+	.facts .wide {
+		grid-column: 1 / -1;
+	}
+
+	.facts dt {
+		color: var(--grey-text);
+		font-size: var(--text-sm);
+	}
+
+	.facts dd {
+		margin: 0;
+	}
+
+	code {
+		font-family: var(--font-mono);
+		font-size: var(--text-sm);
+		overflow-wrap: anywhere;
+	}
+
+	table {
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	th,
+	td {
+		padding: var(--space-1) var(--space-2);
+		text-align: left;
+		border-bottom: 1px solid var(--grey-surface);
+	}
+
+	th {
+		color: var(--grey-text);
+		font-size: var(--text-sm);
+		font-weight: 500;
+	}
+
+	td:nth-child(n + 2):not(:last-child),
+	th:nth-child(n + 2):not(:last-child) {
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+
 	.list {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
-		max-width: 44rem;
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -171,11 +382,17 @@
 		padding: 0 var(--space-2);
 		color: var(--grey-text);
 		font-size: var(--text-sm);
+		white-space: nowrap;
 		background-color: var(--grey-surface);
 		border-radius: var(--radius-md);
 	}
 
-	.tag.give {
+	.tag.ok {
+		color: var(--green-text);
+		background-color: var(--green-bg);
+	}
+
+	.tag.warn {
 		color: var(--red-text);
 		background-color: var(--red-bg);
 	}

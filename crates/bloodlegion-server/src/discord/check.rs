@@ -1,44 +1,49 @@
-//! The role check, for a superuser: where the server's roles differ from the site's ranks. The bot
-//! hands out no roles, so this is how someone finds who needs one: linked members not in the server
-//! or without their rank's role (or with another of the bot's besides), and people holding one of
-//! the bot's roles with no linked account. It reads Discord and changes nothing.
+//! The role check, for a superuser: how the bot and the server stand, and where the server's roles
+//! differ from the site's ranks. The bot hands out no roles, so this is how someone finds who needs
+//! one: linked members not in the server or without their rank's role (or with another of the
+//! bot's besides), and people holding one of the bot's roles with no linked account. It also
+//! counts the server's people, each role's holders, and each category's channels, and says whether
+//! the categories stand in order. It reads Discord and changes nothing.
 
 use std::collections::HashMap;
 
 use anyhow::Context;
-use serenity::all::{GuildId, Http, Member, RoleId};
-use sqlx::PgPool;
+use serenity::all::{ChannelType, GuildId, Http, Member, RoleId};
+use time::OffsetDateTime;
 
-use super::db::{self, LinkedAccount};
-use super::layout::Access;
+use super::db::{self, LinkedAccount, Status};
+use super::layout::{ANNOUNCEMENTS_KEY, Access, CATEGORIES};
 use crate::guild::Rank;
-use crate::{Error, Problem, Result, State};
-
-#[derive(Debug, thiserror::Error, Problem)]
-pub enum CheckError {
-    #[error("the bot is not set up")]
-    #[problem(
-        status = CONFLICT,
-        title = "Bot Not Set Up",
-        detail = "Set the bot's token and the server's id first."
-    )]
-    NotSetUp,
-    #[error("discord: {0}")]
-    #[problem(
-        status = BAD_GATEWAY,
-        title = "Discord Unavailable",
-        detail = "Discord could not be asked about the server's members. Is the bot in the server, \
-                  with the Server Members intent on?"
-    )]
-    Discord(String),
-}
+use crate::{Result, State};
 
 /// Someone in the server, as the check needs them.
 #[derive(Debug, Clone)]
 pub struct ServerMember {
     pub id: u64,
     pub name: String,
+    pub bot: bool,
     pub roles: Vec<RoleId>,
+}
+
+/// A channel in the server, as the check needs it.
+#[derive(Debug, Clone)]
+pub struct Channel {
+    pub id: u64,
+    pub name: String,
+    pub category: bool,
+    pub parent: Option<u64>,
+    pub position: u16,
+}
+
+/// The server as the check reads it, all at once.
+pub struct Snapshot {
+    pub server_name: String,
+    /// Everyone in the server, bots included.
+    pub members: Vec<ServerMember>,
+    pub role_names: HashMap<RoleId, String>,
+    pub channels: Vec<Channel>,
+    /// What the bot made, by its key (`discord_objects`), whether or not it is still there.
+    pub objects: HashMap<String, u64>,
 }
 
 /// A linked member whose roles are not what their rank calls for.
@@ -65,29 +70,60 @@ pub struct Unlinked {
     pub roles: Vec<String>,
 }
 
+/// One of the bot's roles: whether the server has it, who holds it, and who should.
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct RoleSummary {
+    /// As the server names it, or as the bot would when it is missing.
+    pub name: String,
+    pub exists: bool,
+    /// People in the server holding it.
+    pub holders: usize,
+    /// Linked members in the server whose rank calls for it.
+    pub due: usize,
+}
+
+/// One of the bot's categories.
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct CategorySummary {
+    pub name: String,
+    pub exists: bool,
+    pub channels: usize,
+}
+
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
 pub struct Report {
-    /// The bot's roles the server does not have (not made yet, or deleted), by the name the bot
-    /// gives them. The check of who holds them leaves these out.
-    pub missing_roles: Vec<String>,
-    /// How many members have a linked Discord account.
+    pub server_name: String,
+    /// People in the server, and bots.
+    pub people: usize,
+    pub bots: usize,
+    /// Members who linked Discord on the site, and how many of them are in the server.
     pub linked: usize,
+    pub linked_in_server: usize,
+    pub roles: Vec<RoleSummary>,
+    /// In the order the bot keeps them.
+    pub categories: Vec<CategorySummary>,
+    /// Whether the categories that exist stand in that order in Discord's list.
+    pub categories_in_order: bool,
+    /// #announcements' name, and its category's, when it exists.
+    pub announcements: Option<(String, Option<String>)>,
     pub members: Vec<MemberStatus>,
     pub unlinked: Vec<Unlinked>,
 }
 
-/// The check itself, given what the site and the server hold. `roles` is the bot's roles where
-/// they exist; `names` names them as the server does.
-pub fn check(
-    linked: &[LinkedAccount],
-    members: &[ServerMember],
-    roles: &HashMap<Access, RoleId>,
-    names: &HashMap<RoleId, String>,
-) -> Report {
+/// The check itself, given what the site and the server hold.
+pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
+    // The bot's roles that the server still has.
+    let roles: HashMap<Access, RoleId> = Access::ALL
+        .into_iter()
+        .filter_map(|access| {
+            let id = RoleId::new(*server.objects.get(access.key())?);
+            server.role_names.contains_key(&id).then_some((access, id))
+        })
+        .collect();
     let name = |access: Access| {
         roles
             .get(&access)
-            .and_then(|id| names.get(id))
+            .and_then(|id| server.role_names.get(id))
             .cloned()
             .unwrap_or_else(|| access.role_name().to_string())
     };
@@ -101,16 +137,20 @@ pub fn check(
             })
             .collect()
     };
-    let in_server: HashMap<u64, &ServerMember> = members.iter().map(|m| (m.id, m)).collect();
+    let people: Vec<&ServerMember> = server.members.iter().filter(|m| !m.bot).collect();
+    let in_server: HashMap<u64, &ServerMember> = people.iter().map(|m| (m.id, *m)).collect();
+    let linked_member = |account: &LinkedAccount| {
+        account
+            .subject
+            .parse::<u64>()
+            .ok()
+            .and_then(|id| in_server.get(&id).copied())
+    };
 
     let mut statuses = Vec::new();
     for account in linked {
         let wanted = Access::of(account.rank);
-        let member = account
-            .subject
-            .parse::<u64>()
-            .ok()
-            .and_then(|id| in_server.get(&id).copied());
+        let member = linked_member(account);
         let holds = member.map(held).unwrap_or_default();
         let has_role = holds.contains(&wanted);
         let other_roles: Vec<String> = holds
@@ -134,7 +174,7 @@ pub fn check(
     }
 
     let linked_ids: Vec<&str> = linked.iter().map(|a| a.subject.as_str()).collect();
-    let mut unlinked: Vec<Unlinked> = members
+    let mut unlinked: Vec<Unlinked> = people
         .iter()
         .filter(|member| !linked_ids.contains(&member.id.to_string().as_str()))
         .filter_map(|member| {
@@ -146,70 +186,176 @@ pub fn check(
             })
         })
         .collect();
-    unlinked.sort_by(|a, b| {
-        a.discord_name
-            .to_lowercase()
-            .cmp(&b.discord_name.to_lowercase())
+    unlinked.sort_by_key(|person| person.discord_name.to_lowercase());
+
+    let role_summaries = Access::ALL
+        .into_iter()
+        .map(|access| RoleSummary {
+            name: name(access),
+            exists: roles.contains_key(&access),
+            holders: people.iter().filter(|m| held(m).contains(&access)).count(),
+            due: linked
+                .iter()
+                .filter(|a| Access::of(a.rank) == access && linked_member(a).is_some())
+                .count(),
+        })
+        .collect();
+
+    let channel = |key: &str| {
+        let id = *server.objects.get(key)?;
+        server.channels.iter().find(|channel| channel.id == id)
+    };
+    let categories: Vec<(CategorySummary, Option<&Channel>)> = CATEGORIES
+        .iter()
+        .map(|category| {
+            let found = channel(category.key).filter(|channel| channel.category);
+            let summary = CategorySummary {
+                name: found.map_or(category.name.to_string(), |c| c.name.clone()),
+                exists: found.is_some(),
+                channels: found.map_or(0, |c| {
+                    server
+                        .channels
+                        .iter()
+                        .filter(|other| other.parent == Some(c.id))
+                        .count()
+                }),
+            };
+            (summary, found)
+        })
+        .collect();
+    // Discord lists categories by position, then id.
+    let order: Vec<(u16, u64)> = categories
+        .iter()
+        .filter_map(|(_, found)| found.map(|c| (c.position, c.id)))
+        .collect();
+    let categories_in_order = order.windows(2).all(|pair| pair[0] < pair[1]);
+    let announcements = channel(ANNOUNCEMENTS_KEY).map(|found| {
+        let parent = found
+            .parent
+            .and_then(|id| server.channels.iter().find(|c| c.id == id))
+            .map(|c| c.name.clone());
+        (found.name.clone(), parent)
     });
 
     Report {
-        missing_roles: Access::ALL
-            .into_iter()
-            .filter(|access| !roles.contains_key(access))
-            .map(|access| access.role_name().to_string())
-            .collect(),
+        server_name: server.server_name.clone(),
+        people: people.len(),
+        bots: server.members.len() - people.len(),
         linked: linked.len(),
+        linked_in_server: linked.iter().filter(|a| linked_member(a).is_some()).count(),
+        roles: role_summaries,
+        categories: categories.into_iter().map(|(summary, _)| summary).collect(),
+        categories_in_order,
+        announcements,
         members: statuses,
         unlinked,
     }
 }
 
-/// Runs the check against the server, reading it with the bot's token.
-pub async fn run(state: &State) -> Result<Report, CheckError> {
+/// The posts stored from #announcements.
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct Posts {
+    pub stored: i64,
+    #[serde(with = "time::serde::iso8601::option")]
+    pub latest: Option<OffsetDateTime>,
+}
+
+/// Everything the page shows. The bot's status and the stored posts come from the site, so they
+/// show even when the check cannot read Discord (then `failure` says why).
+#[derive(Debug, serde::Serialize)]
+pub struct Overview {
+    /// Whether a superuser has set both the bot's token and the server.
+    pub set_up: bool,
+    pub status: Status,
+    pub posts: Posts,
+    pub report: Option<Report>,
+    pub failure: Option<String>,
+}
+
+pub async fn overview(state: &State) -> Result<Overview> {
+    let status = db::status(&state.pool)
+        .await
+        .context("reading the bot's status")?;
+    let (stored, latest) = db::announcement_totals(&state.pool)
+        .await
+        .context("counting the announcements")?;
     let settings = db::settings(&state.pool)
         .await
         .context("reading the bot's settings")?;
-    let (Some(guild), Some(token)) = (settings.guild_id, settings.bot_token) else {
-        return Err(Error::External(CheckError::NotSetUp));
+    let mut overview = Overview {
+        set_up: false,
+        status,
+        posts: Posts { stored, latest },
+        report: None,
+        failure: None,
     };
+    let (Some(guild), Some(token)) = (settings.guild_id, settings.bot_token) else {
+        return Ok(overview);
+    };
+    overview.set_up = true;
     let token = state
         .decrypt(&token)
         .map_err(|error| anyhow::anyhow!("{error}"))?;
-    let http = Http::new(&token);
-    let guild = GuildId::new(guild);
-    let discord = |error: serenity::Error| Error::External(CheckError::Discord(error.to_string()));
+    match snapshot(&state.pool, &Http::new(&token), GuildId::new(guild)).await {
+        Ok(server) => {
+            let linked = db::linked_accounts(&state.pool)
+                .await
+                .context("listing the linked Discord accounts")?;
+            overview.report = Some(check(&linked, &server));
+        }
+        Err(error) => overview.failure = Some(format!("{error:#}")),
+    }
+    Ok(overview)
+}
 
-    let names: HashMap<RoleId, String> = guild
-        .roles(&http)
+/// Reads the server: its name, everyone in it, its roles, and its channels.
+async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::Result<Snapshot> {
+    let server_name = guild
+        .to_partial_guild(http)
         .await
-        .map_err(discord)?
+        .context("reading the server (is the bot in it?)")?
+        .name;
+    let role_names = guild
+        .roles(http)
+        .await
+        .context("listing the server's roles")?
         .into_iter()
         .map(|(id, role)| (id, role.name))
         .collect();
-    let roles = bot_roles(&state.pool, &names).await?;
-    let members = server_members(&http, guild)
+    let channels = guild
+        .channels(http)
         .await
-        .map_err(|error| Error::External(CheckError::Discord(format!("{error:#}"))))?;
-    let linked = db::linked_accounts(&state.pool)
+        .context("listing the server's channels")?
+        .into_values()
+        .map(|channel| Channel {
+            id: channel.id.get(),
+            name: channel.name,
+            category: channel.kind == ChannelType::Category,
+            parent: channel.parent_id.map(|id| id.get()),
+            position: channel.position,
+        })
+        .collect();
+    let members = server_members(http, guild)
         .await
-        .context("listing the linked Discord accounts")?;
-    Ok(check(&linked, &members, &roles, &names))
-}
-
-/// The bot's roles that exist in the server, by the ids it stored when it made them.
-async fn bot_roles(
-    pool: &PgPool,
-    names: &HashMap<RoleId, String>,
-) -> anyhow::Result<HashMap<Access, RoleId>> {
-    let mut roles = HashMap::new();
-    for access in Access::ALL {
-        if let Some(id) = db::object_id(pool, access.key()).await?.map(RoleId::new)
-            && names.contains_key(&id)
-        {
-            roles.insert(access, id);
+        .context("listing the server's members (is the Server Members intent on?)")?;
+    let mut objects = HashMap::new();
+    for key in Access::ALL
+        .into_iter()
+        .map(Access::key)
+        .chain(CATEGORIES.iter().map(|c| c.key))
+        .chain([ANNOUNCEMENTS_KEY])
+    {
+        if let Some(id) = db::object_id(pool, key).await? {
+            objects.insert(key.to_string(), id);
         }
     }
-    Ok(roles)
+    Ok(Snapshot {
+        server_name,
+        members,
+        role_names,
+        channels,
+        objects,
+    })
 }
 
 async fn server_members(http: &Http, guild: GuildId) -> anyhow::Result<Vec<ServerMember>> {
@@ -219,7 +365,7 @@ async fn server_members(http: &Http, guild: GuildId) -> anyhow::Result<Vec<Serve
         let page: Vec<Member> = guild.members(http, Some(1000), after).await?;
         let full = page.len() == 1000;
         after = page.last().map(|member| member.user.id);
-        all.extend(page.into_iter().filter(|m| !m.user.bot).map(|m| {
+        all.extend(page.into_iter().map(|m| {
             ServerMember {
                 id: m.user.id.get(),
                 name: m
@@ -227,6 +373,7 @@ async fn server_members(http: &Http, guild: GuildId) -> anyhow::Result<Vec<Serve
                     .clone()
                     .or(m.user.global_name.clone())
                     .unwrap_or(m.user.name),
+                bot: m.user.bot,
                 roles: m.roles,
             }
         }));
@@ -252,45 +399,91 @@ mod tests {
         ServerMember {
             id,
             name: name.into(),
+            bot: false,
             roles: roles.iter().copied().map(RoleId::new).collect(),
         }
     }
 
-    fn setup() -> (HashMap<Access, RoleId>, HashMap<RoleId, String>) {
-        let roles: HashMap<Access, RoleId> = Access::ALL
+    fn category(id: u64, name: &str, position: u16) -> Channel {
+        Channel {
+            id,
+            name: name.into(),
+            category: true,
+            parent: None,
+            position,
+        }
+    }
+
+    fn text(id: u64, name: &str, parent: u64) -> Channel {
+        Channel {
+            id,
+            name: name.into(),
+            category: false,
+            parent: Some(parent),
+            position: 0,
+        }
+    }
+
+    /// A server where the bot made everything: roles 1 to 6 (Leader to Friend, with Raider
+    /// renamed by hand), categories 101 to 104 in order, and #announcements (201) in Public.
+    fn server(members: Vec<ServerMember>) -> Snapshot {
+        let mut objects: HashMap<String, u64> = Access::ALL
             .into_iter()
             .enumerate()
-            .map(|(n, access)| (access, RoleId::new(n as u64 + 1)))
+            .map(|(n, access)| (access.key().to_string(), n as u64 + 1))
             .collect();
-        let mut names: HashMap<RoleId, String> = roles
-            .iter()
-            .map(|(access, id)| (*id, access.role_name().to_string()))
+        for (n, category) in CATEGORIES.iter().enumerate() {
+            objects.insert(category.key.to_string(), 101 + n as u64);
+        }
+        objects.insert(ANNOUNCEMENTS_KEY.to_string(), 201);
+        let mut role_names: HashMap<RoleId, String> = Access::ALL
+            .into_iter()
+            .enumerate()
+            .map(|(n, access)| (RoleId::new(n as u64 + 1), access.role_name().to_string()))
             .collect();
         // Renamed by hand: the check uses the server's name.
-        names.insert(roles[&Access::Raider], "Raiders".into());
-        (roles, names)
+        role_names.insert(RoleId::new(3), "Raiders".into());
+        Snapshot {
+            server_name: "Blood Legion".into(),
+            members,
+            role_names,
+            channels: vec![
+                category(101, "Public", 0),
+                category(102, "Members", 1),
+                category(103, "Raiders", 2),
+                category(104, "Officers", 3),
+                text(201, "announcements", 101),
+                text(202, "general", 102),
+                text(203, "chat", 102),
+            ],
+            objects,
+        }
     }
+
+    const OFFICER: u64 = 2;
+    const RAIDER: u64 = 3;
+    const MEMBER: u64 = 5;
 
     #[test]
     fn lists_only_whats_out_of_line() {
-        let (roles, names) = setup();
-        let (officer, raider, member_role) = (2, 3, 5);
         let linked = [
             account("10", "Right", Rank::Officer),
             account("20", "Lacking", Rank::Raider),
             account("30", "Promoted", Rank::Officer),
             account("40", "Away", Rank::Member),
         ];
-        let members = [
-            member(10, "right", &[officer, 99]),
+        let mut members = vec![
+            member(10, "right", &[OFFICER, 99]),
             member(20, "lacking", &[]),
-            member(30, "promoted", &[officer, raider]),
-            member(50, "stranger", &[member_role]),
+            member(30, "promoted", &[OFFICER, RAIDER]),
+            member(50, "stranger", &[MEMBER]),
             member(60, "nobody", &[99]),
         ];
-        let report = check(&linked, &members, &roles, &names);
-        assert_eq!(report.linked, 4);
-        assert!(report.missing_roles.is_empty());
+        members.push(ServerMember {
+            bot: true,
+            ..member(70, "bot", &[OFFICER])
+        });
+        let report = check(&linked, &server(members));
         let status = |username: &str| {
             report
                 .members
@@ -320,6 +513,7 @@ mod tests {
             ))
         );
         assert_eq!(status("Away"), Some((None, "Member".into(), false, vec![])));
+        // A bot holding a role is neither someone out of line nor counted among the people.
         assert_eq!(
             report.unlinked,
             vec![Unlinked {
@@ -328,19 +522,72 @@ mod tests {
                 roles: vec!["Member".into()],
             }]
         );
+        assert_eq!((report.people, report.bots), (5, 1));
+        assert_eq!((report.linked, report.linked_in_server), (4, 3));
     }
 
     #[test]
-    fn a_role_the_server_lacks_is_reported_once_not_against_everyone() {
-        let (mut roles, names) = setup();
-        roles.remove(&Access::Friend);
-        let report = check(
-            &[account("10", "Pal", Rank::Friend)],
-            &[member(10, "pal", &[])],
-            &roles,
-            &names,
+    fn counts_each_roles_holders_and_whom_it_is_due() {
+        let linked = [
+            account("10", "A", Rank::Officer),
+            account("20", "B", Rank::Officer),
+            account("40", "Away", Rank::Officer),
+        ];
+        let members = vec![
+            member(10, "a", &[OFFICER]),
+            member(20, "b", &[]),
+            member(50, "c", &[OFFICER]),
+        ];
+        let report = check(&linked, &server(members));
+        let officer = report.roles.iter().find(|r| r.name == "Officer").unwrap();
+        // Held by a and c; due to a and b (Away is not in the server).
+        assert_eq!((officer.exists, officer.holders, officer.due), (true, 2, 2));
+    }
+
+    #[test]
+    fn says_how_the_categories_and_announcements_stand() {
+        let report = check(&[], &server(vec![]));
+        let channels: Vec<_> = report
+            .categories
+            .iter()
+            .map(|c| (c.name.as_str(), c.channels))
+            .collect();
+        assert_eq!(
+            channels,
+            vec![
+                ("Public", 1),
+                ("Members", 2),
+                ("Raiders", 0),
+                ("Officers", 0)
+            ]
         );
-        assert_eq!(report.missing_roles, vec!["Friend".to_string()]);
+        assert!(report.categories_in_order);
+        assert_eq!(
+            report.announcements,
+            Some(("announcements".into(), Some("Public".into())))
+        );
+
+        // Officers dragged above Raiders.
+        let mut moved = server(vec![]);
+        moved.channels[3].position = 1;
+        assert!(!check(&[], &moved).categories_in_order);
+    }
+
+    #[test]
+    fn a_role_or_category_the_server_lacks_is_reported_once_not_against_everyone() {
+        let mut lacking = server(vec![member(10, "pal", &[])]);
+        lacking.role_names.remove(&RoleId::new(6));
+        lacking.channels.retain(|channel| channel.id != 104);
+        let report = check(&[account("10", "Pal", Rank::Friend)], &lacking);
+        let friend = report.roles.iter().find(|r| r.name == "Friend").unwrap();
+        assert!(!friend.exists);
         assert!(report.members.is_empty());
+        let officers = report
+            .categories
+            .iter()
+            .find(|c| c.name == "Officers")
+            .unwrap();
+        assert!(!officers.exists);
+        assert!(report.categories_in_order);
     }
 }
