@@ -19,7 +19,7 @@ use super::db::{self, LinkedAccount, Status};
 use super::fix::{self, List, Slot};
 use super::layout::{
     ANNOUNCEMENTS, Access, CATEGORIES, Roles, announcements_overwrites, category_overwrites,
-    differing,
+    differing, has_own_entry,
 };
 use crate::guild::Rank;
 use crate::{Result, State};
@@ -131,8 +131,9 @@ pub struct PermissionsStatus {
     /// As the server names it.
     pub name: String,
     pub category: bool,
-    /// Whose entries (the bot's for them) are missing or set otherwise: `@everyone`, a role's
-    /// name, or "the bot". Empty when all are right.
+    /// Whose entries (the bot's for them) are missing or set otherwise: `@everyone` or a role's
+    /// name; and "The bot's own entry" while one the bot once kept for itself is still there, to go.
+    /// Empty when all are right.
     pub differing: Vec<String>,
 }
 
@@ -569,7 +570,7 @@ fn permissions(
             .get(&id)
             .cloned()
             .unwrap_or_else(|| id.to_string()),
-        _ => "the bot".to_string(),
+        _ => "someone".to_string(),
     };
     let channel = |key: &str, category: bool| {
         let id = *server.objects.get(key)?;
@@ -585,16 +586,17 @@ fn permissions(
         differing: differing(&wanted, &found.overwrites)
             .into_iter()
             .map(|entry| whose(entry.kind))
+            .chain(has_own_entry(&found.overwrites, bot).then(|| "The bot's own entry".to_string()))
             .collect(),
     };
     let categories = CATEGORIES.iter().filter_map(|category| {
         let found = channel(category.key, true)?;
-        let wanted = category_overwrites(category.audience, &roles, server.everyone, bot);
+        let wanted = category_overwrites(category.audience, &roles, server.everyone);
         Some(status(found, wanted))
     });
     let announcements = ANNOUNCEMENTS.iter().filter_map(|wanted| {
         let found = channel(wanted.key, false)?;
-        let entries = announcements_overwrites(wanted.audience, &roles, server.everyone, bot);
+        let entries = announcements_overwrites(wanted.audience, &roles, server.everyone);
         Some(status(found, entries))
     });
     Some(categories.chain(announcements).collect())
@@ -1256,9 +1258,15 @@ mod tests {
         let mut snapshot = server(vec![]);
         let bot = UserId::new(1000);
         let roles = Roles([1, 2, 3, 4, 5].map(RoleId::new));
-        // Officers (101) as the bot sets it; Public (104) with nothing; the rest left out.
+        // Officers (101) as the bot sets it, plus the entry the bot once kept for itself there;
+        // Public (104) with nothing; the rest left out.
         snapshot.channels[0].overwrites =
-            category_overwrites(CATEGORIES[0].audience, &roles, RoleId::new(100), bot);
+            category_overwrites(CATEGORIES[0].audience, &roles, RoleId::new(100));
+        snapshot.channels[0].overwrites.push(PermissionOverwrite {
+            allow: serenity::all::Permissions::VIEW_CHANNEL,
+            deny: serenity::all::Permissions::empty(),
+            kind: PermissionOverwriteType::Member(bot),
+        });
         snapshot
             .channels
             .retain(|c| [101, 104, 201].contains(&c.id));
@@ -1273,7 +1281,7 @@ mod tests {
         assert_eq!(
             differing,
             vec![
-                ("Officers", vec![]),
+                ("Officers", vec!["The bot's own entry".to_string()]),
                 ("Public", vec!["@everyone".to_string()]),
                 (
                     "announcements",

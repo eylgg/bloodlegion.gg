@@ -192,26 +192,19 @@ fn role(id: RoleId, allow: Permissions, deny: Permissions) -> PermissionOverwrit
 }
 
 /// The permission entries the bot keeps on one of its categories. It sets only these, leaving any
-/// others someone adds by hand. `everyone` is the server's @everyone role (its id is the server's);
-/// `bot` keeps sight of the closed categories it manages.
+/// others someone adds by hand. `everyone` is the server's @everyone role (its id is the server's).
+/// None is for the bot itself: its role's Administrator permission lets it see and manage the
+/// closed categories, as it does every channel.
 pub fn category_overwrites(
     audience: Audience,
     roles: &Roles,
     everyone: RoleId,
-    bot: UserId,
 ) -> Vec<PermissionOverwrite> {
     let view = Permissions::VIEW_CHANNEL;
     match audience {
         Audience::Everyone => vec![role(everyone, view, Permissions::empty())],
         Audience::AtLeast(level) => {
-            let mut overwrites = vec![
-                role(everyone, Permissions::empty(), view),
-                PermissionOverwrite {
-                    allow: view | Permissions::READ_MESSAGE_HISTORY,
-                    deny: Permissions::empty(),
-                    kind: PermissionOverwriteType::Member(bot),
-                },
-            ];
+            let mut overwrites = vec![role(everyone, Permissions::empty(), view)];
             overwrites.extend(
                 Access::ALL
                     .into_iter()
@@ -239,13 +232,21 @@ pub fn differing<'a>(
         .collect()
 }
 
+/// Whether `actual` (a channel's entries) has one for the bot itself, which it once kept on its
+/// closed channels to see them; its role's Administrator permission does that now, so the entry
+/// goes (`fix::fix_permissions`).
+pub fn has_own_entry(actual: &[PermissionOverwrite], bot: UserId) -> bool {
+    actual
+        .iter()
+        .any(|entry| entry.kind == PermissionOverwriteType::Member(bot))
+}
+
 /// An announcements channel's permission entries: its readers (by `audience`) read it, and only the
 /// leader and officers post (or start threads). Its own, not a category's: it is in none.
 pub fn announcements_overwrites(
     audience: Audience,
     roles: &Roles,
     everyone: RoleId,
-    bot: UserId,
 ) -> Vec<PermissionOverwrite> {
     let read = Permissions::VIEW_CHANNEL | Permissions::READ_MESSAGE_HISTORY;
     let post = Permissions::SEND_MESSAGES
@@ -255,14 +256,7 @@ pub fn announcements_overwrites(
     let mut overwrites = match audience {
         Audience::Everyone => vec![role(everyone, read, post)],
         Audience::AtLeast(level) => {
-            let mut overwrites = vec![
-                role(everyone, Permissions::empty(), read | post),
-                PermissionOverwrite {
-                    allow: read,
-                    deny: Permissions::empty(),
-                    kind: PermissionOverwriteType::Member(bot),
-                },
-            ];
+            let mut overwrites = vec![role(everyone, Permissions::empty(), read | post)];
             overwrites.extend(
                 Access::ALL
                     .into_iter()
@@ -316,13 +310,13 @@ mod tests {
 
     #[test]
     fn each_category_opens_to_its_level_and_those_above() {
-        use PermissionOverwriteType::{Member, Role};
+        use PermissionOverwriteType::Role;
         let audience = |key: &str| CATEGORIES.iter().find(|c| c.key == key).unwrap().audience;
 
-        let public = category_overwrites(audience("category:public"), &ROLES, EVERYONE, BOT);
+        let public = category_overwrites(audience("category:public"), &ROLES, EVERYONE);
         assert_eq!(viewers(&public), vec![Role(EVERYONE)]);
 
-        let raiders = category_overwrites(audience("category:raiders"), &ROLES, EVERYONE, BOT);
+        let raiders = category_overwrites(audience("category:raiders"), &ROLES, EVERYONE);
         assert!(
             raiders
                 .iter()
@@ -330,26 +324,16 @@ mod tests {
         );
         assert_eq!(
             viewers(&raiders),
-            vec![
-                Member(BOT),
-                Role(LEADER),
-                Role(OFFICER),
-                Role(RAIDER),
-                Role(TRIAL)
-            ]
+            vec![Role(LEADER), Role(OFFICER), Role(RAIDER), Role(TRIAL)]
         );
 
-        let officers = category_overwrites(audience("category:officers"), &ROLES, EVERYONE, BOT);
-        assert_eq!(
-            viewers(&officers),
-            vec![Member(BOT), Role(LEADER), Role(OFFICER)]
-        );
+        let officers = category_overwrites(audience("category:officers"), &ROLES, EVERYONE);
+        assert_eq!(viewers(&officers), vec![Role(LEADER), Role(OFFICER)]);
 
-        let members = category_overwrites(audience("category:members"), &ROLES, EVERYONE, BOT);
+        let members = category_overwrites(audience("category:members"), &ROLES, EVERYONE);
         assert_eq!(
             viewers(&members),
             vec![
-                Member(BOT),
                 Role(LEADER),
                 Role(OFFICER),
                 Role(RAIDER),
@@ -361,7 +345,7 @@ mod tests {
 
     #[test]
     fn finds_the_entries_that_differ() {
-        let public = category_overwrites(Audience::Everyone, &ROLES, EVERYONE, BOT);
+        let public = category_overwrites(Audience::Everyone, &ROLES, EVERYONE);
         assert!(differing(&public, &public).is_empty());
         assert_eq!(differing(&public, &[]).len(), 1);
         // @everyone's entry there, but denying the view instead.
@@ -377,6 +361,24 @@ mod tests {
     }
 
     #[test]
+    fn the_bot_keeps_no_entry_for_itself() {
+        for category in &CATEGORIES {
+            let entries = category_overwrites(category.audience, &ROLES, EVERYONE);
+            assert!(!has_own_entry(&entries, BOT), "{}", category.name);
+        }
+        for channel in ANNOUNCEMENTS {
+            let entries = announcements_overwrites(channel.audience, &ROLES, EVERYONE);
+            assert!(!has_own_entry(&entries, BOT), "{}", channel.name);
+        }
+        let old = PermissionOverwrite {
+            allow: Permissions::VIEW_CHANNEL,
+            deny: Permissions::empty(),
+            kind: PermissionOverwriteType::Member(BOT),
+        };
+        assert!(has_own_entry(&[old], BOT));
+    }
+
+    #[test]
     fn only_the_leader_and_officers_post_announcements() {
         let entry = |overwrites: &[PermissionOverwrite], id| {
             overwrites
@@ -384,12 +386,12 @@ mod tests {
                 .find(|o| o.kind == PermissionOverwriteType::Role(id))
                 .cloned()
         };
-        let public = announcements_overwrites(Audience::Everyone, &ROLES, EVERYONE, BOT);
+        let public = announcements_overwrites(Audience::Everyone, &ROLES, EVERYONE);
         let everyone = entry(&public, EVERYONE).unwrap();
         assert!(everyone.allow.contains(Permissions::VIEW_CHANNEL));
         assert!(everyone.deny.contains(Permissions::SEND_MESSAGES));
 
-        let raider = announcements_overwrites(RAIDER_ANNOUNCEMENTS.audience, &ROLES, EVERYONE, BOT);
+        let raider = announcements_overwrites(RAIDER_ANNOUNCEMENTS.audience, &ROLES, EVERYONE);
         assert!(
             entry(&raider, EVERYONE)
                 .unwrap()
@@ -401,7 +403,7 @@ mod tests {
         assert!(trial.deny.contains(Permissions::SEND_MESSAGES));
         assert_eq!(entry(&raider, MEMBER), None);
 
-        let member = announcements_overwrites(MEMBER_ANNOUNCEMENTS.audience, &ROLES, EVERYONE, BOT);
+        let member = announcements_overwrites(MEMBER_ANNOUNCEMENTS.audience, &ROLES, EVERYONE);
         assert!(
             entry(&member, MEMBER)
                 .unwrap()

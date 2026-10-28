@@ -299,8 +299,10 @@ mention this role" off).
 
 To set it up, in the application's **Bot** page turn on the **Message Content** intent (for the
 announcements) and **Server Members** (for the role check), and invite it to the server (**OAuth2 →
-URL Generator**, scope `bot`) with Manage Roles, Manage Channels, View Channels, Send Messages, and
-Read Message History. Then, as a superuser, enter the bot's token and the Discord server's id
+URL Generator**, scope `bot`) with the **Administrator** permission. That is all it relies on: it
+keeps no permission entry for itself, so Administrator is how it sees and manages the closed
+categories and channels, and it is what lets it give Administrator to the leader's and officers'
+roles (an entry it once kept for itself is removed by **Set permissions**). Then, as a superuser, enter the bot's token and the Discord server's id
 (right-click the server with Developer Mode on, **Copy Server ID**) under **Discord bot** on the
 Administration page (`/admin`). The token is checked with Discord, stored encrypted with
 `ENCRYPTION_KEY`, and never shown again.

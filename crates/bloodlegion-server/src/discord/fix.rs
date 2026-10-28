@@ -28,15 +28,15 @@ use std::collections::HashMap;
 
 use anyhow::Context;
 use serenity::all::{
-    ChannelId, ChannelType, CreateChannel, EditChannel, EditRole, GuildId, Http, Permissions,
-    RoleId, UserId,
+    ChannelId, ChannelType, CreateChannel, EditChannel, EditRole, GuildId, Http,
+    PermissionOverwriteType, Permissions, RoleId, UserId,
 };
 
 use super::check::{Channel, server_members, top_level_text};
 use super::db;
 use super::layout::{
     ANNOUNCEMENTS, Access, CATEGORIES, Roles, announcements_overwrites, category_overwrites,
-    differing,
+    differing, has_own_entry,
 };
 use super::sync;
 use super::sync::REASON;
@@ -376,6 +376,24 @@ pub async fn fix_roles(state: &State) -> Result<(), FixError> {
     Ok(())
 }
 
+/// Whether one of the bot's roles has Discord's Administrator permission: what lets it give that
+/// permission, and see and manage the closed categories and channels without an entry of its own.
+async fn bot_is_administrator(
+    http: &Http,
+    guild: GuildId,
+    roles: &HashMap<RoleId, serenity::all::Role>,
+) -> Result<bool, FixError> {
+    let me: UserId = http.get_current_user().await.map_err(discord)?.id;
+    Ok(guild
+        .member(http, me)
+        .await
+        .map_err(discord)?
+        .roles
+        .iter()
+        .filter_map(|id| roles.get(id))
+        .any(|role| role.permissions.contains(Permissions::ADMINISTRATOR)))
+}
+
 /// The bot's own highest role's position: it can move or give only roles below it.
 async fn bot_top(
     http: &Http,
@@ -537,7 +555,6 @@ pub async fn create_channels(state: &State) -> Result<(), FixError> {
     let roles = Roles(ids.try_into().expect("one role per access"));
     let channels = guild.channels(&http).await.map_err(discord)?;
     let everyone = RoleId::new(guild.get());
-    let me: UserId = http.get_current_user().await.map_err(discord)?.id;
 
     for category in &CATEGORIES {
         let kind = ChannelType::Category;
@@ -549,7 +566,7 @@ pub async fn create_channels(state: &State) -> Result<(), FixError> {
         }
         let builder = CreateChannel::new(category.name)
             .kind(kind)
-            .permissions(category_overwrites(category.audience, &roles, everyone, me))
+            .permissions(category_overwrites(category.audience, &roles, everyone))
             .audit_log_reason(REASON);
         let channel = guild
             .create_channel(&http, builder)
@@ -569,12 +586,7 @@ pub async fn create_channels(state: &State) -> Result<(), FixError> {
         }
         let builder = CreateChannel::new(wanted.name)
             .kind(kind)
-            .permissions(announcements_overwrites(
-                wanted.audience,
-                &roles,
-                everyone,
-                me,
-            ))
+            .permissions(announcements_overwrites(wanted.audience, &roles, everyone))
             .audit_log_reason(REASON);
         let channel = guild
             .create_channel(&http, builder)
@@ -687,16 +699,7 @@ pub async fn fix_administrators(state: &State) -> Result<(), FixError> {
         return Ok(());
     }
 
-    let me: UserId = http.get_current_user().await.map_err(discord)?.id;
-    let bot_is_administrator = guild
-        .member(&http, me)
-        .await
-        .map_err(discord)?
-        .roles
-        .iter()
-        .filter_map(|id| existing.get(id))
-        .any(|role| role.permissions.contains(Permissions::ADMINISTRATOR));
-    if !bot_is_administrator {
+    if !bot_is_administrator(&http, guild, &existing).await? {
         return Err(Error::External(FixError::BotNotAdministrator));
     }
     let top = bot_top(&http, guild, &existing).await?;
@@ -805,7 +808,10 @@ pub async fn rename_role(state: &State, access: Access) -> Result<(), FixError> 
 }
 
 /// Sets the bot's permission entries on its categories and announcements channels where they are
-/// missing or set otherwise. Refused while the server lacks one of the bot's roles.
+/// missing or set otherwise, and removes any entry it once kept there for itself (its role's
+/// Administrator permission lets it see them now). Refused while the server lacks one of the bot's
+/// roles, and, while such an entry is left, unless the bot has Administrator: removing it would
+/// otherwise hide the closed channels from the bot.
 pub async fn fix_permissions(state: &State) -> Result<(), FixError> {
     let (token, guild) = connection(state).await?;
     let http = Http::new(&token);
@@ -827,28 +833,46 @@ pub async fn fix_permissions(state: &State) -> Result<(), FixError> {
 
     let mut wanted = Vec::new();
     for category in &CATEGORIES {
-        let entries = category_overwrites(category.audience, &roles, everyone, me);
+        let entries = category_overwrites(category.audience, &roles, everyone);
         wanted.push((category.key, entries));
     }
     for channel in ANNOUNCEMENTS {
-        let entries = announcements_overwrites(channel.audience, &roles, everyone, me);
+        let entries = announcements_overwrites(channel.audience, &roles, everyone);
         wanted.push((channel.key, entries));
     }
+    let mut ours = Vec::new();
     for (key, entries) in wanted {
-        let Some(channel) = db::object_id(&state.pool, key)
+        if let Some(channel) = db::object_id(&state.pool, key)
             .await?
             .and_then(|id| channels.get(&ChannelId::new(id)))
-        else {
-            continue;
-        };
+        {
+            ours.push((channel, entries));
+        }
+    }
+    let leftovers = ours
+        .iter()
+        .any(|(channel, _)| has_own_entry(&channel.permission_overwrites, me));
+    if leftovers && !bot_is_administrator(&http, guild, &existing).await? {
+        return Err(Error::External(FixError::BotNotAdministrator));
+    }
+
+    for (channel, entries) in ours {
         let differing = differing(&entries, &channel.permission_overwrites);
-        if differing.is_empty() {
+        let leftover = has_own_entry(&channel.permission_overwrites, me);
+        if differing.is_empty() && !leftover {
             continue;
         }
         for entry in differing {
             channel
                 .id
                 .create_permission(&http, entry.clone())
+                .await
+                .map_err(discord)?;
+        }
+        if leftover {
+            channel
+                .id
+                .delete_permission(&http, PermissionOverwriteType::Member(me))
                 .await
                 .map_err(discord)?;
         }

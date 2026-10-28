@@ -312,13 +312,27 @@
 					{:else}
 						<span class="tag ok">Not mentionable</span>
 					{/if}
+					{#if report.bot_is_administrator}
+						<span class="tag ok">Administrator</span>
+					{:else}
+						<span class="tag warn">Not administrator</span>
+					{/if}
 				{/if}
 			</div>
 			<p class="muted">
 				The bot's highest role should be the server's top role, since it can manage only the roles
 				below it, shown separately in the member list, so the bot stands apart from everyone else,
-				and not mentionable by anyone, since mentioning it only pings the bot.
+				and not mentionable by anyone, since mentioning it only pings the bot. It needs Discord's
+				Administrator permission: that is how it sees and manages the closed categories and channels
+				(it keeps no permission entry for itself), and gives Administrator to the leader's and
+				officers' roles.
 			</p>
+			{#if report.bot_role && !report.bot_is_administrator}
+				<Alert variant="info">
+					In Server Settings, Roles, the server's owner turns on Administrator for {report.bot_role
+						.name}. No button: Discord lets no one give themselves a permission.
+				</Alert>
+			{/if}
 			{#if report.bot_role}
 				<dl class="facts">
 					<div>
@@ -724,7 +738,8 @@
 			<p class="muted">
 				The bot's own permission entries on its categories and announcements channels: who may see
 				each, and who may post announcements. Entries added by hand are left alone, and these are
-				set only with the button.
+				set only with the button. None is for the bot itself: one it once kept there is removed (its
+				role's Administrator permission lets it see the channels).
 			</p>
 			{#if fixed === 'permissions'}
 				<Alert variant="success">The bot's permissions are set.</Alert>
