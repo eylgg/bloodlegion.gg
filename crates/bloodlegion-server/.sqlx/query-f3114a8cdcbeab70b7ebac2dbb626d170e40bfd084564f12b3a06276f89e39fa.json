@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT p.slug AS \"slug: Slug\", p.name, p.is_multiple_connections_allowed,\n               p.is_connection_only\n        FROM auth_oauth2_providers o\n        JOIN auth_providers p ON p.id = o.provider_id\n        ORDER BY p.name\n        ",
+  "query": "\n        SELECT p.slug AS \"slug: Slug\", p.name, p.is_multiple_connections_allowed,\n               p.is_connection_only, p.is_registration_allowed\n        FROM auth_oauth2_providers o\n        JOIN auth_providers p ON p.id = o.provider_id\n        ORDER BY p.name\n        ",
   "describe": {
     "columns": [
       {
@@ -46,6 +46,17 @@
             "name": "is_connection_only"
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "is_registration_allowed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "auth_providers",
+            "name": "is_registration_allowed"
+          }
+        }
       }
     ],
     "parameters": {
@@ -55,8 +66,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "62a9e692cefff232d735be158806fba6e3b411c0849bdd17549f2a5e9bb56cb1"
+  "hash": "f3114a8cdcbeab70b7ebac2dbb626d170e40bfd084564f12b3a06276f89e39fa"
 }

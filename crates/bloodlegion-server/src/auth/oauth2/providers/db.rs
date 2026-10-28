@@ -110,7 +110,7 @@ pub async fn list_login_providers(pool: &PgPool) -> sqlx::Result<Vec<ProviderLis
         ProviderListing,
         r#"
         SELECT p.slug AS "slug: Slug", p.name, p.is_multiple_connections_allowed,
-               p.is_connection_only
+               p.is_connection_only, p.is_registration_allowed
         FROM auth_oauth2_providers o
         JOIN auth_providers p ON p.id = o.provider_id
         ORDER BY p.name

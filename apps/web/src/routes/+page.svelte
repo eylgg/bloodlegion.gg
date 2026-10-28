@@ -12,11 +12,12 @@
 
 	let { data }: PageProps = $props();
 
-	// Connection-only providers (Discord) are never a way in: they are linked from the profile.
+	// Only the providers that can make an account are offered (Battle.net). Connection-only ones
+	// (Discord) are never a way in: they are linked from the profile.
 	const providers = $derived(
 		data.providers.filter(
 			(p): p is Exclude<LoginProvider, { kind: 'local' }> =>
-				p.kind === 'oauth2' && !p.connection_only
+				p.kind === 'oauth2' && !p.connection_only && p.registration_allowed
 		)
 	);
 

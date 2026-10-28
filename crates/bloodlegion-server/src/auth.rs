@@ -91,6 +91,8 @@ pub struct ProviderListing {
     pub is_multiple_connections_allowed: bool,
     /// Whether accounts at the provider are only linked from the profile, never a way to sign in.
     pub is_connection_only: bool,
+    /// Whether signing in there with an unknown account makes a new one.
+    pub is_registration_allowed: bool,
 }
 
 /// A provider listing plus whether the signed-in user is currently connected to

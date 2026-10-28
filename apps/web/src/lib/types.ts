@@ -19,7 +19,8 @@ export type LoginProvider =
 	/**
 	 * `multiple_connections_allowed`: a member may link more than one account there (Battle.net).
 	 * `connection_only`: accounts there are only linked from the profile, never a way to sign in
-	 * (Discord).
+	 * (Discord). `registration_allowed`: signing in there can make a new account; the front page
+	 * offers only these (Battle.net).
 	 */
 	| {
 			kind: 'oauth2';
@@ -27,6 +28,7 @@ export type LoginProvider =
 			name: string;
 			multiple_connections_allowed: boolean;
 			connection_only: boolean;
+			registration_allowed: boolean;
 	  };
 
 /** The Discord bot's settings, as a superuser sees them: never the token, only whether one is set. */
