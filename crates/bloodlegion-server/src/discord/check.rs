@@ -49,6 +49,8 @@ pub struct Snapshot {
     pub role_positions: HashMap<RoleId, u16>,
     /// The roles shown separately in the member list (Discord's "hoist").
     pub hoisted: HashSet<RoleId>,
+    /// The roles anyone may mention ("Allow anyone to mention this role").
+    pub mentionable: HashSet<RoleId>,
     /// The bot's own user id: its highest role decides which roles it can move.
     pub bot_id: u64,
     pub channels: Vec<Channel>,
@@ -113,6 +115,8 @@ pub struct BotRole {
     pub above: Vec<String>,
     /// Whether the member list shows its holders (the bot) on their own, apart from everyone else.
     pub shown_separately: bool,
+    /// Whether anyone may mention it, which only pings the bot: it should not be.
+    pub mentionable: bool,
 }
 
 /// One of the announcements channels: where it is, against where it should be (at the top of the
@@ -309,12 +313,13 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         .filter_map(|access| roles.get(&access).map(|id| id.get()))
         .collect();
     let roles_in_order = fix::in_order(&role_slots, &our_roles, List::Roles);
-    let bot_role = server
+    let bot_roles: &[RoleId] = server
         .members
         .iter()
         .find(|member| member.id == server.bot_id)
-        .into_iter()
-        .flat_map(|bot| &bot.roles)
+        .map_or(&[], |bot| &bot.roles);
+    let bot_role = bot_roles
+        .iter()
         .filter_map(|id| Some((*server.role_positions.get(id)?, *id)))
         .max();
     let bot_top = bot_role.map_or(0, |(position, _)| position);
@@ -392,6 +397,7 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
                 id: id.get().to_string(),
                 name: server.role_names.get(&id).cloned().unwrap_or_default(),
                 shown_separately: server.hoisted.contains(&id),
+                mentionable: server.mentionable.contains(&id),
                 above: above
                     .into_iter()
                     .filter_map(|(_, id)| server.role_names.get(&RoleId::new(id)).cloned())
@@ -507,6 +513,11 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         .filter(|role| role.hoist)
         .map(|role| role.id)
         .collect();
+    let mentionable = roles
+        .values()
+        .filter(|role| role.mentionable)
+        .map(|role| role.id)
+        .collect();
     let role_names = roles
         .into_iter()
         .map(|(id, role)| (id, role.name))
@@ -551,6 +562,7 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         role_names,
         role_positions,
         hoisted,
+        mentionable,
         bot_id,
         channels,
         objects,
@@ -663,6 +675,7 @@ mod tests {
             role_names,
             role_positions,
             hoisted: HashSet::from([RoleId::new(99)]),
+            mentionable: HashSet::new(),
             bot_id: 1000,
             channels: vec![
                 category(101, "Public", 0),
@@ -824,6 +837,7 @@ mod tests {
                 name: "Blood Legion bot".into(),
                 above: vec![],
                 shown_separately: true,
+                mentionable: false,
             })
         );
 
@@ -840,6 +854,10 @@ mod tests {
         let mut mixed = server(vec![]);
         mixed.hoisted.clear();
         assert!(!check(&[], &mixed).bot_role.unwrap().shown_separately);
+
+        // Anyone may mention it.
+        mixed.mentionable.insert(RoleId::new(99));
+        assert!(check(&[], &mixed).bot_role.unwrap().mentionable);
     }
 
     #[test]

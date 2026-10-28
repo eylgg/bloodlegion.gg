@@ -6,6 +6,7 @@
 	import { providerVariant, returnedProviderName } from '$lib/auth';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
+	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import CharacterSpecs from '$lib/components/guild/CharacterSpecs.svelte';
@@ -59,8 +60,6 @@
 	});
 
 	async function unlink(account: LinkedAccount) {
-		const name = account.identity ?? `this ${account.provider_name} account`;
-		if (!confirm(`Unlink ${name}? You will no longer be able to sign in with it.`)) return;
 		error = '';
 		try {
 			await api.del(`/api/auth/linked-accounts/${account.id}`);
@@ -108,7 +107,6 @@
 	}
 
 	async function remove(character: GuildCharacter) {
-		if (!confirm(`Remove ${character.first_name} ${character.last_name}?`)) return;
 		error = '';
 		try {
 			await api.del(`/api/characters/${character.id}`);
@@ -167,7 +165,14 @@
 						<span class="muted">Linked {formatDate(account.linked_at)}</span>
 					</div>
 					{#if account.can_unlink}
-						<Button size="small" variant="danger" onclick={() => unlink(account)}>Unlink</Button>
+						<ConfirmButton
+							size="small"
+							variant="danger"
+							question="Unlink {account.identity ??
+								`this ${account.provider_name} account`}? You will no longer be able to sign in with it."
+							confirmLabel="Unlink"
+							onconfirm={() => unlink(account)}>Unlink</ConfirmButton
+						>
 					{/if}
 				</li>
 			{:else}
@@ -241,7 +246,13 @@
 					>
 						Edit
 					</Button>
-					<Button size="small" variant="danger" onclick={() => remove(character)}>Remove</Button>
+					<ConfirmButton
+						size="small"
+						variant="danger"
+						question="Remove {character.first_name} {character.last_name}?"
+						confirmLabel="Remove"
+						onconfirm={() => remove(character)}>Remove</ConfirmButton
+					>
 				</div>
 			</li>
 		{:else}

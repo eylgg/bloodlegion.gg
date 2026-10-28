@@ -3,6 +3,7 @@
 	import { api, errorMessage } from '$lib/api';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
+	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import type { DiscordSettings } from '$lib/types';
 
 	let { settings: initial }: { settings: DiscordSettings } = $props();
@@ -46,7 +47,6 @@
 	}
 
 	function removeToken() {
-		if (!confirm('Remove the bot token? The bot stops until a new one is set.')) return;
 		put({ bot_token: null }, 'Token removed. The bot has stopped.');
 	}
 </script>
@@ -97,7 +97,13 @@
 	</p>
 	<div class="form-actions">
 		{#if settings.has_bot_token}
-			<Button variant="danger" disabled={saving} onclick={removeToken}>Remove token</Button>
+			<ConfirmButton
+				variant="danger"
+				disabled={saving}
+				question="Remove the bot token? The bot stops until a new one is set."
+				confirmLabel="Remove"
+				onconfirm={removeToken}>Remove token</ConfirmButton
+			>
 		{/if}
 		<Button type="submit" variant="primary" disabled={saving}>
 			{saving ? 'Checking...' : 'Save'}

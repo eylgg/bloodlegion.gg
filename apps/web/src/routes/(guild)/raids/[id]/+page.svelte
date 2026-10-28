@@ -5,6 +5,9 @@
 	import { QUALITIES, QUALITY_LABEL, formatInZone, fullName, zoneName } from '$lib/guild';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
+	import AskBar from '$lib/components/AskBar.svelte';
+	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
+	import { Ask } from '$lib/ask.svelte';
 	import LootTable from '$lib/components/guild/LootTable.svelte';
 	import GameItemPicker from '$lib/components/guild/GameItemPicker.svelte';
 	import RaidBuilder from '$lib/components/guild/RaidBuilder.svelte';
@@ -29,7 +32,6 @@
 	const zoneBosses = $derived(data.bosses.filter((b) => b.zone === raid.zone));
 
 	async function removeRaid() {
-		if (!confirm('Delete this raid, with its attendance and loot?')) return;
 		try {
 			await api.del(`/api/raids/${raid.id}`);
 			await goto(resolve('/raids'));
@@ -42,6 +44,8 @@
 
 	// The roster's pick, to put down in a free slot.
 	let selected = $state<number | null>(null);
+	// Whether to move someone out of a raid they clash with.
+	const moving = new Ask();
 	const detail = $derived<RaidDetail>({ raid, attendees, loot });
 	const places = (characterId: number) => {
 		const a = attendees.find((a) => a.character_id === characterId);
@@ -55,14 +59,8 @@
 		if (!character) return;
 		error = '';
 		try {
-			const next = await putOn(
-				[detail],
-				detail,
-				character,
-				target,
-				size,
-				(message) => confirm(message),
-				() => zoneName(data.zones, raid.zone)
+			const next = await putOn([detail], detail, character, target, size, moving.ask, () =>
+				zoneName(data.zones, raid.zone)
 			);
 			if (next) setAttendees(next[0].attendees);
 		} catch (err) {
@@ -149,7 +147,6 @@
 	}
 
 	async function removeLoot(entry: LootEntry) {
-		if (!confirm(`Remove ${entry.item_name} from this raid's loot?`)) return;
 		error = '';
 		try {
 			await api.del(`/api/loot/${entry.id}`);
@@ -179,7 +176,13 @@
 	{#if data.officer && !editing}
 		<div class="actions">
 			<Button variant="secondary" size="small" onclick={() => (editing = true)}>Edit</Button>
-			<Button variant="danger" size="small" onclick={removeRaid}>Delete</Button>
+			<ConfirmButton
+				variant="danger"
+				size="small"
+				question="Delete this raid, with its attendance and loot?"
+				confirmLabel="Delete"
+				onconfirm={removeRaid}>Delete</ConfirmButton
+			>
 		</div>
 	{/if}
 </div>
@@ -199,6 +202,7 @@
 
 <section>
 	<h2>Groups</h2>
+	<AskBar ask={moving} confirmLabel="Move" />
 	<div class="groups-layout" class:with-roster={data.officer}>
 		{#if data.officer}
 			<Roster

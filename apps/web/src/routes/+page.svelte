@@ -6,12 +6,11 @@
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import Announcements from '$lib/components/Announcements.svelte';
-	import { api } from '$lib/api';
-	import { resolve } from '$app/paths';
+	import GuildShell from '$lib/components/guild/GuildShell.svelte';
+	import Home from '$lib/components/guild/Home.svelte';
 	import { providerVariant, returnedProviderName } from '$lib/auth';
 
 	let { data }: PageProps = $props();
-	let signingOut = $state(false);
 
 	// Connection-only providers (Discord) are never a way in: they are linked from the profile.
 	const providers = $derived(
@@ -61,43 +60,33 @@
 		};
 		return errors[code] ?? 'Sign-in failed. Please try again.';
 	});
-
-	async function signOut() {
-		signingOut = true;
-		try {
-			await api.post('/api/auth/logout');
-		} finally {
-			window.location.assign('/');
-		}
-	}
 </script>
-
-{#snippet account()}
-	<!-- Who is signed in, and the way out. -->
-	<div class="account">
-		<a href={resolve('/profile')}>{data.user?.username}</a>
-		<span class="sep" aria-hidden="true">·</span>
-		<button type="button" onclick={signOut} disabled={signingOut}>Sign out</button>
-	</div>
-{/snippet}
 
 {#snippet announcements()}
 	<Announcements announcements={data.announcements} />
 {/snippet}
 
-<Logo
-	footer={data.user ? account : undefined}
-	after={data.announcements.length > 0 ? announcements : undefined}
->
-	{#if data.user}
-		<Button href={resolve('/raids')} variant="primary" full>Raids and loot</Button>
-		<Button href={resolve('/roster')} variant="secondary" full>Roster</Button>
-		<Button href={resolve('/launch')} variant="secondary" full>WoW: Forever launch sign-ups</Button>
-	{/if}
-	{#if !data.user && loginError}
-		<Alert variant="error">{loginError}</Alert>
-	{/if}
-	{#if !data.user}
+<svelte:head>
+	<title>Blood Legion</title>
+</svelte:head>
+
+{#if data.home}
+	<!-- A member signed in: their own front page, inside the guild's pages with none picked. -->
+	<GuildShell user={data.home.user}>
+		<Home
+			user={data.home.user}
+			zones={data.zones}
+			calendar={data.home.calendar}
+			raids={data.home.raids}
+			loot={data.home.loot}
+			announcements={data.announcements}
+		/>
+	</GuildShell>
+{:else}
+	<Logo after={data.announcements.length > 0 ? announcements : undefined}>
+		{#if loginError}
+			<Alert variant="error">{loginError}</Alert>
+		{/if}
 		{#each providers as provider (provider.slug)}
 			<!-- Battle.net gets its own blue (see `providerVariant`). The link leaves
 			     the app for the backend (which redirects to the provider), so it must be a full page
@@ -112,37 +101,5 @@
 				Log in with {provider.name}
 			</Button>
 		{/each}
-	{/if}
-</Logo>
-
-<style>
-	.account {
-		display: flex;
-		justify-content: center;
-		gap: var(--space-2);
-		color: var(--grey-text);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-	}
-
-	.sep {
-		color: var(--grey-soft);
-	}
-
-	a,
-	button {
-		color: inherit;
-		background: none;
-		border: 0;
-		padding: 0;
-		font: inherit;
-		cursor: pointer;
-		text-decoration: underline;
-		text-underline-offset: 0.2em;
-	}
-
-	a:hover,
-	button:hover {
-		color: var(--grey-text-active);
-	}
-</style>
+	</Logo>
+{/if}

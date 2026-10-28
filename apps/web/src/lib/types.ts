@@ -75,10 +75,16 @@ export type DiscordReport = {
 	roles_in_order: boolean;
 	/** The bot's own highest role: it can move only roles below it. */
 	/**
-	 * The bot's own highest role: the server's roles above it (top first; none at the top), and
-	 * whether the member list shows it separately.
+	 * The bot's own highest role: the server's roles above it (top first; none at the top), whether
+	 * the member list shows it separately, and whether anyone may mention it (it should not be).
 	 */
-	bot_role: { id: string; name: string; above: string[]; shown_separately: boolean } | null;
+	bot_role: {
+		id: string;
+		name: string;
+		above: string[];
+		shown_separately: boolean;
+		mentionable: boolean;
+	} | null;
 	/** The bot's roles not below its own highest role, which it cannot move. */
 	roles_out_of_reach: string[];
 	/** The bot's categories, in the order it keeps them. */

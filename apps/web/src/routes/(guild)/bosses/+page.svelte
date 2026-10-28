@@ -3,6 +3,7 @@
 	import { api, errorMessage } from '$lib/api';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
+	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import type { Boss } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -41,7 +42,6 @@
 	}
 
 	async function remove(boss: Boss) {
-		if (!confirm(`Remove ${boss.name}?`)) return;
 		error = '';
 		try {
 			await api.del(`/api/bosses/${boss.id}`);
@@ -98,7 +98,13 @@
 											renameDraft = boss.name;
 										}}>Rename</Button
 									>
-									<Button size="small" variant="danger" onclick={() => remove(boss)}>Remove</Button>
+									<ConfirmButton
+										size="small"
+										variant="danger"
+										question="Remove {boss.name}?"
+										confirmLabel="Remove"
+										onconfirm={() => remove(boss)}>Remove</ConfirmButton
+									>
 								</span>
 							{/if}
 						{/if}

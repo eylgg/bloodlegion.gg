@@ -4,6 +4,7 @@
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import SpellTooltip from '$lib/components/guild/SpellTooltip.svelte';
 	import {
 		buttonCommand,
@@ -192,11 +193,11 @@
 	}
 
 	function clearBars() {
-		if (confirm(`Clear every button on ${character?.first_name}'s bars?`)) plan.rows = {};
+		plan.rows = {};
 	}
 
 	function resetBindings() {
-		if (confirm('Put every key binding back to the default?')) plan.bindings = defaultBindings();
+		plan.bindings = defaultBindings();
 	}
 
 	function makeExport() {
@@ -343,8 +344,18 @@
 
 	<div class="tools">
 		<Button size="small" onclick={makeExport}>Export for the addon</Button>
-		<Button size="small" variant="secondary" onclick={clearBars}>Clear bars</Button>
-		<Button size="small" variant="secondary" onclick={resetBindings}>Default bindings</Button>
+		<ConfirmButton
+			size="small"
+			question="Clear every button on {character?.first_name}'s bars?"
+			confirmLabel="Clear"
+			onconfirm={clearBars}>Clear bars</ConfirmButton
+		>
+		<ConfirmButton
+			size="small"
+			question="Put every key binding back to the default?"
+			confirmLabel="Reset"
+			onconfirm={resetBindings}>Default bindings</ConfirmButton
+		>
 	</div>
 
 	{#if exported}

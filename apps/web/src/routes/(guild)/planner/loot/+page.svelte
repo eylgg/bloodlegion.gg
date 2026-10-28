@@ -105,16 +105,23 @@
 		edit(priority.id, (next) => next.filter((c) => c.character_id !== characterId));
 	}
 
+	// The note being written, under its line: whose, and the draft.
+	let noting = $state<{ priorityId: number; character: InLine } | null>(null);
+	let noteDraft = $state('');
+
 	function editNote(priority: LootPriority, character: InLine) {
-		const note = prompt(
-			`A note for ${fullName(character)} (what they want it for), or nothing:`,
-			character.note ?? ''
-		);
-		if (note === null) return;
-		edit(priority.id, (next) =>
-			next.map((c) =>
-				c.character_id === character.character_id ? { ...c, note: note.trim() || null } : c
-			)
+		noting = { priorityId: priority.id, character };
+		noteDraft = character.note ?? '';
+	}
+
+	function saveNote(event: SubmitEvent) {
+		event.preventDefault();
+		if (!noting) return;
+		const { priorityId, character } = noting;
+		const note = noteDraft.trim() || null;
+		noting = null;
+		edit(priorityId, (next) =>
+			next.map((c) => (c.character_id === character.character_id ? { ...c, note } : c))
 		);
 	}
 
@@ -194,9 +201,11 @@
 		if (characterId > 0) placeIn(priority, characterId, index);
 	}
 
+	// The line whose deletion is being asked about: only one with people in it asks first.
+	let deleting = $state<number | null>(null);
+
 	async function deletePriority(priority: LootPriority) {
-		const what = priority.item_name ?? priority.label;
-		if (priority.characters.length > 0 && !confirm(`Delete the line for ${what}?`)) return;
+		deleting = null;
 		error = '';
 		try {
 			await api.del(`/api/loot-priorities/${priority.id}`);
@@ -240,7 +249,14 @@
 	<title>Loot plan | Blood Legion</title>
 </svelte:head>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && (selected = null)} />
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key !== 'Escape') return;
+		selected = null;
+		noting = null;
+		deleting = null;
+	}}
+/>
 
 {#snippet chip(character: InLine, place: number, next = false)}
 	<span
@@ -334,29 +350,48 @@
 											{:else}
 												<span class="label">{priority.label}</span>
 											{/if}
-											<div class="row-actions">
-												{#if data.bosses.length > 0}
-													<select
-														aria-label="Boss"
-														value={priority.boss_id === null ? '' : String(priority.boss_id)}
-														onchange={(e) =>
-															moveTo(
-																priority,
-																e.currentTarget.value ? Number(e.currentTarget.value) : null
-															)}
+											{#if deleting === priority.id}
+												<div class="row-actions asking">
+													<span class="small"
+														>Delete the line for {priority.item_name ?? priority.label}?</span
 													>
-														{#each data.bosses as boss (boss.id)}
-															<option value={String(boss.id)}>{boss.name}</option>
-														{/each}
-														<option value="">No boss</option>
-													</select>
-												{/if}
-												<button
-													type="button"
-													class="delete"
-													onclick={() => deletePriority(priority)}>Delete</button
-												>
-											</div>
+													<Button
+														size="small"
+														variant="danger"
+														onclick={() => deletePriority(priority)}>Delete</Button
+													>
+													<Button size="small" variant="secondary" onclick={() => (deleting = null)}
+														>Cancel</Button
+													>
+												</div>
+											{:else}
+												<div class="row-actions">
+													{#if data.bosses.length > 0}
+														<select
+															aria-label="Boss"
+															value={priority.boss_id === null ? '' : String(priority.boss_id)}
+															onchange={(e) =>
+																moveTo(
+																	priority,
+																	e.currentTarget.value ? Number(e.currentTarget.value) : null
+																)}
+														>
+															{#each data.bosses as boss (boss.id)}
+																<option value={String(boss.id)}>{boss.name}</option>
+															{/each}
+															<option value="">No boss</option>
+														</select>
+													{/if}
+													<button
+														type="button"
+														class="delete"
+														onclick={() =>
+															priority.characters.length > 0
+																? (deleting = priority.id)
+																: deletePriority(priority)}>Delete</button
+													>
+												</div>
+											{/if}
 										</td>
 										<td
 											class="line"
@@ -402,6 +437,21 @@
 													<li class="muted small">Nobody yet</li>
 												{/if}
 											</ol>
+											{#if noting?.priorityId === priority.id}
+												<form class="note-form" onsubmit={saveNote}>
+													<input
+														type="text"
+														aria-label="A note for {fullName(noting.character)}"
+														placeholder="What they want it for, or nothing"
+														bind:value={noteDraft}
+														{@attach (input) => input.focus()}
+													/>
+													<Button type="submit" size="small" variant="primary">Save</Button>
+													<Button size="small" variant="secondary" onclick={() => (noting = null)}>
+														Cancel
+													</Button>
+												</form>
+											{/if}
 										</td>
 										{#each data.raids as raid (raid.raid.id)}
 											<td class="raid-col">
@@ -553,7 +603,8 @@
 	}
 
 	tr:hover .row-actions,
-	tr:focus-within .row-actions {
+	tr:focus-within .row-actions,
+	.row-actions.asking {
 		visibility: visible;
 	}
 
@@ -567,6 +618,10 @@
 		width: auto;
 		padding-block: 0;
 		font-size: var(--text-xs);
+	}
+
+	.row-actions.asking {
+		flex-wrap: wrap;
 	}
 
 	.delete {
@@ -604,6 +659,23 @@
 	.raid-col ol {
 		flex-direction: column;
 		align-items: flex-start;
+	}
+
+	.note-form {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-2);
+		margin-top: var(--space-1);
+	}
+
+	.note-form input {
+		flex: 1;
+		min-width: 12rem;
+		width: auto;
+		/* The table turns selection off; typing a note needs it back (Safari will not edit without). */
+		user-select: text;
+		-webkit-user-select: text;
 	}
 
 	.line li {

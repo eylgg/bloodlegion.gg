@@ -239,16 +239,18 @@ the changes.
 ## The Discord server
 
 The guild's Discord server is kept by a bot, the same Discord application members link (step 4
-above). It makes a role for each rank (Leader, Officer, Raider, Trial, Member, Friend) and four
+above). It keeps a role for each rank (Leader, Officer, Raider, Trial, Member, Friend) and four
 categories that follow the site's access levels, each open to its level and those above it: Public
 (everyone), Members (every role), Raiders (leader, officers, raiders, trials), and Officers (leader
-and officers). It makes two announcements channels besides, at the top of the channel list in no
+and officers). It keeps two announcements channels besides, at the top of the channel list in no
 category, where only the leader and officers post: #public-announcements, which everyone reads and
 whose posts show on the front page (kept in step as they are edited or deleted), and
 #raider-announcements, for the leader, officers, raiders, and trials.
 
-It never removes anything, and gives no one a role. It makes what is missing (taking over a role or
-category of the same name made by hand), and on its own categories sets only its own permission
+It never removes anything, gives no one a role, and makes nothing on its own: a missing role,
+category, or announcements channel is made only when a superuser presses **Create missing** on the
+Discord page (until all six roles are there, it sets no permissions on its channels). A role or channel of the same name made by hand is taken
+over rather than doubled, and on its own categories and channels it sets only its own permission
 entries, so others added by hand stay. Renaming its roles or categories is fine: it keeps track by
 id.
 
@@ -268,7 +270,9 @@ button that moves them to the top under their own names; and each unsynced chann
 button that gives it its category's permissions again. The page also checks the bot's own highest
 role: it should be the server's top role, since Discord lets the bot move only roles below it and
 lets no one raise their own (if not, someone above it drags it to the top in Server Settings, Roles),
-and shown separately in the member list, which its **Show separately** button turns on.
+shown separately in the member list, and not mentionable by anyone; for the same reason these are
+set by hand (the role's "Display role members separately from online members" on, "Allow anyone to
+mention this role" off).
 
 To set it up, in the application's **Bot** page turn on the **Message Content** intent (for the
 announcements) and **Server Members** (for the role check), and invite it to the server (**OAuth2 →

@@ -48,11 +48,15 @@ const RETRY: Duration = Duration::from_secs(30);
 /// How often the running bot checks it still holds the lock.
 const LOCK_CHECK: Duration = Duration::from_secs(15);
 
-/// How often the roles and categories are checked, in case someone changed them by hand.
+/// How often the bot finds its roles and channels again and sets its permissions on them, in case
+/// someone changed them by hand.
 const LAYOUT_EVERY: Duration = Duration::from_secs(60 * 60);
 
 /// Where the bot's settings changing is announced.
 const SETTINGS_CHANNEL: &str = "discord_settings";
+
+/// Where a superuser making the bot's roles or channels is announced, so the running bot finds them.
+const LAYOUT_CHANNEL: &str = "discord_layout";
 
 /// What the bot hears from the gateway: messages, with their text. Message content is privileged:
 /// it needs turning on for the bot in Discord's developer portal.
@@ -118,7 +122,7 @@ async fn lead(state: &State) -> anyhow::Result<()> {
         .await
         .context("listening for changes")?;
     changes
-        .listen(SETTINGS_CHANNEL)
+        .listen_all([SETTINGS_CHANNEL, LAYOUT_CHANNEL])
         .await
         .context("listening for changes")?;
     loop {
@@ -168,7 +172,7 @@ fn later(every: Duration) -> tokio::time::Interval {
 struct Bot {
     pool: PgPool,
     guild: GuildId,
-    /// Set before the gateway starts; changes when a check remakes something.
+    /// Set before the gateway starts; changes when a check finds something new.
     layout: RwLock<Option<Layout>>,
 }
 
@@ -182,7 +186,7 @@ impl Bot {
 
     fn is_announcements(&self, channel: ChannelId) -> bool {
         self.layout()
-            .is_some_and(|layout| layout.announcements == channel)
+            .is_some_and(|layout| layout.announcements == Some(channel))
     }
 
     async fn sync_layout(&self, http: &Http, me: UserId) -> anyhow::Result<Layout> {
@@ -222,7 +226,9 @@ async fn run(
     db::status_started(pool, &current.name)
         .await
         .context("recording that the bot runs")?;
-    if let Err(error) = sync::announcements(&http, pool, config.guild, layout.announcements).await {
+    if let Some(channel) = layout.announcements
+        && let Err(error) = sync::announcements(&http, pool, config.guild, channel).await
+    {
         warn("could not catch up #public-announcements", &error);
     }
 
@@ -238,6 +244,11 @@ async fn run(
                 Err(error) => Err(error).context("the Discord gateway task"),
             },
             notification = changes.recv() => match notification {
+                Ok(notification) if notification.channel() == LAYOUT_CHANNEL => {
+                    if let Err(error) = bot.sync_layout(&http, me).await {
+                        warn("could not find what was just made", &error);
+                    }
+                }
                 Ok(_) => break Ok(()),
                 Err(error) => break Err(error).context("listening for changes"),
             },

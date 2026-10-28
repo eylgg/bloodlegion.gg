@@ -6,6 +6,7 @@
 	import { classIcon } from '$lib/wow/icons';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
+	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import LootTable from '$lib/components/guild/LootTable.svelte';
 	import CharacterSpecs from '$lib/components/guild/CharacterSpecs.svelte';
@@ -29,7 +30,6 @@
 	const isPlayer = $derived(character.user_id === data.user.id);
 
 	async function remove() {
-		if (!confirm(`Remove ${character.first_name} ${character.last_name}?`)) return;
 		error = '';
 		try {
 			await api.del(`/api/characters/${character.id}`);
@@ -79,7 +79,13 @@
 	{#if data.detail.can_edit && !editing}
 		<div class="actions">
 			<Button variant="secondary" size="small" onclick={() => (editing = true)}>Edit</Button>
-			<Button variant="danger" size="small" onclick={remove}>Remove</Button>
+			<ConfirmButton
+				variant="danger"
+				size="small"
+				question="Remove {character.first_name} {character.last_name}?"
+				confirmLabel="Remove"
+				onconfirm={remove}>Remove</ConfirmButton
+			>
 		</div>
 	{/if}
 </div>

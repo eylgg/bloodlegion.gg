@@ -60,8 +60,9 @@ export async function takeOff(raids: RaidDetail[], raidId: number, characterId: 
 
 /**
  * Puts `character` on `raid` at `target` (or the nearest free place, when it is taken), moving
- * them out of any raid here they clash with once `confirm` agrees. The raids as they are after,
- * or null when it was called off. Throws the API's error.
+ * them out of any raid here they clash with once `ask` agrees (it resolves to whether they should
+ * move). The raids as they are after, or null when it was called off. Throws the API's
+ * error.
  */
 export async function putOn(
 	raids: RaidDetail[],
@@ -69,7 +70,7 @@ export async function putOn(
 	character: GuildCharacter,
 	target: Target,
 	size: number,
-	confirm: (message: string) => boolean,
+	ask: (message: string) => Promise<boolean>,
 	nameOf: (raidId: number) => string
 ): Promise<RaidDetail[] | null> {
 	const taken = raid.attendees.some(
@@ -87,7 +88,7 @@ export async function putOn(
 				? `${player} is in ${nameOf(other.raid.id)} at the same time (on ${fullName(attendee)}).`
 				: `${fullName(attendee)} is already saved to ${nameOf(other.raid.id)} this week.`
 		);
-		if (!confirm(`${reasons.join(' ')} Move them here?`)) return null;
+		if (!(await ask(`${reasons.join(' ')} Move them here?`))) return null;
 	}
 	let next = raids;
 	for (const { other, attendee } of found) {

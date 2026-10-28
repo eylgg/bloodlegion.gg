@@ -196,10 +196,14 @@ async fn fix_roles(state: State, _: SameOrigin, _admin: Admin) -> Result<StatusC
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// `POST /api/admin/discord/fix/bot-role`: superusers only. Shows the bot's own role separately in
-/// the member list (see `fix`).
-async fn fix_bot_role(state: State, _: SameOrigin, _admin: Admin) -> Result<StatusCode, FixError> {
-    fix::fix_bot_role(&state).await?;
+/// `POST /api/admin/discord/fix/create`: superusers only. Makes the bot's roles, categories, and
+/// announcements channels the server lacks (see `fix`).
+async fn create_channels(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+) -> Result<StatusCode, FixError> {
+    fix::create_channels(&state).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -240,7 +244,7 @@ pub fn admin_router() -> Router<State> {
         .route("/discord/check", get(role_check))
         .route("/discord/fix/categories", post(fix_categories))
         .route("/discord/fix/roles", post(fix_roles))
-        .route("/discord/fix/bot-role", post(fix_bot_role))
+        .route("/discord/fix/create", post(create_channels))
         .route("/discord/fix/announcements", post(fix_announcements))
         .route("/discord/fix/sync/{channel}", post(sync_channel))
 }

@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { Announcement } from '$lib/types';
 
-	let { announcements }: { announcements: Announcement[] } = $props();
+	// `fill` takes the width it is given (a column of the home page) rather than the front page's
+	// centred measure.
+	let { announcements, fill = false }: { announcements: Announcement[]; fill?: boolean } = $props();
 
 	const dateFormat = new Intl.DateTimeFormat(undefined, {
 		month: 'short',
@@ -11,7 +13,7 @@
 </script>
 
 <!-- The latest posts in the Discord server's #public-announcements, which the bot mirrors here. -->
-<section aria-labelledby="announcements-heading">
+<section aria-labelledby="announcements-heading" class:fill>
 	<h2 id="announcements-heading">Announcements</h2>
 	{#each announcements as post (post.id)}
 		<article>
@@ -36,6 +38,11 @@
 		width: min(100% - 2rem, 40rem);
 		padding-bottom: var(--space-6);
 		text-align: left;
+	}
+
+	section.fill {
+		width: 100%;
+		padding-bottom: 0;
 	}
 
 	/* A rule under the heading, to set the feed off from the sign-in above it. */

@@ -1,17 +1,18 @@
-//! Bringing the server in line with the site, through Discord's HTTP API: the bot's roles and
-//! categories (made when missing, its own permission entries set), and the stored copy of
-//! #public-announcements.
+//! Bringing the server in line with the site, through Discord's HTTP API: the bot's roles,
+//! categories, and announcements channels (found, never made: a superuser makes what is missing
+//! with the Discord page's Create button), its own permission entries on them, and the stored copy
+//! of #public-announcements.
 //!
-//! It never removes anything in Discord, and gives no member a role: it only makes what is
-//! missing. What it made is found by the id it stored; failing that,
-//! by name, so a role or category made by hand before the bot is taken over rather than doubled.
+//! It never removes anything in Discord, and gives no member a role. What it made is found by the
+//! id it stored; failing that, by name, so a role or channel made by hand before the bot is taken
+//! over rather than doubled.
 
 use std::collections::HashMap;
 
 use anyhow::Context;
 use serenity::all::{
-    ChannelId, ChannelType, CreateChannel, EditRole, GetMessages, GuildChannel, GuildId, Http,
-    Message, MessageType, Permissions, RoleId, UserId,
+    ChannelId, ChannelType, GetMessages, GuildChannel, GuildId, Http, Message, MessageType, Role,
+    RoleId, UserId,
 };
 use sqlx::PgPool;
 use time::OffsetDateTime;
@@ -29,8 +30,9 @@ pub(super) const REASON: &str = "Blood Legion site sync";
 /// How many of #public-announcements' latest posts a catch-up reads.
 const CATCH_UP: u8 = 50;
 
-/// Makes whatever of the bot's roles and categories is missing and sets its permission entries on
-/// them, returning where everything is.
+/// Finds the bot's roles, categories, and announcements channels, and sets its permission entries
+/// on them, returning where everything is. It makes nothing: what is missing waits for a
+/// superuser's Create button (`fix`), and until all six roles are there no permissions are set.
 pub async fn layout(
     http: &Http,
     pool: &PgPool,
@@ -41,41 +43,13 @@ pub async fn layout(
         .roles(http)
         .await
         .context("listing the server's roles")?;
-    let mut ids = HashMap::new();
+    let mut ids = Vec::new();
     for access in Access::ALL {
-        let stored = db::object_id(pool, access.key()).await?.map(RoleId::new);
-        let id = match stored.filter(|id| existing.contains_key(id)) {
-            Some(id) => id,
-            None => {
-                let id = match existing
-                    .values()
-                    .find(|role| role.name == access.role_name())
-                {
-                    Some(role) => role.id,
-                    None => {
-                        let role = guild
-                            .create_role(
-                                http,
-                                EditRole::new()
-                                    .name(access.role_name())
-                                    .hoist(true)
-                                    .mentionable(false)
-                                    .permissions(Permissions::empty())
-                                    .audit_log_reason(REASON),
-                            )
-                            .await
-                            .with_context(|| format!("making the {} role", access.role_name()))?;
-                        tracing::info!(role = access.role_name(), "discord: made a role");
-                        role.id
-                    }
-                };
-                db::set_object_id(pool, access.key(), id.get()).await?;
-                id
-            }
-        };
-        ids.insert(access, id);
+        if let Some(id) = find_role(pool, &existing, access).await? {
+            ids.push(id);
+        }
     }
-    let roles = Roles(Access::ALL.map(|access| ids[&access]));
+    let roles = ids.try_into().ok().map(Roles);
     // @everyone's id is the server's.
     let everyone = RoleId::new(guild.get());
 
@@ -84,17 +58,19 @@ pub async fn layout(
         .await
         .context("listing the server's channels")?;
     for category in &CATEGORIES {
-        let id = ensure_channel(
-            http,
+        let Some(id) = find_channel(
             pool,
-            guild,
             &channels,
             category.key,
             category.name,
             ChannelType::Category,
         )
-        .await?;
-        for overwrite in category_overwrites(category.audience, &roles, everyone, bot) {
+        .await?
+        else {
+            continue;
+        };
+        let Some(roles) = &roles else { continue };
+        for overwrite in category_overwrites(category.audience, roles, everyone, bot) {
             id.create_permission(http, overwrite)
                 .await
                 .with_context(|| {
@@ -105,43 +81,63 @@ pub async fn layout(
 
     let mut public = None;
     for channel in ANNOUNCEMENTS {
-        let id = ensure_channel(
-            http,
+        let Some(id) = find_channel(
             pool,
-            guild,
             &channels,
             channel.key,
             channel.name,
             ChannelType::Text,
         )
-        .await?;
-        for overwrite in announcements_overwrites(channel.audience, &roles, everyone, bot) {
+        .await?
+        else {
+            continue;
+        };
+        if channel.key == PUBLIC_ANNOUNCEMENTS.key {
+            public = Some(id);
+        }
+        let Some(roles) = &roles else { continue };
+        for overwrite in announcements_overwrites(channel.audience, roles, everyone, bot) {
             id.create_permission(http, overwrite)
                 .await
                 .with_context(|| format!("setting permissions on #{}", channel.name))?;
         }
-        if channel.key == PUBLIC_ANNOUNCEMENTS.key {
-            public = Some(id);
-        }
     }
     Ok(Layout {
-        roles,
-        announcements: public.expect("the announcements include the public one"),
+        announcements: public,
     })
 }
 
-/// The channel the bot keeps under `key`: a category, or a text channel at the top of the list (in
-/// no category). Found by its stored id wherever it now is, else by name at the top of the list,
-/// else made there.
-async fn ensure_channel(
-    http: &Http,
+/// The bot's role for `access`: found by its stored id, else by name; `None` when it is in neither
+/// place.
+pub(super) async fn find_role(
     pool: &PgPool,
-    guild: GuildId,
+    existing: &HashMap<RoleId, Role>,
+    access: Access,
+) -> anyhow::Result<Option<RoleId>> {
+    let stored = db::object_id(pool, access.key()).await?.map(RoleId::new);
+    if let Some(id) = stored.filter(|id| existing.contains_key(id)) {
+        return Ok(Some(id));
+    }
+    let Some(adopted) = existing
+        .values()
+        .find(|role| role.name == access.role_name())
+    else {
+        return Ok(None);
+    };
+    db::set_object_id(pool, access.key(), adopted.id.get()).await?;
+    Ok(Some(adopted.id))
+}
+
+/// The channel the bot keeps under `key`: a category, or a text channel at the top of the list (in
+/// no category). Found by its stored id wherever it now is, else by name at the top of the list;
+/// `None` when it is in neither place.
+pub(super) async fn find_channel(
+    pool: &PgPool,
     existing: &HashMap<ChannelId, GuildChannel>,
     key: &str,
     name: &str,
     kind: ChannelType,
-) -> anyhow::Result<ChannelId> {
+) -> anyhow::Result<Option<ChannelId>> {
     let fits = |channel: &GuildChannel| match kind {
         ChannelType::Category => channel.kind == ChannelType::Category,
         // A text channel may have been made an announcement (news) channel since.
@@ -149,25 +145,15 @@ async fn ensure_channel(
     };
     let stored = db::object_id(pool, key).await?.map(ChannelId::new);
     if let Some(id) = stored.filter(|id| existing.get(id).is_some_and(fits)) {
-        return Ok(id);
+        return Ok(Some(id));
     }
-    let adopted = existing.values().find(|channel| {
+    let Some(adopted) = existing.values().find(|channel| {
         fits(channel) && channel.name.eq_ignore_ascii_case(name) && channel.parent_id.is_none()
-    });
-    let id = match adopted {
-        Some(channel) => channel.id,
-        None => {
-            let builder = CreateChannel::new(name).kind(kind).audit_log_reason(REASON);
-            let channel = guild
-                .create_channel(http, builder)
-                .await
-                .with_context(|| format!("making {name}"))?;
-            tracing::info!(name, "discord: made a channel");
-            channel.id
-        }
+    }) else {
+        return Ok(None);
     };
-    db::set_object_id(pool, key, id.get()).await?;
-    Ok(id)
+    db::set_object_id(pool, key, adopted.id.get()).await?;
+    Ok(Some(adopted.id))
 }
 
 /// The names of the server's roles and channels, for the mentions in a post.

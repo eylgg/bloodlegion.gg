@@ -6,6 +6,8 @@
 	import { putOn, takeOff, type Target } from '$lib/wow/planning';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
+	import AskBar from '$lib/components/AskBar.svelte';
+	import { Ask } from '$lib/ask.svelte';
 	import RaidBuilder from '$lib/components/guild/RaidBuilder.svelte';
 	import Roster from '$lib/components/guild/Roster.svelte';
 	import RaidForm from '../raids/RaidForm.svelte';
@@ -20,6 +22,9 @@
 	let scheduling = $state<string | null>(null);
 	let error = $state('');
 	let adding = $state(false);
+	// Whether to move someone out of a raid they clash with, asked in the raid they are dropped on.
+	const moving = new Ask();
+	let movingTo = $state<number | null>(null);
 
 	const size = (zone: string) => data.zones.find((z) => z.slug === zone)?.size ?? 0;
 	const names = $derived(
@@ -48,7 +53,10 @@
 				character,
 				target,
 				size(raid.raid.zone),
-				(message) => confirm(message),
+				(message) => {
+					movingTo = raid.raid.id;
+					return moving.ask(message);
+				},
 				nameOf
 			);
 			if (next) raids = next;
@@ -208,6 +216,7 @@
 						>
 					</span>
 				</header>
+				{#if movingTo === raid.raid.id}<AskBar ask={moving} confirmLabel="Move" />{/if}
 				<RaidBuilder
 					raidId={raid.raid.id}
 					size={size(raid.raid.zone)}

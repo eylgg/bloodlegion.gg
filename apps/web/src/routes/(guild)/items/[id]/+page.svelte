@@ -5,6 +5,7 @@
 	import { QUALITY_COLOR, QUALITY_LABEL } from '$lib/guild';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
+	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import LootTable from '$lib/components/guild/LootTable.svelte';
 	import ItemTooltip from '$lib/components/guild/ItemTooltip.svelte';
 	import ItemForm from '../ItemForm.svelte';
@@ -19,7 +20,6 @@
 	let error = $state('');
 
 	async function remove() {
-		if (!confirm(`Remove ${item.name}?`)) return;
 		error = '';
 		try {
 			await api.del(`/api/items/${item.id}`);
@@ -46,7 +46,13 @@
 		<div class="actions">
 			<Button variant="secondary" size="small" onclick={() => (editing = true)}>Edit</Button>
 			{#if item.drops === 0}
-				<Button variant="danger" size="small" onclick={remove}>Remove</Button>
+				<ConfirmButton
+					variant="danger"
+					size="small"
+					question="Remove {item.name}?"
+					confirmLabel="Remove"
+					onconfirm={remove}>Remove</ConfirmButton
+				>
 			{/if}
 		</div>
 	{/if}

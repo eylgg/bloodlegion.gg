@@ -5,6 +5,7 @@
 	import { api, errorMessage } from '$lib/api';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
+	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -52,9 +53,8 @@
 	let fixError = $state('');
 	let fixed = $state<string | null>(null);
 
-	/** Runs one of the fixes (`roles`, `categories`, `bot-role`, `announcements`, `sync/<id>`) once confirmed. */
-	async function fix(action: string, question: string) {
-		if (!confirm(question)) return;
+	/** Runs one of the fixes (`roles`, `categories`, `create`, `announcements`, `sync/<id>`). */
+	async function fix(action: string) {
 		fixing = action;
 		fixError = '';
 		fixed = null;
@@ -69,11 +69,34 @@
 		}
 	}
 
+	/** The bot's roles, categories, and announcements channels the server lacks. */
+	const missing = $derived(
+		report
+			? [
+					...report.roles.filter((r) => !r.id).map((r) => `the ${r.name} role`),
+					...report.categories.filter((c) => !c.id).map((c) => c.name),
+					...report.announcements.filter((c) => !c.id).map((c) => `#${c.name}`)
+				]
+			: []
+	);
+
 	const announcementsToFix = $derived(
 		report?.announcements.filter((channel) => channel.id && (channel.named || channel.category)) ??
 			[]
 	);
 </script>
+
+{#snippet createMissing()}
+	<ConfirmButton
+		disabled={fixing !== null}
+		question={`Make ${missing.join(', ')}? One already there under that name is taken over instead.`}
+		confirmLabel="Create"
+		confirmVariant="primary"
+		onconfirm={() => fix('create')}
+	>
+		{fixing === 'create' ? 'Creating...' : 'Create missing'}
+	</ConfirmButton>
+{/snippet}
 
 <svelte:head>
 	<title>Discord | Blood Legion</title>
@@ -182,6 +205,7 @@
 		</section>
 
 		{#if fixError}<Alert variant="error">{fixError}</Alert>{/if}
+		{#if fixed === 'create'}<Alert variant="success">What was missing is made.</Alert>{/if}
 
 		<section>
 			<div class="head">
@@ -199,15 +223,18 @@
 					{:else}
 						<span class="tag warn">Not shown separately</span>
 					{/if}
+					{#if report.bot_role.mentionable}
+						<span class="tag warn">Mentionable</span>
+					{:else}
+						<span class="tag ok">Not mentionable</span>
+					{/if}
 				{/if}
 			</div>
 			<p class="muted">
 				The bot's highest role should be the server's top role, since it can manage only the roles
-				below it, and shown separately in the member list, so the bot stands apart from everyone
-				else.
+				below it, shown separately in the member list, so the bot stands apart from everyone else,
+				and not mentionable by anyone, since mentioning it only pings the bot.
 			</p>
-			{#if fixed === 'bot-role'}<Alert variant="success">The bot's role is shown separately.</Alert
-				>{/if}
 			{#if report.bot_role}
 				<dl class="facts">
 					<div>
@@ -228,19 +255,18 @@
 				</Alert>
 			{/if}
 			{#if report.bot_role && !report.bot_role.shown_separately}
-				<div class="actions">
-					<Button
-						variant="secondary"
-						disabled={fixing !== null}
-						onclick={() =>
-							fix(
-								'bot-role',
-								"Show the bot's role separately from online members in the member list?"
-							)}
-					>
-						{fixing === 'bot-role' ? 'Fixing...' : 'Show separately'}
-					</Button>
-				</div>
+				<Alert variant="info">
+					There is no button for this either: Discord lets no one change their own top role. In
+					Server Settings, Roles, the server's owner (or someone with a role above the bot's) opens
+					{report.bot_role.name} and turns on "Display role members separately from online members".
+				</Alert>
+			{/if}
+			{#if report.bot_role?.mentionable}
+				<Alert variant="info">
+					In Server Settings, Roles, the server's owner (or someone with a role above the bot's)
+					opens {report.bot_role.name} and turns off "Allow anyone to mention this role". No button, for
+					the same reason.
+				</Alert>
 			{/if}
 		</section>
 
@@ -256,7 +282,8 @@
 			<p class="muted">
 				The bot's roles, top to bottom, as they should stand in Server Settings, Roles. Holders:
 				everyone in the server with the role. Due: linked members in the server whose rank calls for
-				it.
+				it. The bot makes none on its own: Create missing makes them, and until all six are there it
+				sets no permissions on its channels.
 			</p>
 			{#if fixed === 'roles'}<Alert variant="success">The roles are in order.</Alert>{/if}
 			{#if report.roles_out_of_reach.length > 0}
@@ -284,19 +311,20 @@
 					{/each}
 				</tbody>
 			</table>
-			{#if !report.roles_in_order}
+			{#if report.roles.some((r) => !r.id) || !report.roles_in_order}
 				<div class="actions">
-					<Button
-						variant="secondary"
-						disabled={fixing !== null}
-						onclick={() =>
-							fix(
-								'roles',
-								"Put the bot's roles in order? Only they move; everything else keeps its place."
-							)}
-					>
-						{fixing === 'roles' ? 'Fixing...' : 'Fix order'}
-					</Button>
+					{#if report.roles.some((r) => !r.id)}{@render createMissing()}{/if}
+					{#if !report.roles_in_order}
+						<ConfirmButton
+							disabled={fixing !== null}
+							question="Put the bot's roles in order? Only they move; everything else keeps its place."
+							confirmLabel="Fix"
+							confirmVariant="primary"
+							onconfirm={() => fix('roles')}
+						>
+							{fixing === 'roles' ? 'Fixing...' : 'Fix order'}
+						</ConfirmButton>
+					{/if}
 				</div>
 			{/if}
 		</section>
@@ -310,7 +338,10 @@
 					<span class="tag warn">Out of order</span>
 				{/if}
 			</div>
-			<p class="muted">The bot's categories, top to bottom, as they should stand in the server.</p>
+			<p class="muted">
+				The bot's categories, top to bottom, as they should stand in the server. The bot makes none
+				on its own: Create missing makes them, with the bot's permissions.
+			</p>
 			{#if fixed === 'categories'}<Alert variant="success">The categories are in order.</Alert>{/if}
 			<table>
 				<thead>
@@ -330,19 +361,20 @@
 					{/each}
 				</tbody>
 			</table>
-			{#if !report.categories_in_order}
+			{#if report.categories.some((c) => !c.id) || !report.categories_in_order}
 				<div class="actions">
-					<Button
-						variant="secondary"
-						disabled={fixing !== null}
-						onclick={() =>
-							fix(
-								'categories',
-								"Put the bot's categories in order? Only they move; everything else keeps its place."
-							)}
-					>
-						{fixing === 'categories' ? 'Fixing...' : 'Fix order'}
-					</Button>
+					{#if report.categories.some((c) => !c.id)}{@render createMissing()}{/if}
+					{#if !report.categories_in_order}
+						<ConfirmButton
+							disabled={fixing !== null}
+							question="Put the bot's categories in order? Only they move; everything else keeps its place."
+							confirmLabel="Fix"
+							confirmVariant="primary"
+							onconfirm={() => fix('categories')}
+						>
+							{fixing === 'categories' ? 'Fixing...' : 'Fix order'}
+						</ConfirmButton>
+					{/if}
 				</div>
 			{/if}
 		</section>
@@ -358,8 +390,8 @@
 			</div>
 			<p class="muted">
 				At the top of the channel list, in no category, where only the leader and officers post.
-				#public-announcements shows on the site's front page. A missing one is made when the bot
-				next checks (on start, then hourly).
+				#public-announcements shows on the site's front page. The bot makes neither on its own:
+				Create missing makes them.
 			</p>
 			{#if fixed === 'announcements'}
 				<Alert variant="success">The announcements channels are in place.</Alert>
@@ -385,19 +417,20 @@
 					{/each}
 				</tbody>
 			</table>
-			{#if announcementsToFix.length > 0}
+			{#if report.announcements.some((c) => !c.id) || announcementsToFix.length > 0}
 				<div class="actions">
-					<Button
-						variant="secondary"
-						disabled={fixing !== null}
-						onclick={() =>
-							fix(
-								'announcements',
-								'Move the announcements channels to the top of the list, out of any category, under their own names?'
-							)}
-					>
-						{fixing === 'announcements' ? 'Fixing...' : 'Fix'}
-					</Button>
+					{#if report.announcements.some((c) => !c.id)}{@render createMissing()}{/if}
+					{#if announcementsToFix.length > 0}
+						<ConfirmButton
+							disabled={fixing !== null}
+							question="Move the announcements channels to the top of the list, out of any category, under their own names?"
+							confirmLabel="Fix"
+							confirmVariant="primary"
+							onconfirm={() => fix('announcements')}
+						>
+							{fixing === 'announcements' ? 'Fixing...' : 'Fix'}
+						</ConfirmButton>
+					{/if}
 				</div>
 			{/if}
 		</section>
@@ -428,18 +461,16 @@
 									in {channel.category} · <code class="id">{channel.id}</code>
 								</span>
 							</div>
-							<Button
-								variant="secondary"
+							<ConfirmButton
 								size="small"
 								disabled={fixing !== null}
-								onclick={() =>
-									fix(
-										`sync/${channel.id}`,
-										`Sync #${channel.name} with ${channel.category}? Its own permissions are replaced with the category's.`
-									)}
+								question={`Sync #${channel.name} with ${channel.category}? Its own permissions are replaced with the category's.`}
+								confirmLabel="Sync"
+								confirmVariant="primary"
+								onconfirm={() => fix(`sync/${channel.id}`)}
 							>
 								{fixing === `sync/${channel.id}` ? 'Syncing...' : 'Sync'}
-							</Button>
+							</ConfirmButton>
 						</li>
 					{/each}
 				</ul>

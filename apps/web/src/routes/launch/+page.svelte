@@ -7,6 +7,7 @@
 	import RoleIcon from '$lib/components/RoleIcon.svelte';
 	import LaunchCountdown from '$lib/components/LaunchCountdown.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 
 	let { data }: PageProps = $props();
@@ -191,8 +192,6 @@
 	}
 
 	async function remove(character: Character) {
-		const className = classBySlug.get(character.class)?.name ?? character.class;
-		if (!confirm(`Remove ${className} from your sign-ups?`)) return;
 		try {
 			await api.del(`/api/launch/characters/${character.id}`);
 			characters = characters.filter((c) => c.id !== character.id);
@@ -272,9 +271,15 @@
 							<Button size="small" variant="secondary" onclick={() => startEdit(character)}>
 								Edit
 							</Button>
-							<Button size="small" variant="danger" onclick={() => remove(character)}>
+							<ConfirmButton
+								size="small"
+								variant="danger"
+								question="Remove {wowClass?.name ?? character.class} from your sign-ups?"
+								confirmLabel="Remove"
+								onconfirm={() => remove(character)}
+							>
 								Remove
-							</Button>
+							</ConfirmButton>
 						</div>
 					</li>
 				{/each}

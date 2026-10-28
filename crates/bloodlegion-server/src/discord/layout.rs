@@ -147,8 +147,8 @@ pub const ANNOUNCEMENTS: [&Announcements; 2] = [&PUBLIC_ANNOUNCEMENTS, &RAIDER_A
 /// Where everything the bot keeps is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Layout {
-    pub roles: Roles,
-    pub announcements: ChannelId,
+    /// #public-announcements; `None` until it is made.
+    pub announcements: Option<ChannelId>,
 }
 
 fn role(id: RoleId, allow: Permissions, deny: Permissions) -> PermissionOverwrite {

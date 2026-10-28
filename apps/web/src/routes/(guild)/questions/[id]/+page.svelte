@@ -5,6 +5,7 @@
 	import { formatDate } from '$lib/guild';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
+	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import QuestionForm from '../QuestionForm.svelte';
 	import Tally from '../Tally.svelte';
 	import type { Question } from '$lib/types';
@@ -17,7 +18,6 @@
 	let error = $state('');
 
 	async function remove() {
-		if (!confirm('Delete this question and its answers?')) return;
 		try {
 			await api.del(`/api/questions/${question.id}`);
 			await goto(resolve('/questions'));
@@ -39,7 +39,13 @@
 	{#if data.officer && !editing}
 		<div class="actions">
 			<Button variant="secondary" size="small" onclick={() => (editing = true)}>Edit</Button>
-			<Button variant="danger" size="small" onclick={remove}>Delete</Button>
+			<ConfirmButton
+				variant="danger"
+				size="small"
+				question="Delete this question and its answers?"
+				confirmLabel="Delete"
+				onconfirm={remove}>Delete</ConfirmButton
+			>
 		</div>
 	{/if}
 </div>

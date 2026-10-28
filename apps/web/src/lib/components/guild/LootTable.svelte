@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import CharacterLink from './CharacterLink.svelte';
 	import ItemLink from './ItemLink.svelte';
-	import Button from '$lib/components/Button.svelte';
+	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import { formatDateInZone, zoneName } from '$lib/guild';
 	import type { LootEntry, Zone } from '$lib/types';
 
@@ -21,7 +21,7 @@
 		boss?: boolean;
 		winner?: boolean;
 		empty?: string;
-		/** Offers a remove button per row (officers). */
+		/** Offers a remove button per row (officers), which asks first. */
 		onremove?: (entry: LootEntry) => void;
 	} = $props();
 
@@ -93,7 +93,12 @@
 						{/if}
 						{#if onremove}
 							<td class="actions">
-								<Button size="small" variant="danger" onclick={() => onremove(entry)}>Remove</Button
+								<ConfirmButton
+									size="small"
+									variant="danger"
+									question="Remove {entry.item_name} from this raid's loot?"
+									confirmLabel="Remove"
+									onconfirm={() => onremove(entry)}>Remove</ConfirmButton
 								>
 							</td>
 						{/if}
