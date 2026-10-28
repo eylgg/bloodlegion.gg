@@ -33,6 +33,17 @@ impl Access {
         matches!(self, Access::Leader | Access::Officer)
     }
 
+    /// The role's color, as `0xRRGGBB`: the game's item qualities, and blood red for the raiders.
+    pub fn color(self) -> u32 {
+        match self {
+            Access::Leader => 0xFF8000,  // Legendary orange
+            Access::Officer => 0xA335EE, // Epic purple
+            Access::Raider => 0xC41F3B,  // Blood red
+            Access::Trial => 0x0070DD,   // Rare blue
+            Access::Member => 0x1EFF00,  // Uncommon green
+        }
+    }
+
     pub const ALL: [Access; 5] = [
         Access::Leader,
         Access::Officer,

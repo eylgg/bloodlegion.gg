@@ -5,7 +5,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import SpecsPicker from './SpecsPicker.svelte';
-	import type { GuildCharacter, GuildCharacterInput, SpecsInput, WowClass } from '$lib/types';
+	import type { GuildCharacter, GuildCharacterInput, Race, SpecsInput, WowClass } from '$lib/types';
 
 	/**
 	 * Adds or edits a character. `owners` turns on the officers' owner picker: any member, or
@@ -28,6 +28,11 @@
 	} = $props();
 
 	const classes = $derived((page.data.classes as WowClass[] | undefined) ?? []);
+	const races = $derived((page.data.races as Race[] | undefined) ?? []);
+	const FACTIONS = [
+		{ faction: 'alliance', label: 'Alliance' },
+		{ faction: 'horde', label: 'Horde' }
+	] as const;
 
 	// svelte-ignore state_referenced_locally
 	let firstName = $state(character?.first_name ?? '');
@@ -35,6 +40,9 @@
 	let lastName = $state(character?.last_name ?? '');
 	// svelte-ignore state_referenced_locally
 	let classSlug = $state(character?.class ?? '');
+	// The race's slug, or '' for none recorded.
+	// svelte-ignore state_referenced_locally
+	let raceSlug = $state(character?.race ?? '');
 	// svelte-ignore state_referenced_locally
 	let isMain = $state(character?.is_main ?? firstIsMain);
 	// The owner picker's value: a member's id, or '' for nobody.
@@ -70,6 +78,7 @@
 			first_name: firstName,
 			last_name: lastName,
 			class: classSlug,
+			race: raceSlug || null,
 			is_main: isMain && (!owners || owner !== '')
 		};
 		if (owners) body.user_id = owner === '' ? null : Number(owner);
@@ -102,6 +111,20 @@
 			<input type="text" bind:value={lastName} required minlength="2" maxlength="24" />
 		</label>
 	</div>
+
+	<label class="field">
+		Race
+		<select bind:value={raceSlug}>
+			<option value="">Not recorded</option>
+			{#each FACTIONS as { faction, label } (faction)}
+				<optgroup {label}>
+					{#each races.filter((r) => r.faction === faction) as race (race.slug)}
+						<option value={race.slug}>{race.name}</option>
+					{/each}
+				</optgroup>
+			{/each}
+		</select>
+	</label>
 
 	<fieldset>
 		<legend>Class</legend>

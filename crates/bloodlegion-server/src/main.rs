@@ -10,7 +10,6 @@ mod extract;
 mod fallbacks;
 mod game_items;
 mod guild;
-mod launch;
 mod local_time;
 mod newtype;
 mod observability;
@@ -78,8 +77,6 @@ enum Command {
         #[command(subcommand)]
         command: PasswordsCommand,
     },
-    /// Every member's WoW: Forever launch sign-ups.
-    Launch,
     /// Characters.
     Characters {
         #[command(subcommand)]
@@ -356,7 +353,6 @@ fn main() -> Result<()> {
                 raw,
             } => cli::users_characters(username, provider, region, namespace, locale, raw),
         },
-        Some(Command::Launch) => cli::launch(),
         Some(Command::Characters { command }) => match command {
             CharactersCommand::Seed => cli::characters_seed(),
             CharactersCommand::Unseed => cli::characters_unseed(),

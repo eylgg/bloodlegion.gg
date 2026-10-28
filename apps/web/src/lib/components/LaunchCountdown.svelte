@@ -1,10 +1,16 @@
+<script lang="ts" module>
+	/**
+	 * WoW: Forever's global launch: November 4, 2026 at 23:00 UTC (3:00 PM Pacific, 6:00 PM
+	 * Eastern), one moment worldwide.
+	 */
+	export const LAUNCH = Date.UTC(2026, 10, 4, 23, 0, 0);
+</script>
+
 <script lang="ts">
 	/**
-	 * The countdown to WoW: Forever's global launch: November 4, 2026 at 23:00 UTC (3:00 PM
-	 * Pacific, 6:00 PM Eastern), one moment worldwide. The time is shown in the visitor's own zone.
-	 * It ticks only in the browser: rendered on the server it would be stale by the time it arrived.
+	 * The countdown to the launch, its time shown in the visitor's own zone. It ticks only in the
+	 * browser: rendered on the server it would be stale by the time it arrived.
 	 */
-	const LAUNCH = Date.UTC(2026, 10, 4, 23, 0, 0);
 
 	let now = $state<number | null>(null);
 

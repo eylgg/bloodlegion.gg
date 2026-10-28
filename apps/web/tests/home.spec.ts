@@ -36,12 +36,6 @@ test('a failed sign-in shows a readable message, never text from the link', asyn
 	await expect(page.getByRole('alert')).toHaveText('Sign-in failed. Please try again.');
 });
 
-test('launch sign-ups are for members: a visitor is sent to sign in first', async ({ page }) => {
-	await page.goto('/launch');
-	await expect(page).toHaveURL('/?next=%2Flaunch');
-	await expect(page.getByRole('img', { name: 'Blood Legion' })).toBeVisible();
-});
-
 test('the guild pages are for members: a visitor is sent to sign in first', async ({ page }) => {
 	for (const path of ['/roster', '/raids', '/raids/1', '/loot', '/profile', '/characters/1']) {
 		await page.goto(path);

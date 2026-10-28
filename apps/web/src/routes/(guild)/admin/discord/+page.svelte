@@ -55,7 +55,7 @@
 
 	/**
 	 * Runs one of the fixes (`roles`, `categories`, `create`, `announcements`, `permissions`,
-	 * `sync/<id>`).
+	 * `administrators`, `colors`, `sync/<id>`, `rename/<key>`).
 	 */
 	async function fix(action: string) {
 		fixing = action;
@@ -141,6 +141,10 @@
 	/** The bot's categories and announcements channels whose permission entries differ. */
 	const permissionsToFix = $derived(
 		report?.permissions?.filter((channel) => channel.differing.length > 0) ?? []
+	);
+	/** The bot's roles whose color is not their level's. */
+	const colorsToFix = $derived(
+		report?.roles.filter((r) => r.id && r.color !== r.expected_color) ?? []
 	);
 	/** The bot's roles that should have Administrator (Leader, Officer) and lack it. */
 	const administratorsToSet = $derived(
@@ -365,9 +369,24 @@
 				whose rank calls for it (how many should hold it). The bot makes none on its own: Create
 				missing makes them. Change points one at another of the server's roles instead, by its id
 				(right-click the role in Server Settings, Roles, and Copy Role ID): it is not renamed, and
-				the one it had stays as it is.
+				the one it had stays as it is; Rename gives it the bot's name. The leader's and officers'
+				roles should have Discord's Administrator permission: Give Administrator adds it, keeping
+				whatever else they allow. Each role has its level's color (the game's item qualities, and
+				blood red for raiders): Fix colors sets them.
 			</p>
 			{#if fixed === 'roles'}<Alert variant="success">The roles are in order.</Alert>{/if}
+			{#if fixed?.startsWith('rename/')}<Alert variant="success">The role is renamed.</Alert>{/if}
+			{#if fixed === 'colors'}<Alert variant="success">The roles have their colors.</Alert>{/if}
+			{#if fixed === 'administrators'}
+				<Alert variant="success">The leader's and officers' roles are administrators.</Alert>
+			{/if}
+			{#if administratorsToSet.length > 0 && !report.bot_is_administrator}
+				<Alert variant="info">
+					{administratorsToSet.map((r) => r.name).join(' and ')} should have Administrator, and Discord
+					lets the bot give it only if it has it itself. In Server Settings, Roles, the server's owner
+					turns on Administrator for {report.bot_role?.name ?? "the bot's role"}.
+				</Alert>
+			{/if}
 			{#if roleSaved}
 				{@const saved = report.roles.find((r) => r.key === roleSaved)}
 				{#if saved}
@@ -385,7 +404,11 @@
 			{/if}
 			<table>
 				<thead>
-					<tr><th>Role</th><th>ID</th><th class="num">Holders</th><th class="num">Linked</th></tr>
+					<tr>
+						<th>Role</th><th>ID</th><th>Color</th><th class="num">Holders</th><th class="num"
+							>Linked</th
+						>
+					</tr>
 				</thead>
 				<tbody>
 					{#each report.roles as role (role.key)}
@@ -394,6 +417,16 @@
 								{role.name}
 								{#if role.id && role.name !== role.expected_name}
 									<span class="tag warn">Not named {role.expected_name}</span>
+									<ConfirmButton
+										size="small"
+										disabled={fixing !== null}
+										question={`Rename ${role.name} to ${role.expected_name}?`}
+										confirmLabel="Rename"
+										confirmVariant="primary"
+										onconfirm={() => fix(`rename/${encodeURIComponent(role.key)}`)}
+									>
+										{fixing === `rename/${encodeURIComponent(role.key)}` ? 'Renaming...' : 'Rename'}
+									</ConfirmButton>
 								{/if}
 								{#if role.id && role.wants_administrator}
 									{#if role.administrator}
@@ -444,15 +477,56 @@
 									>
 								{/if}
 							</td>
+							<td>
+								{#if role.id}
+									<span class="color">
+										<span
+											class="swatch"
+											class:none={!role.color}
+											style:background={role.color ?? 'transparent'}
+										></span>
+										<code>{role.color ?? 'Default'}</code>
+									</span>
+									{#if role.color !== role.expected_color}
+										<span class="tag warn">
+											Should be
+											<span class="swatch" style:background={role.expected_color}></span>
+											{role.expected_color}
+										</span>
+									{/if}
+								{:else}–{/if}
+							</td>
 							<td class="num">{role.id ? role.holders : '–'}</td>
 							<td class="num">{role.linked}</td>
 						</tr>
 					{/each}
 				</tbody>
 			</table>
-			{#if report.roles.some((r) => !r.id) || !report.roles_in_order}
+			{#if report.roles.some((r) => !r.id) || !report.roles_in_order || administratorsToSet.length > 0 || colorsToFix.length > 0}
 				<div class="actions">
+					{#if colorsToFix.length > 0}
+						<ConfirmButton
+							disabled={fixing !== null}
+							question={`Give ${colorsToFix.map((r) => r.name).join(', ')} their colors?`}
+							confirmLabel="Fix"
+							confirmVariant="primary"
+							onconfirm={() => fix('colors')}
+						>
+							{fixing === 'colors' ? 'Fixing...' : 'Fix colors'}
+						</ConfirmButton>
+					{/if}
 					{#if report.roles.some((r) => !r.id)}{@render createMissing()}{/if}
+					{#if administratorsToSet.length > 0}
+						<ConfirmButton
+							disabled={fixing !== null || !report.bot_is_administrator}
+							question={`Give ${administratorsToSet.map((r) => r.name).join(' and ')} Administrator? It keeps what else they allow.`}
+							confirmLabel="Give"
+							confirmVariant="primary"
+							onconfirm={() => fix('administrators')}
+						>
+							{fixing === 'administrators' ? 'Giving...' : 'Give Administrator'}
+						</ConfirmButton>
+					{/if}
 					{#if !report.roles_in_order}
 						<ConfirmButton
 							disabled={fixing !== null}
@@ -640,28 +714,19 @@
 				<h2>Permissions</h2>
 				{#if !report.permissions}
 					<span class="tag warn">Roles missing</span>
-				{:else if permissionsToFix.length + administratorsToSet.length === 0}
+				{:else if permissionsToFix.length === 0}
 					<span class="tag ok">All set</span>
 				{:else}
-					<span class="tag warn">{permissionsToFix.length + administratorsToSet.length} to set</span
-					>
+					<span class="tag warn">{permissionsToFix.length} to set</span>
 				{/if}
 			</div>
 			<p class="muted">
 				The bot's own permission entries on its categories and announcements channels: who may see
 				each, and who may post announcements. Entries added by hand are left alone, and these are
-				set only with the button. The leader's and officers' roles also get Discord's Administrator
-				permission, keeping whatever else they allow.
+				set only with the button.
 			</p>
 			{#if fixed === 'permissions'}
 				<Alert variant="success">The bot's permissions are set.</Alert>
-			{/if}
-			{#if administratorsToSet.length > 0 && !report.bot_is_administrator}
-				<Alert variant="info">
-					{administratorsToSet.map((r) => r.name).join(' and ')} should have Administrator, and Discord
-					lets the bot give it only if it has it itself. In Server Settings, Roles, the server's owner
-					turns on Administrator for {report.bot_role?.name ?? "the bot's role"}.
-				</Alert>
 			{/if}
 			{#if !report.permissions}
 				<Alert variant="info">
@@ -669,15 +734,6 @@
 				</Alert>
 			{:else}
 				<ul class="list">
-					{#each administratorsToSet as role (role.key)}
-						<li>
-							<div class="who">
-								<span class="name">{role.name}</span>
-								<span class="muted small">Role · <code class="id">{role.id}</code></span>
-							</div>
-							<div class="needs"><span class="tag warn">Administrator</span></div>
-						</li>
-					{/each}
 					{#each report.permissions as channel (channel.id)}
 						<li>
 							<div class="who">
@@ -698,13 +754,11 @@
 						</li>
 					{/each}
 				</ul>
-				{#if permissionsToFix.length + administratorsToSet.length > 0}
+				{#if permissionsToFix.length > 0}
 					<div class="actions">
 						<ConfirmButton
 							disabled={fixing !== null}
-							question={administratorsToSet.length > 0
-								? `Set the bot's entries where they differ, and give ${administratorsToSet.map((r) => r.name).join(' and ')} Administrator? Only its own entries change; those added by hand stay.`
-								: "Set the bot's entries where they differ? Only its own entries change; those added by hand stay."}
+							question="Set the bot's entries where they differ? Only its own entries change; those added by hand stay."
 							confirmLabel="Set"
 							confirmVariant="primary"
 							onconfirm={() => fix('permissions')}
@@ -933,6 +987,25 @@
 	.num {
 		text-align: right;
 		font-variant-numeric: tabular-nums;
+	}
+
+	.color {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-1);
+	}
+
+	.swatch {
+		display: inline-block;
+		width: 0.9em;
+		height: 0.9em;
+		border-radius: 50%;
+		vertical-align: -0.1em;
+		border: 1px solid var(--grey-soft);
+	}
+
+	.swatch.none {
+		border-style: dashed;
 	}
 
 	.role-id {

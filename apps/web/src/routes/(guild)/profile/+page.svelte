@@ -100,6 +100,7 @@
 					first_name: character.first_name,
 					last_name: character.last_name,
 					class: character.class,
+					race: character.race,
 					is_main: true
 				})
 			);

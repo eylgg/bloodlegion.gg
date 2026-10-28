@@ -24,6 +24,8 @@ pub struct Character {
     pub first_name: String,
     pub last_name: String,
     pub class: String,
+    /// Its race's slug (`wow::catalog::RACES`), or `None` while nobody has recorded it.
+    pub race: Option<String>,
     pub is_main: bool,
     /// The specs it plays, its main (if it has one) first, then in the catalog's order.
     pub specs: sqlx::types::Json<Vec<CharacterSpec>>,
@@ -39,6 +41,9 @@ pub struct CharacterInput {
     pub first_name: String,
     pub last_name: String,
     pub class: String,
+    /// Its race's slug; absent, `null`, or empty for none recorded.
+    #[serde(default)]
+    pub race: Option<String>,
     #[serde(default)]
     pub is_main: bool,
     /// Who plays it: absent for the caller themselves; an officer may name any member, or send
@@ -48,7 +53,7 @@ pub struct CharacterInput {
 }
 
 /// A spec a character plays: any of its class's, with the notable talents it takes there (see
-/// `launch::catalog` for both), and whether it is the character's main.
+/// `wow::catalog` for both), and whether it is the character's main.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CharacterSpec {
     pub spec: String,
@@ -76,7 +81,7 @@ pub struct SpecsInput {
 /// Orders specs as characters show them: the main first, then the class catalog's order.
 pub(crate) fn order_specs(class: &str, specs: &mut [CharacterSpec]) {
     let position = |slug: &str| {
-        crate::launch::catalog::find(class)
+        crate::wow::catalog::find(class)
             .and_then(|c| c.specs.iter().position(|s| s.slug == slug))
             .unwrap_or(usize::MAX)
     };
@@ -99,6 +104,13 @@ pub enum CharacterError {
         detail = "That is not a WoW: Forever class."
     )]
     UnknownClass,
+    #[error("unknown race")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Unknown Race",
+        detail = "That is not a WoW: Forever race."
+    )]
+    UnknownRace,
     #[error("name taken")]
     #[problem(
         status = CONFLICT,
@@ -167,6 +179,7 @@ struct Valid {
     first_name: String,
     last_name: String,
     class: &'static str,
+    race: Option<&'static str>,
     user_id: Option<UserId>,
     is_main: bool,
 }
@@ -178,8 +191,15 @@ fn validate(
     input: &CharacterInput,
     current_owner: Option<Option<UserId>>,
 ) -> Result<Valid, CharacterError> {
-    let Some(class) = crate::launch::catalog::find(input.class.trim()) else {
+    let Some(class) = crate::wow::catalog::find(input.class.trim()) else {
         return external(CharacterError::UnknownClass);
+    };
+    let race = match input.race.as_deref().map(str::trim) {
+        None | Some("") => None,
+        Some(slug) => match crate::wow::catalog::find_race(slug) {
+            Some(race) => Some(race.slug),
+            None => return external(CharacterError::UnknownRace),
+        },
     };
     let user_id = match (input.user_id, current_owner) {
         (Some(owner), _) => owner,
@@ -194,6 +214,7 @@ fn validate(
         first_name: name(&input.first_name)?,
         last_name: name(&input.last_name)?,
         class: class.slug,
+        race,
         // An unclaimed character is nobody's main.
         is_main: input.is_main && user_id.is_some(),
         user_id,
@@ -233,16 +254,9 @@ pub async fn create(
             db::clear_main(&mut tx, owner, None).await?;
         }
     }
-    let id = db::insert(
-        &mut tx,
-        valid.user_id,
-        &valid.first_name,
-        &valid.last_name,
-        valid.class,
-        is_main,
-    )
-    .await
-    .map_err(classify)?;
+    let id = db::insert(&mut tx, &valid, is_main)
+        .await
+        .map_err(classify)?;
     tx.commit().await?;
     Ok(db::find(pool, id)
         .await?
@@ -270,17 +284,7 @@ pub async fn update(
     }
     // A new class has other specs and talents.
     db::clear_specs_unless_class(&mut tx, id, valid.class).await?;
-    db::update(
-        &mut tx,
-        id,
-        valid.user_id,
-        &valid.first_name,
-        &valid.last_name,
-        valid.class,
-        valid.is_main,
-    )
-    .await
-    .map_err(classify)?;
+    db::update(&mut tx, id, &valid).await.map_err(classify)?;
     tx.commit().await?;
     Ok(db::find(pool, id)
         .await?
@@ -290,7 +294,7 @@ pub async fn update(
 /// Validates `input` against the class: each spec of the class at most once, talents of the class
 /// (in the catalog's order), and a main among the specs.
 fn valid_specs(
-    class: &'static crate::launch::catalog::Class,
+    class: &'static crate::wow::catalog::Class,
     input: &SpecsInput,
 ) -> Result<Vec<CharacterSpec>, CharacterError> {
     let main = input.main.as_deref().map(str::trim);
@@ -339,7 +343,7 @@ pub async fn set_specs(
     if character.user_id != Some(actor.id) && !actor.is_officer() {
         return external(CharacterError::Forbidden);
     }
-    let Some(class) = crate::launch::catalog::find(&character.class) else {
+    let Some(class) = crate::wow::catalog::find(&character.class) else {
         return external(CharacterError::UnknownClass);
     };
     let specs = valid_specs(class, input)?;
@@ -430,7 +434,7 @@ const SEED_NAMES: [&str; 4] = ["One", "Two", "Three", "Four"];
 /// taken are skipped. Returns how many were made.
 pub async fn seed(pool: &PgPool) -> sqlx::Result<u64> {
     let mut created = 0;
-    for class in crate::launch::catalog::CLASSES {
+    for class in crate::wow::catalog::CLASSES {
         for (i, last_name) in SEED_NAMES.iter().enumerate() {
             let main = class.specs.get(i).map(|s| s.slug);
             let specs: Vec<CharacterSpec> = class
@@ -471,7 +475,7 @@ pub async fn seeded_ids(pool: &PgPool) -> sqlx::Result<Vec<i64>> {
 
 /// [`seed`]'s characters' full names, lowercase.
 fn seed_names() -> Vec<String> {
-    crate::launch::catalog::CLASSES
+    crate::wow::catalog::CLASSES
         .iter()
         .flat_map(|class| {
             SEED_NAMES
@@ -498,9 +502,34 @@ pub(crate) mod tests {
             first_name: first.into(),
             last_name: last.into(),
             class: class.into(),
+            race: None,
             is_main,
             user_id: None,
         }
+    }
+
+    #[sqlx::test]
+    async fn records_a_race(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let mut sky = input("Aerin", "Gale", "shaman", false);
+        sky.race = Some(" windshaper-skyborne ".into());
+        let made = create(&pool, &ey, &sky).await.unwrap();
+        assert_eq!(made.race.as_deref(), Some("windshaper-skyborne"));
+
+        // Empty is none recorded.
+        sky.race = Some(String::new());
+        let cleared = update(&pool, &ey, made.id, &sky).await.unwrap();
+        assert_eq!(cleared.race, None);
+
+        // Only Forever's races.
+        sky.race = Some("pandaren".into());
+        assert!(matches!(
+            update(&pool, &ey, made.id, &sky).await,
+            Err(Error::External(CharacterError::UnknownRace))
+        ));
+        sky.race = Some("high-order-skyborne".into());
+        let again = update(&pool, &ey, made.id, &sky).await.unwrap();
+        assert_eq!(again.race.as_deref(), Some("high-order-skyborne"));
     }
 
     #[test]

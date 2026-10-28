@@ -64,6 +64,8 @@ pub struct Snapshot {
     pub managed: HashSet<RoleId>,
     /// The roles with Discord's Administrator permission.
     pub administrators: HashSet<RoleId>,
+    /// Each role's color, `0xRRGGBB`; 0 is Discord's default (no color).
+    pub role_colors: HashMap<RoleId, u32>,
     /// The bot's own user id: its highest role decides which roles it can move.
     pub bot_id: u64,
     pub channels: Vec<Channel>,
@@ -115,6 +117,10 @@ pub struct RoleSummary {
     /// leader's and the officers'; see [`Access::is_administrator`]).
     pub administrator: bool,
     pub wants_administrator: bool,
+    /// Its color now (`#rrggbb`), `None` for Discord's default or when the role is missing; and
+    /// the one its level should have (see [`Access::color`]).
+    pub color: Option<String>,
+    pub expected_color: String,
 }
 
 /// The bot's permission entries on one of its categories or announcements channels.
@@ -253,6 +259,11 @@ pub struct Report {
     pub everyone: Everyone,
 }
 
+/// A color as `#rrggbb`.
+fn hex(color: u32) -> String {
+    format!("#{color:06x}")
+}
+
 /// The check itself, given what the site and the server hold.
 pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
     // The bot's roles that the server still has.
@@ -342,6 +353,12 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
                 .get(&access)
                 .is_some_and(|id| server.administrators.contains(id)),
             wants_administrator: access.is_administrator(),
+            color: roles
+                .get(&access)
+                .and_then(|id| server.role_colors.get(id))
+                .filter(|color| **color != 0)
+                .map(|color| hex(*color)),
+            expected_color: hex(access.color()),
             holders: people.iter().filter(|m| held(m).contains(&access)).count(),
             linked: linked
                 .iter()
@@ -760,6 +777,10 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         .filter(|role| role.permissions.contains(Permissions::ADMINISTRATOR))
         .map(|role| role.id)
         .collect();
+    let role_colors = roles
+        .values()
+        .map(|role| (role.id, role.colour.0))
+        .collect();
     let role_names = roles
         .into_iter()
         .map(|(id, role)| (id, role.name))
@@ -809,6 +830,7 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         mentionable,
         managed,
         administrators,
+        role_colors,
         bot_id,
         channels,
         objects,
@@ -936,6 +958,8 @@ mod tests {
             mentionable: HashSet::new(),
             managed: HashSet::from([RoleId::new(7), RoleId::new(99)]),
             administrators: HashSet::from([RoleId::new(99), RoleId::new(1)]),
+            // Leader has its color; the rest are Discord's default.
+            role_colors: HashMap::from([(RoleId::new(1), 0xFF8000)]),
             bot_id: 1000,
             channels: vec![
                 category(101, "Officers", 0),
@@ -1054,6 +1078,12 @@ mod tests {
         assert!(!role("Raider").wants_administrator && !role("Member").wants_administrator);
         // A role chosen by hand keeps its own name, and says what the bot would call it.
         assert_eq!(role("Raider").name, "Raiders");
+        // Each role's color, against its level's.
+        assert_eq!(role("Leader").color.as_deref(), Some("#ff8000"));
+        assert_eq!(role("Leader").expected_color, "#ff8000");
+        assert_eq!(role("Officer").color, None);
+        assert_eq!(role("Officer").expected_color, "#a335ee");
+        assert_eq!(role("Member").expected_color, "#1eff00");
     }
 
     #[test]

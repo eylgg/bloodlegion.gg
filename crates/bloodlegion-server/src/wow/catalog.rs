@@ -1,5 +1,6 @@
-//! The WoW: Forever classes: the nine original classes, each with its three Classic talent trees
-//! as the specs a member can pick. Icons are Blizzard's: each class's `classicon_`, and each
+//! The WoW: Forever classes and races, as the site's characters use them (served at
+//! `/api/wow/classes` and `/api/wow/races`). The classes: the nine original classes, each with its
+//! three Classic talent trees as the specs a member can pick. Icons are Blizzard's: each class's `classicon_`, and each
 //! spec's the one the Classic client's `TalentTab` table gives its tree; they are vendored under
 //! `apps/web/static/wow`, named `classes/<class>.jpg` and `specs/<class>-<spec>.jpg`, and
 //! `cargo xtask blizzard sync` refreshes them from Blizzard's render service. Colors are
@@ -257,6 +258,52 @@ pub fn find(slug: &str) -> Option<&'static Class> {
     CLASSES.iter().find(|class| class.slug == slug)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Faction {
+    Alliance,
+    Horde,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Race {
+    pub slug: &'static str,
+    pub name: &'static str,
+    pub faction: Faction,
+}
+
+const fn race(slug: &'static str, name: &'static str, faction: Faction) -> Race {
+    Race {
+        slug,
+        name,
+        faction,
+    }
+}
+
+/// WoW: Forever's races: Classic's eight, and its own Skyborne, one for each faction. Any race may
+/// be any class here: Forever lets both factions play Paladin and Shaman, and which classes the
+/// Skyborne may be is not settled. The database mirrors the slugs (`characters_race_check`).
+pub const RACES: &[Race] = &[
+    race("human", "Human", Faction::Alliance),
+    race("dwarf", "Dwarf", Faction::Alliance),
+    race("night-elf", "Night Elf", Faction::Alliance),
+    race("gnome", "Gnome", Faction::Alliance),
+    race(
+        "high-order-skyborne",
+        "High Order Skyborne",
+        Faction::Alliance,
+    ),
+    race("orc", "Orc", Faction::Horde),
+    race("undead", "Undead", Faction::Horde),
+    race("tauren", "Tauren", Faction::Horde),
+    race("troll", "Troll", Faction::Horde),
+    race("windshaper-skyborne", "Windshaper Skyborne", Faction::Horde),
+];
+
+pub fn find_race(slug: &str) -> Option<&'static Race> {
+    RACES.iter().find(|race| race.slug == slug)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -293,5 +340,33 @@ mod tests {
         }
         assert!(find("shaman").is_some());
         assert!(find("monk").is_none());
+    }
+
+    /// The database's `characters_race_check` takes exactly the catalog's races.
+    #[sqlx::test]
+    async fn the_database_takes_the_catalogs_races(pool: sqlx::PgPool) {
+        let insert = |n: usize, race: &'static str| {
+            let pool = pool.clone();
+            async move {
+                // Names are letters only: one per race, from its index.
+                let first = format!("Race{}", char::from(b'a' + n as u8));
+                sqlx::query(
+                    "INSERT INTO characters (first_name, last_name, class, race) \
+                     VALUES ($1, 'Check', 'warrior', $2)",
+                )
+                .bind(first)
+                .bind(race)
+                .execute(&pool)
+                .await
+            }
+        };
+        for (n, race) in RACES.iter().enumerate() {
+            insert(n, race.slug)
+                .await
+                .unwrap_or_else(|e| panic!("{}: {e}", race.slug));
+        }
+        assert!(insert(RACES.len(), "pandaren").await.is_err());
+        assert!(find_race("windshaper-skyborne").is_some_and(|r| r.faction == Faction::Horde));
+        assert!(find_race("high-order-skyborne").is_some_and(|r| r.faction == Faction::Alliance));
     }
 }

@@ -281,6 +281,40 @@ async fn give_role(
     Ok(Json(Given { given }))
 }
 
+/// `POST /api/admin/discord/fix/administrators`: superusers only. Gives the leader's and officers'
+/// roles Administrator where they lack it (see `fix`).
+async fn fix_administrators(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+) -> Result<StatusCode, FixError> {
+    fix::fix_administrators(&state).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/admin/discord/fix/colors`: superusers only. Gives the bot's roles their levels'
+/// colors where they differ (see `fix`).
+async fn fix_colors(state: State, _: SameOrigin, _admin: Admin) -> Result<StatusCode, FixError> {
+    fix::fix_colors(&state).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/admin/discord/fix/rename/{key}`: superusers only. Renames the bot's role for that
+/// level (`role:officer`) to the bot's own name for it (see `fix`).
+async fn rename_role(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+    Path(key): Path<String>,
+) -> Result<StatusCode, FixError> {
+    let access = Access::ALL
+        .into_iter()
+        .find(|access| access.key() == key)
+        .ok_or(Error::External(FixError::RoleMissing))?;
+    fix::rename_role(&state, access).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// The server's role to use, a Discord id as a string (it does not fit a JavaScript number).
 #[derive(Debug, serde::Deserialize)]
 pub struct RoleInput {
@@ -326,6 +360,9 @@ pub fn admin_router() -> Router<State> {
         .route("/discord/fix/give", post(give_role))
         .route("/discord/roles/{key}", axum::routing::put(set_role))
         .route("/discord/fix/permissions", post(fix_permissions))
+        .route("/discord/fix/administrators", post(fix_administrators))
+        .route("/discord/fix/rename/{key}", post(rename_role))
+        .route("/discord/fix/colors", post(fix_colors))
 }
 
 #[cfg(test)]

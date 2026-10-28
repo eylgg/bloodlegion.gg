@@ -1,7 +1,7 @@
 import type { Role } from '$lib/types';
 
 /**
- * Blizzard's own artwork, vendored under `static/wow` (see the backend's `launch::catalog` for
+ * Blizzard's own artwork, vendored under `static/wow` (see the backend's `wow::catalog` for
  * where each came from): the class icons and each Classic talent tree's icon. Role icons are
  * drawn as vectors in `RoleIcon.svelte` instead: the game's role art is too small to scale.
  */

@@ -26,6 +26,7 @@
 	let error = $state('');
 
 	const wowClass = $derived(data.classes.find((c) => c.slug === character.class));
+	const race = $derived(data.races.find((r) => r.slug === character.race));
 	// Officers pick the owner; a player editing their own character does not.
 	const isPlayer = $derived(character.user_id === data.user.id);
 
@@ -62,7 +63,7 @@
 	<img src={classIcon(character.class)} alt="" width="72" height="72" />
 	<div>
 		<p class="kicker">
-			{wowClass?.name ?? character.class}{character.is_main
+			{race ? `${race.name} ` : ''}{wowClass?.name ?? character.class}{character.is_main
 				? ' · Main'
 				: character.user_id
 					? ' · Alt'

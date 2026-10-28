@@ -48,11 +48,11 @@
 
 <div class="page-head">
 	<div>
-		<p class="kicker">
-			{calendar.current_week
-				? `Week ${calendar.current_week.number} · ${formatWeekSpan(calendar.current_week)}`
-				: 'The guild'}
-		</p>
+		{#if calendar.current_week}
+			<p class="kicker">
+				Week {calendar.current_week.number} · {formatWeekSpan(calendar.current_week)}
+			</p>
+		{/if}
 		<h1>Raids</h1>
 	</div>
 </div>

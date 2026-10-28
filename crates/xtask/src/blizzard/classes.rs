@@ -1,5 +1,5 @@
 //! The class and talent tree icons (`apps/web/static/wow/classes/<class>.jpg` and
-//! `specs/<class>-<spec>.jpg`, see the backend's `launch::catalog`), from the render service by
+//! `specs/<class>-<spec>.jpg`, see the backend's `wow::catalog`), from the render service by
 //! the game's icon names: each class's `classicon_`, and each tree's the Classic client's
 //! `TalentTab` table gives it. They need no token.
 

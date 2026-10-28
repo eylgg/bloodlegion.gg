@@ -1,8 +1,14 @@
+//! The game itself: WoW: Forever's classes and races ([`catalog`], served by [`api`]), and
 //! Battle.net's World of Warcraft profile API, called with a person's own access token (granted
 //! through the `wow.profile` scope at sign-in).
 
+pub mod api;
+pub mod catalog;
+
 use anyhow::Context;
 use serde_json::Value;
+
+pub use api::router;
 
 /// One character on a person's WoW account, as the account profile summary lists it.
 #[derive(Debug, PartialEq, Eq)]

@@ -43,7 +43,7 @@ export const load: PageServerLoad = async ({ fetch, parent }) => {
 	try {
 		const [zones, classes, calendar, raids, loot] = await Promise.all([
 			api.get<Zone[]>('/api/raids/zones', { fetch }),
-			api.get<WowClass[]>('/api/launch/classes', { fetch }),
+			api.get<WowClass[]>('/api/wow/classes', { fetch }),
 			api.get<Calendar>('/api/raids/calendar', { fetch }),
 			api.get<Raid[]>('/api/raids', { fetch }),
 			api.get<LootEntry[]>(`/api/loot?limit=${RECENT_LOOT}`, { fetch })

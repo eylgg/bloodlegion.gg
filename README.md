@@ -154,7 +154,6 @@ bloodlegion-server users rank <username> <rank>  # leader, officer, raider, tria
 bloodlegion-server users characters <username>   # the WoW characters on each linked Battle.net account
 bloodlegion-server characters seed              # test characters: four per class, linked to no one
 bloodlegion-server characters unseed            # remove them (keeps any that raided or won loot)
-bloodlegion-server launch                # every member's WoW: Forever launch sign-ups
 bloodlegion-server users disable <username>     # suspend: sessions stop, login refused
 bloodlegion-server users enable <username>
 bloodlegion-server passwords status | enable
@@ -186,7 +185,9 @@ the changes.
   their own.
 - **Characters** have a first and a last name (2 to 24 letters each) and no realm: Forever has
   rulesets instead, and the guild plays on one (PvP), so a full name is unique across the site.
-  Members add their own on their profile, with one main; officers may add anyone's, including a
+  Each has a class and, once recorded, a race: Classic's eight and Forever's Skyborne, Windshaper
+  Skyborne for the Horde and High Order Skyborne for the Alliance (`wow::catalog::RACES`, served
+  at `/api/wow/races`; any race may be any class). Members add their own on their profile, with one main; officers may add anyone's, including a
   character no account claims (a pug who won loot). A character's notes are written by its player
   and read by officers (`/notes`).
 - **Raids** are one night in a zone, with the characters who came and the loot they won. The zones
@@ -212,7 +213,7 @@ the changes.
   character is saved to a zone for the raid week. The server refuses either; the planner offers to
   move the player out of the other raid instead.
 - **Specs and talents**: a character plays any of its class's specs, each with the notable talents
-  it takes there, the ones that change what a character brings (`launch::catalog`); at most one is
+  it takes there, the ones that change what a character brings (`wow::catalog`); at most one is
   its main (or none). In a raid each plays one of them: the one picked that night, else the main,
   else the only one. What each class, spec,
   and talent brings is `raids::effects`: Classic's to start, to correct as Forever's become known.
@@ -282,10 +283,13 @@ with a **Give** button that gives one of the bot's roles to everyone holding it:
 a role the server is dropping, give them the bot's role, then remove the old role by hand. Each of
 the bot's roles also has a **Change** button that points it at another of the server's roles by
 its id (right-click the role in Server Settings, Roles, **Copy Role ID**), which needs no renaming:
-the role keeps its name and holders (a tag says when the name is not the bot's), and the one it
-replaces stays as it is. The leader's and officers' roles should have Discord's **Administrator**
-permission; **Set permissions** gives it to them, keeping what else they allow, which needs the bot
-to have Administrator itself. The page also checks the bot's own highest
+the role keeps its name and holders (a tag says when the name is not the bot's, with a **Rename**
+button that gives it the bot's name), and the one it replaces stays as it is. The leader's and
+officers' roles should have Discord's **Administrator** permission; **Give Administrator** adds it,
+keeping what else they allow, which needs the bot to have Administrator itself. Each role has its
+level's color, shown beside it: Leader legendary orange (`#FF8000`), Officer epic purple
+(`#A335EE`), Raider blood red (`#C41F3B`), Trial rare blue (`#0070DD`), and Member uncommon green
+(`#1EFF00`); **Fix colors** sets any that differ, and **Create missing** makes roles with them. The page also checks the bot's own highest
 role: it should be the server's top role, since Discord lets the bot move only roles below it and
 lets no one raise their own (if not, someone above it drags it to the top in Server Settings, Roles),
 shown separately in the member list, and not mentionable by anyone; for the same reason these are

@@ -22,7 +22,6 @@
 
 <div class="page-head">
 	<div>
-		<p class="kicker">The guild</p>
 		<h1>Questions</h1>
 	</div>
 	{#if data.officer && !asking}

@@ -2,7 +2,7 @@ use sqlx::{PgConnection, PgPool};
 
 use sqlx::types::Json;
 
-use super::{Character, CharacterSpec, Note, NoteListing, order_specs};
+use super::{Character, CharacterSpec, Note, NoteListing, Valid, order_specs};
 use crate::users::UserId;
 
 pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
@@ -11,7 +11,7 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.is_main AS "is_main!",
+               c.race, c.is_main AS "is_main!",
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -43,7 +43,7 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.is_main AS "is_main!",
+               c.race, c.is_main AS "is_main!",
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -92,24 +92,23 @@ pub async fn clear_main(
     Ok(())
 }
 
-pub async fn insert(
+/// Inserts `character`, the main when `is_main` (the caller decides: a member's first is).
+pub(super) async fn insert(
     conn: &mut PgConnection,
-    user_id: Option<UserId>,
-    first_name: &str,
-    last_name: &str,
-    class: &str,
+    character: &Valid,
     is_main: bool,
 ) -> sqlx::Result<i64> {
     sqlx::query_scalar!(
         r#"
-        INSERT INTO characters (user_id, first_name, last_name, class, is_main)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO characters (user_id, first_name, last_name, class, race, is_main)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id
         "#,
-        user_id.map(|id| id.0),
-        first_name,
-        last_name,
-        class,
+        character.user_id.map(|id| id.0),
+        character.first_name,
+        character.last_name,
+        character.class,
+        character.race,
         is_main,
     )
     .fetch_one(&mut *conn)
@@ -127,27 +126,24 @@ pub async fn lock_owner(conn: &mut PgConnection, id: i64) -> sqlx::Result<Option
     .await
 }
 
-pub async fn update(
+pub(super) async fn update(
     conn: &mut PgConnection,
     id: i64,
-    user_id: Option<UserId>,
-    first_name: &str,
-    last_name: &str,
-    class: &str,
-    is_main: bool,
+    character: &Valid,
 ) -> sqlx::Result<()> {
     sqlx::query!(
         r#"
         UPDATE characters
-        SET user_id = $2, first_name = $3, last_name = $4, class = $5, is_main = $6
+        SET user_id = $2, first_name = $3, last_name = $4, class = $5, race = $6, is_main = $7
         WHERE id = $1
         "#,
         id,
-        user_id.map(|id| id.0),
-        first_name,
-        last_name,
-        class,
-        is_main,
+        character.user_id.map(|id| id.0),
+        character.first_name,
+        character.last_name,
+        character.class,
+        character.race,
+        character.is_main,
     )
     .execute(&mut *conn)
     .await?;

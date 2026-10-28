@@ -65,7 +65,6 @@
 
 <div class="page-head">
 	<div>
-		<p class="kicker">The guild</p>
 		<h1>Roster</h1>
 	</div>
 	<label class="toggle">

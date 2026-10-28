@@ -58,7 +58,6 @@
 
 <div class="page-head">
 	<div>
-		<p class="kicker">The guild</p>
 		<h1>Bosses</h1>
 	</div>
 </div>

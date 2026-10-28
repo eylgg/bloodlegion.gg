@@ -82,6 +82,9 @@ export type DiscordReport = {
 		/** Whether it has Discord's Administrator permission, and whether it should (Leader, Officer). */
 		administrator: boolean;
 		wants_administrator: boolean;
+		/** Its color now (`#rrggbb`), null for Discord's default; and the one its level should have. */
+		color: string | null;
+		expected_color: string;
 	}[];
 	/** Whether the bot's roles stand in that order in Discord's list. */
 	roles_in_order: boolean;
@@ -217,7 +220,7 @@ export type Spec = { slug: string; name: string; roles: Role[] };
 /** A talent that changes what a character brings a raid; `tree` is the spec slug it sits in. */
 export type Talent = { slug: string; name: string; tree: string };
 
-/** A WoW: Forever class, from `GET /api/launch/classes`; `color` is the official class color. */
+/** A WoW: Forever class, from `GET /api/wow/classes`; `color` is the official class color. */
 export type WowClass = {
 	slug: string;
 	name: string;
@@ -227,29 +230,10 @@ export type WowClass = {
 	talents: Talent[];
 };
 
-/** A character reserved for launch: a sign-up, not a real character. */
-export type Character = {
-	id: number;
-	class: string;
-	specs: string[];
-	is_main: boolean;
-	created_at: string;
-	updated_at: string;
-};
+export type Faction = 'alliance' | 'horde';
 
-export type CharacterInput = {
-	class: string;
-	specs: string[];
-	is_main: boolean;
-};
-
-/** One member's sign-up, as the guild-wide list shows it. */
-export type RosterEntry = {
-	username: string;
-	class: string;
-	specs: string[];
-	is_main: boolean;
-};
+/** A WoW: Forever race, from `GET /api/wow/races`: Classic's eight and the two Skyborne. */
+export type Race = { slug: string; name: string; faction: Faction };
 
 /* --- the guild --- */
 
@@ -276,6 +260,8 @@ export type GuildCharacter = {
 	first_name: string;
 	last_name: string;
 	class: string;
+	/** Its race's slug, or null while nobody has recorded it. */
+	race: string | null;
 	is_main: boolean;
 	/** The specs it plays, its main (if it has one) first. */
 	specs: CharacterSpec[];
@@ -293,6 +279,8 @@ export type GuildCharacterInput = {
 	first_name: string;
 	last_name: string;
 	class: string;
+	/** Its race's slug, or null for none recorded. Sent with every save: leaving it out clears it. */
+	race: string | null;
 	is_main: boolean;
 	/** Officers only: omit for yourself, a member's id, or null for an unclaimed character. */
 	user_id?: number | null;

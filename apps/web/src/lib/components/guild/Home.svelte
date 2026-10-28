@@ -1,21 +1,20 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import Announcements from '$lib/components/Announcements.svelte';
+	import LaunchCountdown, { LAUNCH } from '$lib/components/LaunchCountdown.svelte';
 	import LootTable from '$lib/components/guild/LootTable.svelte';
 	import { formatInZone, formatWeekSpan, raidNames } from '$lib/guild';
-	import type { Announcement, Calendar, LootEntry, Raid, User, Zone } from '$lib/types';
+	import type { Announcement, Calendar, LootEntry, Raid, Zone } from '$lib/types';
 
-	// A member's front page, signed in: the mark with a welcome, the next raids, the latest loot,
-	// and the Discord announcements.
+	// A member's front page, signed in: the mark with the countdown to launch (then the week), the
+	// next raids, the latest loot, and the Discord announcements.
 	let {
-		user,
 		zones,
 		calendar,
 		raids,
 		loot,
 		announcements
 	}: {
-		user: User;
 		zones: Zone[];
 		calendar: Calendar;
 		/** Latest first, as `GET /api/raids` lists them. */
@@ -38,18 +37,17 @@
 	);
 	const size = (zone: string) => zones.find((z) => z.slug === zone)?.size ?? 0;
 	const week = $derived(calendar.current_week);
+	const launched = now >= LAUNCH;
 </script>
 
-<!-- The mark, as on the front page, with who is here and where the week stands. -->
+<!-- The mark, as on the front page, with the countdown to launch, or once it is out, the week. -->
 <header class="hero">
 	<img src="/logo.svg" alt="Blood Legion" width="1024" height="1024" fetchpriority="high" />
-	<div class="greeting">
-		<p class="kicker">
-			{week ? `Week ${week.number} · ${formatWeekSpan(week)}` : 'Before the release'}
-		</p>
-		<h1>Welcome back, {user.username}</h1>
-		<a class="launch" href={resolve('/launch')}>WoW: Forever launch sign-ups</a>
-	</div>
+	{#if !launched}
+		<LaunchCountdown />
+	{:else if week}
+		<p class="kicker">Week {week.number} · {formatWeekSpan(week)}</p>
+	{/if}
 </header>
 
 <div class="columns">
@@ -111,21 +109,6 @@
 		height: auto;
 		margin-block: calc(var(--space-6) * -1);
 		animation: reveal 600ms ease-out both;
-	}
-
-	.greeting {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-1);
-	}
-
-	.launch {
-		color: var(--grey-text);
-		font-size: var(--text-sm);
-	}
-
-	.launch:hover {
-		color: var(--foreground);
 	}
 
 	@media (min-width: 48rem) {

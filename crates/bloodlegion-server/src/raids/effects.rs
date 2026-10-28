@@ -3,7 +3,7 @@
 //! become known: each entry is data, so a change is an edit here.
 //!
 //! A character provides an effect when its class matches and, if the provider names one, the
-//! spec it plays that night or a talent that spec has (see `launch::catalog` for the talents).
+//! spec it plays that night or a talent that spec has (see `wow::catalog` for the talents).
 
 use serde::Serialize;
 
@@ -682,7 +682,7 @@ pub const EFFECTS: &[Effect] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::launch::catalog;
+    use crate::wow::catalog;
 
     #[test]
     fn every_provider_names_a_real_class_spec_and_talent() {

@@ -33,7 +33,6 @@
 
 <div class="page-head">
 	<div>
-		<p class="kicker">The guild</p>
 		<h1>Loot</h1>
 	</div>
 </div>

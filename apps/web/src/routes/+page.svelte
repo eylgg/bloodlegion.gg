@@ -78,7 +78,6 @@
 	<!-- A member signed in: their own front page, inside the guild's pages with none picked. -->
 	<GuildShell user={data.home.user}>
 		<Home
-			user={data.home.user}
 			zones={data.zones}
 			calendar={data.home.calendar}
 			raids={data.home.raids}
