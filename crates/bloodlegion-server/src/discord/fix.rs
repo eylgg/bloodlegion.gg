@@ -17,6 +17,8 @@
 //!   must have to give), keeping whatever else they allow; no role loses a permission.
 //! - Renaming one of the bot's roles chosen by hand to the bot's own name for it.
 //! - Giving the bot's roles their levels' colors.
+//! - Giving linked members their rank's role, and, separately, taking the bot's other roles from
+//!   them: only linked members, and only the bot's own roles.
 //! - Syncing a channel in one of the bot's categories with it again: its permissions become the
 //!   category's.
 //! - Giving one of the bot's roles to everyone holding another of the server's roles (moving the
@@ -32,7 +34,7 @@ use serenity::all::{
     PermissionOverwriteType, Permissions, RoleId, UserId,
 };
 
-use super::check::{Channel, server_members, top_level_text};
+use super::check::{Channel, ServerMember, server_members, top_level_text};
 use super::db;
 use super::layout::{
     ANNOUNCEMENTS, Access, CATEGORIES, Roles, announcements_overwrites, category_overwrites,
@@ -444,6 +446,113 @@ pub async fn set_role(state: &State, access: Access, id: u64) -> Result<(), FixE
         .context("telling the bot about the role")?;
     tracing::info!(role = access.role_name(), id, "discord: chose a role");
     Ok(())
+}
+
+/// One role for one member: `(discord user, role)`.
+pub type RoleChange = (u64, RoleId);
+
+/// Which of the bot's roles to give and take so linked members hold what their ranks call for:
+/// `(discord user, role)` pairs, each member in the server given their rank's role when they lack
+/// it (`give`) and the bot's other roles they hold taken (`take`). Only linked members, and only
+/// the bot's roles (`roles`, those the server has); everyone and everything else is left alone.
+pub fn member_role_changes(
+    linked: &[db::LinkedAccount],
+    members: &[ServerMember],
+    roles: &HashMap<Access, RoleId>,
+) -> (Vec<RoleChange>, Vec<RoleChange>) {
+    let (mut give, mut take) = (Vec::new(), Vec::new());
+    for account in linked {
+        let Some(member) = account
+            .subject
+            .parse::<u64>()
+            .ok()
+            .and_then(|id| members.iter().find(|m| m.id == id && !m.bot))
+        else {
+            continue;
+        };
+        let wanted = Access::of(account.rank);
+        for (access, role) in roles {
+            let holds = member.roles.contains(role);
+            if *access == wanted && !holds {
+                give.push((member.id, *role));
+            } else if *access != wanted && holds {
+                take.push((member.id, *role));
+            }
+        }
+    }
+    give.sort();
+    take.sort();
+    (give, take)
+}
+
+/// Which of linked members' roles to change: `give` their rank's missing role, or else `take` the
+/// bot's other roles they hold.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemberFix {
+    Give,
+    Take,
+}
+
+/// Gives linked members in the server their rank's role where they lack it, or takes the bot's
+/// other roles they hold (see [`member_role_changes`]), returning how many roles changed hands.
+/// Refused, changing nothing, when a role it would change is not below the bot's own.
+pub async fn fix_member_roles(state: &State, which: MemberFix) -> Result<usize, FixError> {
+    let (token, guild) = connection(state).await?;
+    let http = Http::new(&token);
+    let existing = guild.roles(&http).await.map_err(discord)?;
+    let mut roles = HashMap::new();
+    for access in Access::ALL {
+        if let Some(id) = db::object_id(&state.pool, access.key())
+            .await?
+            .map(RoleId::new)
+            .filter(|id| existing.contains_key(id))
+        {
+            roles.insert(access, id);
+        }
+    }
+    let linked = db::linked_accounts(&state.pool).await?;
+    let members = server_members(&http, guild).await.map_err(discord)?;
+    let (give, take) = member_role_changes(&linked, &members, &roles);
+    let changes = match which {
+        MemberFix::Give => give,
+        MemberFix::Take => take,
+    };
+    if changes.is_empty() {
+        return Ok(0);
+    }
+
+    let top = bot_top(&http, guild, &existing).await?;
+    let mut out_of_reach: Vec<&str> = changes
+        .iter()
+        .filter_map(|(_, role)| existing.get(role))
+        .filter(|role| role.position >= top)
+        .map(|role| role.name.as_str())
+        .collect();
+    out_of_reach.sort_unstable();
+    out_of_reach.dedup();
+    if !out_of_reach.is_empty() {
+        return Err(Error::External(FixError::OutOfReach(
+            out_of_reach.join(", "),
+        )));
+    }
+
+    for (user, role) in &changes {
+        let user = UserId::new(*user);
+        match which {
+            MemberFix::Give => http.add_member_role(guild, user, *role, Some(REASON)).await,
+            MemberFix::Take => {
+                http.remove_member_role(guild, user, *role, Some(REASON))
+                    .await
+            }
+        }
+        .map_err(discord)?;
+    }
+    tracing::info!(
+        ?which,
+        changed = changes.len(),
+        "discord: fixed linked members' roles"
+    );
+    Ok(changes.len())
 }
 
 /// Gives the bot's role for `to` to everyone in the server (bots aside) who holds the role `from`
@@ -966,6 +1075,42 @@ mod tests {
         assert!(in_order(&after, &wanted, List::Roles));
         // In order already: nothing to do.
         assert!(role_moves(&after, &wanted, &[], 7).unwrap().is_empty());
+    }
+
+    #[test]
+    fn linked_members_get_their_ranks_role_and_lose_the_others() {
+        use crate::guild::Rank;
+        let account = |subject: &str, rank| db::LinkedAccount {
+            subject: subject.into(),
+            username: subject.into(),
+            rank,
+        };
+        let member = |id, roles: &[u64]| ServerMember {
+            id,
+            name: id.to_string(),
+            bot: false,
+            roles: roles.iter().copied().map(RoleId::new).collect(),
+        };
+        let roles = HashMap::from([
+            (Access::Leader, RoleId::new(1)),
+            (Access::Officer, RoleId::new(2)),
+            (Access::Raider, RoleId::new(3)),
+        ]);
+        let linked = [
+            account("10", Rank::Raider),  // Lacks Raider.
+            account("20", Rank::Raider),  // A demoted officer: has both.
+            account("30", Rank::Officer), // Right, with a role of the server's own (77).
+            account("40", Rank::Raider),  // Not in the server.
+        ];
+        let members = [
+            member(10, &[]),
+            member(20, &[2, 3]),
+            member(30, &[2, 77]),
+            member(50, &[1]), // Not linked: left alone.
+        ];
+        let (give, take) = member_role_changes(&linked, &members, &roles);
+        assert_eq!(give, vec![(10, RoleId::new(3))]);
+        assert_eq!(take, vec![(20, RoleId::new(2))]);
     }
 
     #[test]

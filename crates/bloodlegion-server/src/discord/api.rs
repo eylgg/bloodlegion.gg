@@ -292,6 +292,34 @@ async fn fix_administrators(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// How many roles a fix gave or took.
+#[derive(Debug, serde::Serialize)]
+pub struct Changed {
+    pub changed: usize,
+}
+
+/// `POST /api/admin/discord/fix/members/give`: superusers only. Gives linked members in the server
+/// their rank's role where they lack it (see `fix`).
+async fn give_member_roles(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+) -> Result<Json<Changed>, FixError> {
+    let changed = fix::fix_member_roles(&state, fix::MemberFix::Give).await?;
+    Ok(Json(Changed { changed }))
+}
+
+/// `POST /api/admin/discord/fix/members/take`: superusers only. Takes from linked members the bot's
+/// roles their ranks do not call for (see `fix`).
+async fn take_member_roles(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+) -> Result<Json<Changed>, FixError> {
+    let changed = fix::fix_member_roles(&state, fix::MemberFix::Take).await?;
+    Ok(Json(Changed { changed }))
+}
+
 /// `POST /api/admin/discord/fix/colors`: superusers only. Gives the bot's roles their levels'
 /// colors where they differ (see `fix`).
 async fn fix_colors(state: State, _: SameOrigin, _admin: Admin) -> Result<StatusCode, FixError> {
@@ -363,6 +391,8 @@ pub fn admin_router() -> Router<State> {
         .route("/discord/fix/administrators", post(fix_administrators))
         .route("/discord/fix/rename/{key}", post(rename_role))
         .route("/discord/fix/colors", post(fix_colors))
+        .route("/discord/fix/members/give", post(give_member_roles))
+        .route("/discord/fix/members/take", post(take_member_roles))
 }
 
 #[cfg(test)]

@@ -55,7 +55,7 @@
 
 	/**
 	 * Runs one of the fixes (`roles`, `categories`, `create`, `announcements`, `permissions`,
-	 * `administrators`, `colors`, `sync/<id>`, `rename/<key>`).
+	 * `administrators`, `colors`, `members/give`, `members/take`, `sync/<id>`, `rename/<key>`).
 	 */
 	async function fix(action: string) {
 		fixing = action;
@@ -142,6 +142,11 @@
 	const permissionsToFix = $derived(
 		report?.permissions?.filter((channel) => channel.differing.length > 0) ?? []
 	);
+	/** Linked members in the server lacking their rank's role, and those holding others of the bot's. */
+	const membersToGive = $derived(
+		report?.members.filter((m) => m.discord_name !== null && !m.has_role) ?? []
+	);
+	const membersToTake = $derived(report?.members.filter((m) => m.other_roles.length > 0) ?? []);
 	/** The bot's roles whose color is not their level's. */
 	const colorsToFix = $derived(
 		report?.roles.filter((r) => r.id && r.color !== r.expected_color) ?? []
@@ -839,8 +844,17 @@
 			</div>
 			<p class="muted">
 				Members who linked Discord on the site and are not in the server, lack their rank's role, or
-				hold another of the bot's roles besides.
+				hold another of the bot's roles besides. Give missing roles gives each their rank's role;
+				Remove other roles takes the bot's other roles from them (a demoted officer's Officer, say).
+				Only linked members, and only the bot's roles: nobody else's roles change. Someone not in
+				the server has to join it first.
 			</p>
+			{#if fixed === 'members/give'}
+				<Alert variant="success">Linked members have their ranks' roles.</Alert>
+			{/if}
+			{#if fixed === 'members/take'}
+				<Alert variant="success">Linked members hold only their ranks' roles.</Alert>
+			{/if}
 			{#if report.members.length > 0}
 				<ul class="list">
 					{#each report.members as member (member.discord_id)}
@@ -864,6 +878,32 @@
 						</li>
 					{/each}
 				</ul>
+				{#if membersToGive.length > 0 || membersToTake.length > 0}
+					<div class="actions">
+						{#if membersToGive.length > 0}
+							<ConfirmButton
+								disabled={fixing !== null}
+								question={`Give ${membersToGive.length === 1 ? membersToGive[0].username : `${membersToGive.length} members`} their rank's role?`}
+								confirmLabel="Give"
+								confirmVariant="primary"
+								onconfirm={() => fix('members/give')}
+							>
+								{fixing === 'members/give' ? 'Giving...' : 'Give missing roles'}
+							</ConfirmButton>
+						{/if}
+						{#if membersToTake.length > 0}
+							<ConfirmButton
+								disabled={fixing !== null}
+								question={`Take the bot's roles their ranks do not call for from ${membersToTake.map((m) => m.username).join(', ')}? Only the bot's roles; their other roles stay.`}
+								confirmLabel="Remove"
+								confirmVariant="danger"
+								onconfirm={() => fix('members/take')}
+							>
+								{fixing === 'members/take' ? 'Removing...' : 'Remove other roles'}
+							</ConfirmButton>
+						{/if}
+					</div>
+				{/if}
 			{/if}
 		</section>
 

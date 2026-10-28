@@ -254,11 +254,14 @@ deleted; a post by someone whose Discord account is not linked to the site is no
 
 It changes nothing in Discord on its own; on its own it only reads the server and mirrors
 #public-announcements. Every change is a button a superuser presses on the Discord page, and none
-removes anything or takes a role away: a missing role, category, or announcements channel is made
+removes a role, category, or channel: a missing role, category, or announcements channel is made
 only with **Create missing**, and its permission entries are set only with **Set permissions**. A
 role or channel of the same name made by hand is taken over rather than doubled, and on its own
-categories and channels it sets only its own permission entries, so others added by hand stay. Renaming its roles or categories is fine: it keeps track by
-id.
+categories and channels it sets only its own permission entries, so others added by hand stay.
+Renaming its roles or categories is fine: it keeps track by id. Linked members whose roles are off
+have two buttons: **Give missing roles** gives each the role their rank calls for, and **Remove
+other roles**, the only button that takes a role from anyone, takes the bot's other roles from them
+(a demoted officer's Officer). Both touch only linked members and only the bot's own roles.
 
 The **Discord page** (`/admin/discord`, superusers) reads the server and shows how it stands, a
 heading per check: the bot's state (running, since when, last seen, its last check and error); the
