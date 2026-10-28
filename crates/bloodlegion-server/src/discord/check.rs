@@ -674,8 +674,9 @@ fn everyone(
 }
 
 /// How a channel's permission entries differ from its category's, one line for each role or member
-/// whose entry is not the same: one only the channel has, one it lacks, or the permissions its own
-/// entry allows or denies besides the category's (or no longer does), by Discord's names for them.
+/// whose entry is not the same: one only the channel has, one it lacks, or the permissions set
+/// differently in the two, each as it stands here and in the category (allowed, denied, or not
+/// set), by Discord's names for them. Syncing makes the channel's entries the category's.
 fn overwrite_differences(
     channel: &[PermissionOverwrite],
     category: &[PermissionOverwrite],
@@ -718,23 +719,36 @@ fn overwrite_differences(
                 if !own.deny.is_empty() {
                     parts.push(format!("denies {}", names(own.deny)));
                 }
-                lines.push(format!(
-                    "{who}: an entry the category lacks ({})",
-                    parts.join("; ")
-                ));
+                lines.push(format!("{who}: an entry only here ({})", parts.join("; ")));
             }
-            (None, Some(_)) => lines.push(format!("{who}: no entry (the category has one)")),
+            (None, Some(_)) => lines.push(format!("{who}: no entry here (the category has one)")),
             (Some(own), Some(theirs)) => {
-                let changes = [
-                    ("also allows", own.allow - theirs.allow),
-                    ("no longer allows", theirs.allow - own.allow),
-                    ("also denies", own.deny - theirs.deny),
-                    ("no longer denies", theirs.deny - own.deny),
-                ];
-                for (how, permissions) in changes {
-                    if !permissions.is_empty() {
-                        lines.push(format!("{who}: {how} {}", names(permissions)));
+                // Each permission as each side sets it, grouped by the two states.
+                let state = |entry: &PermissionOverwrite, permission: Permissions| {
+                    if entry.allow.contains(permission) {
+                        "allowed"
+                    } else if entry.deny.contains(permission) {
+                        "denied"
+                    } else {
+                        "not set"
                     }
+                };
+                let mut groups: Vec<((&str, &str), Permissions)> = Vec::new();
+                for permission in (own.allow | own.deny | theirs.allow | theirs.deny).iter() {
+                    let pair = (state(&own, permission), state(&theirs, permission));
+                    if pair.0 == pair.1 {
+                        continue;
+                    }
+                    match groups.iter_mut().find(|(p, _)| *p == pair) {
+                        Some((_, permissions)) => *permissions |= permission,
+                        None => groups.push((pair, permission)),
+                    }
+                }
+                for ((here, there), permissions) in groups {
+                    lines.push(format!(
+                        "{who}: {} {here} here ({there} in the category)",
+                        names(permissions)
+                    ));
                 }
             }
             (None, None) => {}
@@ -1422,9 +1436,7 @@ mod tests {
                 id: "203".into(),
                 name: "chat".into(),
                 category: "Members".into(),
-                differences: vec![
-                    "role 9: an entry the category lacks (allows Send Messages)".into()
-                ],
+                differences: vec!["role 9: an entry only here (allows Send Messages)".into()],
             }]
         );
 
@@ -1441,11 +1453,17 @@ mod tests {
         assert_eq!(
             overwrite_differences(&channel, &category, &snapshot),
             vec![
-                "Raiders: also allows Send Messages",
-                "Member: no longer allows View Channel",
-                "Member: also denies View Channel",
-                "Leader: no entry (the category has one)",
+                "Raiders: Send Messages allowed here (not set in the category)",
+                "Member: View Channel denied here (allowed in the category)",
+                "Leader: no entry here (the category has one)",
             ]
+        );
+        // As in Public: @everyone's own entry leaving View Channel unset.
+        let category = [both(1024, 0, 100)];
+        let channel = [both(0, 0, 100)];
+        assert_eq!(
+            overwrite_differences(&channel, &category, &snapshot),
+            vec!["@everyone: View Channel not set here (allowed in the category)"]
         );
     }
 }

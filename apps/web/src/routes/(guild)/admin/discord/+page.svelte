@@ -703,9 +703,12 @@
 										>Missing</span
 									>{/if}
 							</td>
-							<td class="needs">
-								{#if channel.named}<span class="tag warn">Named #{channel.named}</span>{/if}
-								{#if channel.category}<span class="tag warn">In {channel.category}</span>{/if}
+							<td>
+								<!-- The flex layout on a wrapper: on the cell itself it would leave the table. -->
+								<div class="needs">
+									{#if channel.named}<span class="tag warn">Named #{channel.named}</span>{/if}
+									{#if channel.category}<span class="tag warn">In {channel.category}</span>{/if}
+								</div>
 							</td>
 						</tr>
 					{/each}
@@ -802,7 +805,9 @@
 			</div>
 			<p class="muted">
 				Channels in the bot's categories follow the category's permissions while synced with it.
-				These have permissions of their own, so they no longer follow who may see the category.
+				These have permissions of their own, so they no longer follow who may see the category. Each
+				line says how a permission stands here and in the category; "not set" falls back to the
+				server's defaults. Sync makes the channel's permissions exactly the category's.
 			</p>
 			{#if fixed?.startsWith('sync/')}
 				<Alert variant="success">Synced with its category.</Alert>
@@ -1057,6 +1062,7 @@
 		padding-left: var(--space-4);
 		color: var(--grey-text);
 		font-size: var(--text-sm);
+		list-style: disc;
 	}
 
 	.color {
@@ -1105,7 +1111,8 @@
 		list-style: none;
 	}
 
-	.list li {
+	/* Direct children only: a list nested in an item (a channel's differences) is plain text. */
+	.list > li {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
