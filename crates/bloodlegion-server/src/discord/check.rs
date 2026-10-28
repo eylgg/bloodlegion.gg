@@ -1,21 +1,26 @@
 //! The role check, for a superuser: how the bot and the server stand, and where the server's roles
-//! differ from the site's ranks. The bot hands out no roles, so this is how someone finds who needs
-//! one: linked members not in the server or without their rank's role (or with another of the
+//! differ from the site's ranks. The bot hands out no roles on its own, so this is how someone finds
+//! who needs one: linked members not in the server or without their rank's role (or with another of the
 //! bot's besides), and people holding one of the bot's roles with no linked account. It also
-//! counts the server's people, each role's holders, and each category's channels, and says whether
-//! the categories stand in order. It reads Discord and changes nothing.
+//! counts the server's people, each role's holders (the server's other roles too, which a fix can
+//! give one of the bot's roles to), and each category's channels, and says whether the categories
+//! stand in order. It reads Discord and changes nothing.
 
 use std::collections::{HashMap, HashSet};
 
 use anyhow::Context;
 use serenity::all::{
     ChannelType, GuildId, Http, Member, PermissionOverwrite, PermissionOverwriteType, RoleId,
+    UserId,
 };
 use time::OffsetDateTime;
 
 use super::db::{self, LinkedAccount, Status};
 use super::fix::{self, List, Slot};
-use super::layout::{ANNOUNCEMENTS, Access, CATEGORIES};
+use super::layout::{
+    ANNOUNCEMENTS, Access, CATEGORIES, Roles, announcements_overwrites, category_overwrites,
+    differing,
+};
 use crate::guild::Rank;
 use crate::{Result, State};
 
@@ -34,6 +39,8 @@ pub struct Channel {
     pub id: u64,
     pub name: String,
     pub category: bool,
+    /// A text (or announcement) channel, as opposed to voice, a forum, a category, ...
+    pub text: bool,
     pub parent: Option<u64>,
     pub position: u16,
     pub overwrites: Vec<PermissionOverwrite>,
@@ -42,6 +49,8 @@ pub struct Channel {
 /// The server as the check reads it, all at once.
 pub struct Snapshot {
     pub server_name: String,
+    /// The `@everyone` role, whose id is the server's.
+    pub everyone: RoleId,
     /// Everyone in the server, bots included.
     pub members: Vec<ServerMember>,
     pub role_names: HashMap<RoleId, String>,
@@ -51,6 +60,8 @@ pub struct Snapshot {
     pub hoisted: HashSet<RoleId>,
     /// The roles anyone may mention ("Allow anyone to mention this role").
     pub mentionable: HashSet<RoleId>,
+    /// The roles an integration keeps (a bot's own, the server booster role), which nobody gives.
+    pub managed: HashSet<RoleId>,
     /// The bot's own user id: its highest role decides which roles it can move.
     pub bot_id: u64,
     pub channels: Vec<Channel>,
@@ -85,6 +96,8 @@ pub struct Unlinked {
 /// One of the bot's roles: whether the server has it, who holds it, and who should.
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
 pub struct RoleSummary {
+    /// The bot's key for it (`role:member`), which the fix giving it names it by.
+    pub key: &'static str,
     /// Its Discord id, as a string (it does not fit a JavaScript number); `None` when the server
     /// lacks it.
     pub id: Option<String>,
@@ -94,6 +107,30 @@ pub struct RoleSummary {
     pub holders: usize,
     /// Linked members in the server whose rank calls for it.
     pub due: usize,
+}
+
+/// The bot's permission entries on one of its categories or announcements channels.
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct PermissionsStatus {
+    /// Its Discord id, as a string.
+    pub id: String,
+    /// As the server names it.
+    pub name: String,
+    pub category: bool,
+    /// Whose entries (the bot's for them) are missing or set otherwise: `@everyone`, a role's
+    /// name, or "the bot". Empty when all are right.
+    pub differing: Vec<String>,
+}
+
+/// One of the server's roles that is not the bot's, for giving one of the bot's roles to its
+/// holders (`fix::give_role`).
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct OtherRole {
+    /// Its Discord id, as a string.
+    pub id: String,
+    pub name: String,
+    /// People in the server holding it.
+    pub holders: usize,
 }
 
 /// One of the bot's categories.
@@ -133,6 +170,31 @@ pub struct AnnouncementsStatus {
     pub category: Option<String>,
 }
 
+/// Someone in the server, for the list of everyone.
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct Person {
+    pub discord_id: String,
+    pub discord_name: String,
+    /// The site account their Discord account is linked to, if any.
+    pub username: Option<String>,
+    /// Their roles, top first, as the server names them.
+    pub roles: Vec<String>,
+}
+
+/// Everyone in the server, by how they stand with the site.
+#[derive(Debug, Default, PartialEq, Eq, serde::Serialize)]
+pub struct Everyone {
+    /// Linked to a site account.
+    pub linked: Vec<Person>,
+    /// Not linked, holding one of the bot's roles.
+    pub unlinked_ours: Vec<Person>,
+    /// Not linked, holding only the server's other roles.
+    pub unlinked_others: Vec<Person>,
+    /// Not linked, with no role at all.
+    pub no_roles: Vec<Person>,
+    pub bots: Vec<Person>,
+}
+
 /// A channel in one of the bot's categories whose permissions are its own rather than the
 /// category's (Discord calls it not synced): it no longer follows who may see the category.
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
@@ -158,18 +220,26 @@ pub struct Report {
     /// The bot's own highest role (Discord makes one for a bot when it joins): it can move only
     /// roles below it, and nobody can raise it but someone above it. `None` when it has none.
     pub bot_role: Option<BotRole>,
-    /// The bot's roles not below the bot's own highest role, which it cannot move.
+    /// The bot's roles not below the bot's own highest role, which it cannot move or give.
     pub roles_out_of_reach: Vec<String>,
+    /// The server's roles besides the bot's, `@everyone`, and those integrations keep, top first.
+    pub other_roles: Vec<OtherRole>,
     /// In the order the bot keeps them.
     pub categories: Vec<CategorySummary>,
     /// Whether the categories that exist stand in that order in Discord's list.
     pub categories_in_order: bool,
-    /// The announcements channels, public first.
+    /// The announcements channels, top first.
     pub announcements: Vec<AnnouncementsStatus>,
+    /// Whether those at the top of the list stand in that order.
+    pub announcements_in_order: bool,
     /// Channels in the bot's categories not synced with them.
     pub unsynced: Vec<Unsynced>,
+    /// The bot's permission entries on its categories and announcements channels (those the server
+    /// has), categories first; `None` until the server has all the bot's roles, which they name.
+    pub permissions: Option<Vec<PermissionsStatus>>,
     pub members: Vec<MemberStatus>,
     pub unlinked: Vec<Unlinked>,
+    pub everyone: Everyone,
 }
 
 /// The check itself, given what the site and the server hold.
@@ -253,6 +323,7 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
     let role_summaries = Access::ALL
         .into_iter()
         .map(|access| RoleSummary {
+            key: access.key(),
             id: roles.get(&access).map(|id| id.get().to_string()),
             name: name(access),
             holders: people.iter().filter(|m| held(m).contains(&access)).count(),
@@ -333,6 +404,21 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         })
         .map(name)
         .collect();
+    let mut other_roles: Vec<(u16, OtherRole)> = server
+        .role_positions
+        .iter()
+        .filter(|(id, _)| !roles.values().any(|ours| ours == *id))
+        .filter(|(id, _)| !server.managed.contains(id))
+        .map(|(id, position)| {
+            let role = OtherRole {
+                id: id.get().to_string(),
+                name: server.role_names.get(id).cloned().unwrap_or_default(),
+                holders: people.iter().filter(|m| m.roles.contains(id)).count(),
+            };
+            (*position, role)
+        })
+        .collect();
+    other_roles.sort_by(|(a, x), (b, y)| b.cmp(a).then_with(|| x.id.cmp(&y.id)));
     let category_name = |id: u64| {
         server
             .channels
@@ -358,6 +444,12 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         .iter()
         .filter_map(|wanted| server.objects.get(wanted.key).copied())
         .collect();
+    let permissions = permissions(server, &roles);
+    let announcements_in_order = fix::in_order(
+        &top_level_text(&server.channels),
+        &announcement_ids,
+        List::Categories,
+    );
     let mut unsynced: Vec<Unsynced> = categories
         .iter()
         .filter_map(|(_, found)| *found)
@@ -405,13 +497,134 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
             }
         }),
         roles_out_of_reach,
+        other_roles: other_roles.into_iter().map(|(_, role)| role).collect(),
         categories: categories.into_iter().map(|(summary, _)| summary).collect(),
         categories_in_order,
         announcements,
+        announcements_in_order,
         unsynced,
+        permissions,
         members: statuses,
         unlinked,
+        everyone: everyone(linked, server, &roles),
     }
+}
+
+/// How the bot's permission entries stand on its categories and announcements channels, or `None`
+/// while the server lacks one of its roles.
+fn permissions(
+    server: &Snapshot,
+    roles: &HashMap<Access, RoleId>,
+) -> Option<Vec<PermissionsStatus>> {
+    let ids: Vec<RoleId> = Access::ALL
+        .into_iter()
+        .map(|access| roles.get(&access).copied())
+        .collect::<Option<_>>()?;
+    let roles = Roles(ids.try_into().ok()?);
+    let bot = UserId::new(server.bot_id);
+    let whose = |kind: PermissionOverwriteType| match kind {
+        PermissionOverwriteType::Role(id) if id == server.everyone => "@everyone".to_string(),
+        PermissionOverwriteType::Role(id) => server
+            .role_names
+            .get(&id)
+            .cloned()
+            .unwrap_or_else(|| id.to_string()),
+        _ => "the bot".to_string(),
+    };
+    let channel = |key: &str, category: bool| {
+        let id = *server.objects.get(key)?;
+        server
+            .channels
+            .iter()
+            .find(|c| c.id == id && c.category == category)
+    };
+    let status = |found: &Channel, wanted: Vec<PermissionOverwrite>| PermissionsStatus {
+        id: found.id.to_string(),
+        name: found.name.clone(),
+        category: found.category,
+        differing: differing(&wanted, &found.overwrites)
+            .into_iter()
+            .map(|entry| whose(entry.kind))
+            .collect(),
+    };
+    let categories = CATEGORIES.iter().filter_map(|category| {
+        let found = channel(category.key, true)?;
+        let wanted = category_overwrites(category.audience, &roles, server.everyone, bot);
+        Some(status(found, wanted))
+    });
+    let announcements = ANNOUNCEMENTS.iter().filter_map(|wanted| {
+        let found = channel(wanted.key, false)?;
+        let entries = announcements_overwrites(wanted.audience, &roles, server.everyone, bot);
+        Some(status(found, entries))
+    });
+    Some(categories.chain(announcements).collect())
+}
+
+/// The text channels at the top of the list (in no category), where the announcements channels
+/// stand; their positions run down the list like categories'.
+pub(super) fn top_level_text(channels: &[Channel]) -> Vec<Slot> {
+    channels
+        .iter()
+        .filter(|channel| channel.text && channel.parent.is_none())
+        .map(|channel| Slot {
+            id: channel.id,
+            position: channel.position,
+        })
+        .collect()
+}
+
+/// Everyone in the server, grouped, each group by name.
+fn everyone(
+    linked: &[LinkedAccount],
+    server: &Snapshot,
+    ours: &HashMap<Access, RoleId>,
+) -> Everyone {
+    let usernames: HashMap<&str, &str> = linked
+        .iter()
+        .map(|a| (a.subject.as_str(), a.username.as_str()))
+        .collect();
+    let mut groups = Everyone::default();
+    for member in &server.members {
+        let mut roles: Vec<(u16, &RoleId)> = member
+            .roles
+            .iter()
+            .filter_map(|id| Some((*server.role_positions.get(id)?, id)))
+            .collect();
+        roles.sort_by(|(a, x), (b, y)| b.cmp(a).then_with(|| x.cmp(y)));
+        let discord_id = member.id.to_string();
+        let username = usernames.get(discord_id.as_str()).map(|u| u.to_string());
+        let person = Person {
+            discord_name: member.name.clone(),
+            username,
+            roles: roles
+                .iter()
+                .filter_map(|(_, id)| server.role_names.get(id).cloned())
+                .collect(),
+            discord_id,
+        };
+        let group = if member.bot {
+            &mut groups.bots
+        } else if person.username.is_some() {
+            &mut groups.linked
+        } else if member.roles.iter().any(|id| ours.values().any(|o| o == id)) {
+            &mut groups.unlinked_ours
+        } else if !person.roles.is_empty() {
+            &mut groups.unlinked_others
+        } else {
+            &mut groups.no_roles
+        };
+        group.push(person);
+    }
+    for group in [
+        &mut groups.linked,
+        &mut groups.unlinked_ours,
+        &mut groups.unlinked_others,
+        &mut groups.no_roles,
+        &mut groups.bots,
+    ] {
+        group.sort_by_key(|person| person.discord_name.to_lowercase());
+    }
+    groups
 }
 
 /// Whether two sets of permission entries are the same, in any order: a channel synced with its
@@ -518,6 +731,11 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         .filter(|role| role.mentionable)
         .map(|role| role.id)
         .collect();
+    let managed = roles
+        .values()
+        .filter(|role| role.managed)
+        .map(|role| role.id)
+        .collect();
     let role_names = roles
         .into_iter()
         .map(|(id, role)| (id, role.name))
@@ -537,6 +755,7 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
             id: channel.id.get(),
             name: channel.name,
             category: channel.kind == ChannelType::Category,
+            text: matches!(channel.kind, ChannelType::Text | ChannelType::News),
             parent: channel.parent_id.map(|id| id.get()),
             position: channel.position,
             overwrites: channel.permission_overwrites,
@@ -558,18 +777,23 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
     }
     Ok(Snapshot {
         server_name,
+        everyone,
         members,
         role_names,
         role_positions,
         hoisted,
         mentionable,
+        managed,
         bot_id,
         channels,
         objects,
     })
 }
 
-async fn server_members(http: &Http, guild: GuildId) -> anyhow::Result<Vec<ServerMember>> {
+pub(super) async fn server_members(
+    http: &Http,
+    guild: GuildId,
+) -> anyhow::Result<Vec<ServerMember>> {
     let mut all = Vec::new();
     let mut after = None;
     loop {
@@ -596,7 +820,7 @@ async fn server_members(http: &Http, guild: GuildId) -> anyhow::Result<Vec<Serve
 
 #[cfg(test)]
 mod tests {
-    use super::super::layout::PUBLIC_ANNOUNCEMENTS;
+    use super::super::layout::{MEMBER_ANNOUNCEMENTS, PUBLIC_ANNOUNCEMENTS, RAIDER_ANNOUNCEMENTS};
     use super::*;
 
     fn account(subject: &str, username: &str, rank: Rank) -> LinkedAccount {
@@ -621,6 +845,7 @@ mod tests {
             id,
             name: name.into(),
             category: true,
+            text: false,
             parent: None,
             position,
             overwrites: vec![],
@@ -632,14 +857,17 @@ mod tests {
             id,
             name: name.into(),
             category: false,
+            text: true,
             parent: Some(parent),
             position: 0,
             overwrites: vec![],
         }
     }
 
-    /// A server where the bot made everything: roles 1 to 6 (Leader to Friend, with Raider
-    /// renamed by hand), categories 101 to 104 in order, and #announcements (201) in Public.
+    /// A server where the bot made everything: roles 1 to 5 (Leader to Member, with Raider renamed
+    /// by hand), categories 101 to 104 in order (Officers to Public), and #announcements (201) in
+    /// Public. Under the bot's
+    /// own role (99) and above the bot's roles, the server keeps Friend (6) and a booster role (7).
     fn server(members: Vec<ServerMember>) -> Snapshot {
         let mut objects: HashMap<String, u64> = Access::ALL
             .into_iter()
@@ -659,9 +887,13 @@ mod tests {
         role_names.insert(RoleId::new(3), "Raiders".into());
         // In order, Leader (1) at the top, under the bot's own role (99, at 10).
         let mut role_positions: HashMap<RoleId, u16> =
-            (1..=6).map(|id| (RoleId::new(id), 7 - id as u16)).collect();
+            (1..=5).map(|id| (RoleId::new(id), 6 - id as u16)).collect();
         role_positions.insert(RoleId::new(99), 10);
         role_names.insert(RoleId::new(99), "Blood Legion bot".into());
+        role_positions.insert(RoleId::new(6), 7);
+        role_names.insert(RoleId::new(6), "Friend".into());
+        role_positions.insert(RoleId::new(7), 6);
+        role_names.insert(RoleId::new(7), "Server Booster".into());
         let mut members = members;
         members.push(ServerMember {
             id: 1000,
@@ -671,20 +903,22 @@ mod tests {
         });
         Snapshot {
             server_name: "Blood Legion".into(),
+            everyone: RoleId::new(100),
             members,
             role_names,
             role_positions,
             hoisted: HashSet::from([RoleId::new(99)]),
             mentionable: HashSet::new(),
+            managed: HashSet::from([RoleId::new(7), RoleId::new(99)]),
             bot_id: 1000,
             channels: vec![
-                category(101, "Public", 0),
-                category(102, "Members", 1),
-                category(103, "Raiders", 2),
-                category(104, "Officers", 3),
-                text(201, "announcements", 101),
-                text(202, "general", 102),
-                text(203, "chat", 102),
+                category(101, "Officers", 0),
+                category(102, "Raiders", 1),
+                category(103, "Members", 2),
+                category(104, "Public", 3),
+                text(201, "announcements", 104),
+                text(202, "general", 103),
+                text(203, "chat", 103),
             ],
             objects,
         }
@@ -788,28 +1022,34 @@ mod tests {
         assert_eq!(
             channels,
             vec![
-                ("Public", 1),
-                ("Members", 2),
+                ("Officers", 0),
                 ("Raiders", 0),
-                ("Officers", 0)
+                ("Members", 2),
+                ("Public", 1)
             ]
         );
         assert!(report.categories_in_order);
-        // #announcements, as made before: in Public under its old name. The raider one is missing.
+        // #announcements, as made before: in Public under its old name. The others are missing.
         assert_eq!(
             report.announcements,
             vec![
-                AnnouncementsStatus {
-                    name: "public-announcements".into(),
-                    id: Some("201".into()),
-                    named: Some("announcements".into()),
-                    category: Some("Public".into()),
-                },
                 AnnouncementsStatus {
                     name: "raider-announcements".into(),
                     id: None,
                     named: None,
                     category: None,
+                },
+                AnnouncementsStatus {
+                    name: "member-announcements".into(),
+                    id: None,
+                    named: None,
+                    category: None,
+                },
+                AnnouncementsStatus {
+                    name: "public-announcements".into(),
+                    id: Some("201".into()),
+                    named: Some("announcements".into()),
+                    category: Some("Public".into()),
                 },
             ]
         );
@@ -819,7 +1059,7 @@ mod tests {
             vec![Some("101"), Some("102"), Some("103"), Some("104")]
         );
 
-        // Officers dragged above Raiders.
+        // Public dragged above Members.
         let mut moved = server(vec![]);
         moved.channels[3].position = 1;
         assert!(!check(&[], &moved).categories_in_order);
@@ -841,9 +1081,9 @@ mod tests {
             })
         );
 
-        // Friend dragged above Leader, and Leader above the bot's own role.
+        // Member dragged above Leader, and Leader above the bot's own role.
         let mut moved = server(vec![]);
-        moved.role_positions.insert(RoleId::new(6), 8);
+        moved.role_positions.insert(RoleId::new(5), 8);
         moved.role_positions.insert(RoleId::new(1), 11);
         let report = check(&[], &moved);
         assert!(!report.roles_in_order);
@@ -863,11 +1103,12 @@ mod tests {
     #[test]
     fn a_role_or_category_the_server_lacks_is_reported_once_not_against_everyone() {
         let mut lacking = server(vec![member(10, "pal", &[])]);
-        lacking.role_names.remove(&RoleId::new(6));
-        lacking.channels.retain(|channel| channel.id != 104);
+        lacking.role_names.remove(&RoleId::new(5));
+        lacking.channels.retain(|channel| channel.id != 101);
+        // A friend on the site is due the Member role.
         let report = check(&[account("10", "Pal", Rank::Friend)], &lacking);
-        let friend = report.roles.iter().find(|r| r.name == "Friend").unwrap();
-        assert_eq!(friend.id, None);
+        let member = report.roles.iter().find(|r| r.name == "Member").unwrap();
+        assert_eq!(member.id, None);
         assert!(report.members.is_empty());
         let officers = report
             .categories
@@ -879,6 +1120,128 @@ mod tests {
     }
 
     #[test]
+    fn lists_the_servers_other_roles_and_their_holders() {
+        let members = vec![
+            member(10, "pal", &[6]),
+            member(20, "old pal", &[6, MEMBER]),
+            member(30, "booster", &[7]),
+        ];
+        let report = check(&[], &server(members));
+        // Not the bot's roles, its own, or the booster role an integration keeps.
+        assert_eq!(
+            report.other_roles,
+            vec![OtherRole {
+                id: "6".into(),
+                name: "Friend".into(),
+                holders: 2,
+            }]
+        );
+    }
+
+    #[test]
+    fn says_whether_the_announcements_stand_in_order_at_the_top() {
+        let top = |id, name: &str, position| Channel {
+            parent: None,
+            position,
+            ..text(id, name, 0)
+        };
+        let mut snapshot = server(vec![]);
+        snapshot
+            .objects
+            .insert(RAIDER_ANNOUNCEMENTS.key.into(), 301);
+        snapshot
+            .objects
+            .insert(MEMBER_ANNOUNCEMENTS.key.into(), 302);
+        snapshot
+            .objects
+            .insert(PUBLIC_ANNOUNCEMENTS.key.into(), 303);
+        snapshot.channels.extend([
+            top(303, "public-announcements", 0),
+            top(400, "rules", 1),
+            top(302, "member-announcements", 2),
+            top(301, "raider-announcements", 3),
+        ]);
+        assert!(!check(&[], &snapshot).announcements_in_order);
+        for channel in &mut snapshot.channels {
+            match channel.id {
+                301 => channel.position = 0,
+                303 => channel.position = 3,
+                _ => {}
+            }
+        }
+        assert!(check(&[], &snapshot).announcements_in_order);
+    }
+
+    #[test]
+    fn says_which_of_the_bots_permission_entries_differ() {
+        let mut snapshot = server(vec![]);
+        let bot = UserId::new(1000);
+        let roles = Roles([1, 2, 3, 4, 5].map(RoleId::new));
+        // Officers (101) as the bot sets it; Public (104) with nothing; the rest left out.
+        snapshot.channels[0].overwrites =
+            category_overwrites(CATEGORIES[0].audience, &roles, RoleId::new(100), bot);
+        snapshot
+            .channels
+            .retain(|c| [101, 104, 201].contains(&c.id));
+        let report = check(&[], &snapshot);
+        let differing: Vec<(&str, Vec<String>)> = report
+            .permissions
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|status| (status.name.as_str(), status.differing.clone()))
+            .collect();
+        assert_eq!(
+            differing,
+            vec![
+                ("Officers", vec![]),
+                ("Public", vec!["@everyone".to_string()]),
+                (
+                    "announcements",
+                    vec![
+                        "@everyone".to_string(),
+                        "Leader".to_string(),
+                        "Officer".to_string()
+                    ]
+                ),
+            ]
+        );
+
+        // Without all the bot's roles, nothing to check them against.
+        snapshot.role_names.remove(&RoleId::new(4));
+        assert_eq!(check(&[], &snapshot).permissions, None);
+    }
+
+    #[test]
+    fn groups_everyone_in_the_server() {
+        let members = vec![
+            member(10, "Linked", &[MEMBER, 6]),
+            member(20, "holder", &[OFFICER]),
+            member(30, "pal", &[6]),
+            member(40, "quiet", &[]),
+        ];
+        let report = check(&[account("10", "Ey", Rank::Member)], &server(members));
+        let names = |group: &[Person]| -> Vec<String> {
+            group.iter().map(|p| p.discord_name.clone()).collect()
+        };
+        let everyone = &report.everyone;
+        assert_eq!(
+            everyone.linked,
+            vec![Person {
+                discord_id: "10".into(),
+                discord_name: "Linked".into(),
+                username: Some("Ey".into()),
+                // Top first: Friend (at 7) stands above Member (at 1).
+                roles: vec!["Friend".into(), "Member".into()],
+            }]
+        );
+        assert_eq!(names(&everyone.unlinked_ours), ["holder"]);
+        assert_eq!(names(&everyone.unlinked_others), ["pal"]);
+        assert_eq!(names(&everyone.no_roles), ["quiet"]);
+        assert_eq!(names(&everyone.bots), ["Blood Legion bot"]);
+    }
+
+    #[test]
     fn finds_the_channels_not_synced_with_their_category() {
         let entry = |id: u64, allow: u64| PermissionOverwrite {
             allow: serenity::all::Permissions::from_bits_truncate(allow),
@@ -886,9 +1249,9 @@ mod tests {
             kind: PermissionOverwriteType::Role(RoleId::new(id)),
         };
         let mut snapshot = server(vec![]);
-        // Members (102) lets roles 1 and 5 see; #general (202) matches in another order, #chat
+        // Members (103) lets roles 1 and 5 see; #general (202) matches in another order, #chat
         // (203) has an entry of its own.
-        snapshot.channels[1].overwrites = vec![entry(1, 1024), entry(5, 1024)];
+        snapshot.channels[2].overwrites = vec![entry(1, 1024), entry(5, 1024)];
         snapshot.channels[5].overwrites = vec![entry(5, 1024), entry(1, 1024)];
         snapshot.channels[6].overwrites = vec![entry(1, 1024), entry(5, 1024), entry(9, 2048)];
         let report = check(&[], &snapshot);

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT u.id AS \"id: UserId\"\n        FROM auth_oauth2_provider_credentials c\n        JOIN auth_providers p ON p.id = c.provider_id\n        JOIN users u ON u.id = c.user_id\n        WHERE p.slug = $1\n          AND c.subject = $2\n          AND c.disconnected_at IS NULL\n          AND u.disabled_at IS NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "29cff4ce1429c2f69ac2fcb871f5d572a34511a73bc2e9b19fca22e5dca9ab83"
+}

@@ -9,6 +9,7 @@ use time::{OffsetDateTime, serde::iso8601};
 use super::check::{self, Overview};
 use super::db;
 use super::fix::{self, FixError};
+use super::layout::Access;
 use super::markdown::{self, Mentions};
 use crate::extract::{Admin, SameOrigin};
 use crate::{Error, Problem, Result, State};
@@ -21,6 +22,7 @@ const LATEST: i64 = 10;
 pub struct Announcement {
     /// The Discord message id, as a string: it does not fit a JavaScript number.
     pub id: String,
+    /// The username of the member who posted it.
     pub author: String,
     /// The post as HTML (see `markdown`): escaped, so safe to put on the page as is.
     pub html: String,
@@ -40,10 +42,11 @@ async fn latest(state: State) -> Result<Json<Vec<Announcement>>> {
         posts
             .into_iter()
             .map(|post| {
+                let db::Announcement { post, author } = post;
                 let mentions: Mentions = serde_json::from_value(post.mentions).unwrap_or_default();
                 Announcement {
                     id: post.message_id.to_string(),
-                    author: post.author,
+                    author,
                     html: markdown::render(&post.content, &mentions),
                     posted_at: post.posted_at,
                     edited_at: post.edited_at,
@@ -218,6 +221,17 @@ async fn fix_announcements(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// `POST /api/admin/discord/fix/permissions`: superusers only. Sets the bot's permission entries on
+/// its categories and announcements channels where they differ (see `fix`).
+async fn fix_permissions(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+) -> Result<StatusCode, FixError> {
+    fix::fix_permissions(&state).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// `POST /api/admin/discord/fix/sync/{channel}`: superusers only. Syncs a channel in one of the
 /// bot's categories with it again (see `fix`).
 async fn sync_channel(
@@ -231,6 +245,40 @@ async fn sync_channel(
         .map_err(|_| Error::External(FixError::NotInOurCategory))?;
     fix::sync_channel(&state, channel).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Which role to give to whom: the bot's role for `to` (its key, such as `role:member`) to
+/// everyone holding the server's role `from` (a Discord id, as a string).
+#[derive(Debug, serde::Deserialize)]
+pub struct GiveInput {
+    from: String,
+    to: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct Given {
+    /// How many people it was given to.
+    pub given: usize,
+}
+
+/// `POST /api/admin/discord/fix/give`: superusers only. Gives one of the bot's roles to everyone
+/// holding another of the server's roles (see `fix`); takes none away.
+async fn give_role(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+    Json(input): Json<GiveInput>,
+) -> Result<Json<Given>, FixError> {
+    let from = input
+        .from
+        .parse()
+        .map_err(|_| Error::External(FixError::NoSuchRole))?;
+    let to = Access::ALL
+        .into_iter()
+        .find(|access| access.key() == input.to)
+        .ok_or(Error::External(FixError::RoleMissing))?;
+    let given = fix::give_role(&state, from, to).await?;
+    Ok(Json(Given { given }))
 }
 
 pub fn router() -> Router<State> {
@@ -247,6 +295,8 @@ pub fn admin_router() -> Router<State> {
         .route("/discord/fix/create", post(create_channels))
         .route("/discord/fix/announcements", post(fix_announcements))
         .route("/discord/fix/sync/{channel}", post(sync_channel))
+        .route("/discord/fix/give", post(give_role))
+        .route("/discord/fix/permissions", post(fix_permissions))
 }
 
 #[cfg(test)]

@@ -53,7 +53,10 @@
 	let fixError = $state('');
 	let fixed = $state<string | null>(null);
 
-	/** Runs one of the fixes (`roles`, `categories`, `create`, `announcements`, `sync/<id>`). */
+	/**
+	 * Runs one of the fixes (`roles`, `categories`, `create`, `announcements`, `permissions`,
+	 * `sync/<id>`).
+	 */
 	async function fix(action: string) {
 		fixing = action;
 		fixError = '';
@@ -69,6 +72,34 @@
 		}
 	}
 
+	/** For each of the server's other roles, which of the bot's roles to give its holders. */
+	let giveTo = $state<Record<string, string>>({});
+	let given = $state<{ from: string; to: string; count: number } | null>(null);
+
+	/** Gives the bot's role `to` (its key) to everyone holding the server's role `from`. */
+	async function give(from: { id: string; name: string }, to: string) {
+		fixing = `give/${from.id}`;
+		fixError = '';
+		fixed = null;
+		given = null;
+		try {
+			const result = await api.post<{ given: number }>('/api/admin/discord/fix/give', {
+				from: from.id,
+				to
+			});
+			await invalidateAll();
+			const name = report?.roles.find((r) => r.key === to)?.name ?? to;
+			given = { from: from.name, to: name, count: result.given };
+		} catch (err) {
+			fixError = errorMessage(err, 'That did not work. Please try again.');
+		} finally {
+			fixing = null;
+		}
+	}
+
+	/** The bot's roles that are in the server, which can be given. */
+	const givable = $derived(report?.roles.filter((r) => r.id) ?? []);
+
 	/** The bot's roles, categories, and announcements channels the server lacks. */
 	const missing = $derived(
 		report
@@ -83,6 +114,28 @@
 	const announcementsToFix = $derived(
 		report?.announcements.filter((channel) => channel.id && (channel.named || channel.category)) ??
 			[]
+	);
+	/** The bot's categories and announcements channels whose permission entries differ. */
+	const permissionsToFix = $derived(
+		report?.permissions?.filter((channel) => channel.differing.length > 0) ?? []
+	);
+	const announcementsInPlace = $derived(
+		!!report &&
+			report.announcements_in_order &&
+			report.announcements.every((c) => c.id && !c.named && !c.category)
+	);
+
+	/** The groups of everyone in the server, in the order the page lists them. */
+	const groups = $derived(
+		report
+			? [
+					{ title: 'Linked to the site', people: report.everyone.linked },
+					{ title: "Not linked, with the bot's roles", people: report.everyone.unlinked_ours },
+					{ title: 'Not linked, with other roles only', people: report.everyone.unlinked_others },
+					{ title: 'No roles', people: report.everyone.no_roles },
+					{ title: 'Bots', people: report.everyone.bots }
+				]
+			: []
 	);
 </script>
 
@@ -113,9 +166,9 @@
 </div>
 
 <p class="muted intro">
-	How the bot and the server stand, read from Discord now. The bot gives and takes no roles, removes
-	nothing, and orders nothing on its own: fix what is listed here in Discord (or with a button
-	here), then check again.
+	How the bot and the server stand, read from Discord now. The bot changes nothing in Discord on its
+	own, and never takes a role away or removes anything: fix what is listed here in Discord (or with
+	a button here), then check again.
 </p>
 
 {#if data.failure}
@@ -282,8 +335,7 @@
 			<p class="muted">
 				The bot's roles, top to bottom, as they should stand in Server Settings, Roles. Holders:
 				everyone in the server with the role. Due: linked members in the server whose rank calls for
-				it. The bot makes none on its own: Create missing makes them, and until all six are there it
-				sets no permissions on its channels.
+				it. The bot makes none on its own: Create missing makes them.
 			</p>
 			{#if fixed === 'roles'}<Alert variant="success">The roles are in order.</Alert>{/if}
 			{#if report.roles_out_of_reach.length > 0}
@@ -326,6 +378,64 @@
 						</ConfirmButton>
 					{/if}
 				</div>
+			{/if}
+		</section>
+
+		<section>
+			<h2>Other roles</h2>
+			<p class="muted">
+				The server's roles that are not the bot's (nor ones an integration keeps, like the booster
+				role). To move people off one, give everyone holding it one of the bot's roles here, then
+				remove the old role by hand in Server Settings, Roles. Giving takes no role from anyone.
+			</p>
+			{#if given}
+				<Alert variant="success">
+					Gave {given.to} to {given.count}
+					{given.count === 1 ? 'person' : 'people'} holding {given.from}.
+				</Alert>
+			{/if}
+			{#if report.other_roles.length === 0}
+				<p class="muted">None.</p>
+			{:else}
+				<table>
+					<thead>
+						<tr><th>Role</th><th>ID</th><th class="num">Holders</th><th>Give them</th></tr>
+					</thead>
+					<tbody>
+						{#each report.other_roles as role (role.id)}
+							{@const to = giveTo[role.id] ?? ''}
+							{@const toName = givable.find((r) => r.key === to)?.name}
+							<tr>
+								<td>{role.name}</td>
+								<td><code class="id">{role.id}</code></td>
+								<td class="num">{role.holders}</td>
+								<td class="give">
+									<select
+										aria-label={`Role to give everyone holding ${role.name}`}
+										value={to}
+										disabled={role.holders === 0 || givable.length === 0}
+										onchange={(event) => (giveTo[role.id] = event.currentTarget.value)}
+									>
+										<option value="">Pick a role</option>
+										{#each givable as ours (ours.key)}
+											<option value={ours.key}>{ours.name}</option>
+										{/each}
+									</select>
+									<ConfirmButton
+										size="small"
+										disabled={!to || fixing !== null}
+										question={`Give ${toName} to everyone holding ${role.name}?`}
+										confirmLabel="Give"
+										confirmVariant="primary"
+										onconfirm={() => give(role, to)}
+									>
+										{fixing === `give/${role.id}` ? 'Giving...' : 'Give'}
+									</ConfirmButton>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
 			{/if}
 		</section>
 
@@ -382,19 +492,22 @@
 		<section>
 			<div class="head">
 				<h2>Announcements</h2>
-				{#if report.announcements.every((c) => c.id && !c.named && !c.category)}
+				{#if announcementsInPlace}
 					<span class="tag ok">In place</span>
 				{:else}
 					<span class="tag warn">Out of place</span>
 				{/if}
 			</div>
 			<p class="muted">
-				At the top of the channel list, in no category, where only the leader and officers post.
-				#public-announcements shows on the site's front page. The bot makes neither on its own:
-				Create missing makes them.
+				At the top of the channel list, in no category, in this order, where only the leader and
+				officers post. #public-announcements shows on the site's front page. The bot makes none on
+				its own: Create missing makes them.
 			</p>
 			{#if fixed === 'announcements'}
 				<Alert variant="success">The announcements channels are in place.</Alert>
+			{/if}
+			{#if !report.announcements_in_order}
+				<Alert variant="info">The ones at the top of the list are out of order.</Alert>
 			{/if}
 			<table>
 				<thead>
@@ -417,13 +530,13 @@
 					{/each}
 				</tbody>
 			</table>
-			{#if report.announcements.some((c) => !c.id) || announcementsToFix.length > 0}
+			{#if report.announcements.some((c) => !c.id) || announcementsToFix.length > 0 || !report.announcements_in_order}
 				<div class="actions">
 					{#if report.announcements.some((c) => !c.id)}{@render createMissing()}{/if}
-					{#if announcementsToFix.length > 0}
+					{#if announcementsToFix.length > 0 || !report.announcements_in_order}
 						<ConfirmButton
 							disabled={fixing !== null}
-							question="Move the announcements channels to the top of the list, out of any category, under their own names?"
+							question="Move the announcements channels to the top of the list, out of any category, under their own names, in this order? Only they move."
 							confirmLabel="Fix"
 							confirmVariant="primary"
 							onconfirm={() => fix('announcements')}
@@ -432,6 +545,67 @@
 						</ConfirmButton>
 					{/if}
 				</div>
+			{/if}
+		</section>
+
+		<section>
+			<div class="head">
+				<h2>Permissions</h2>
+				{#if !report.permissions}
+					<span class="tag warn">Roles missing</span>
+				{:else if permissionsToFix.length === 0}
+					<span class="tag ok">All set</span>
+				{:else}
+					<span class="tag warn">{permissionsToFix.length} to set</span>
+				{/if}
+			</div>
+			<p class="muted">
+				The bot's own permission entries on its categories and announcements channels: who may see
+				each, and who may post announcements. Entries added by hand are left alone, and these are
+				set only with the button.
+			</p>
+			{#if fixed === 'permissions'}
+				<Alert variant="success">The bot's permissions are set.</Alert>
+			{/if}
+			{#if !report.permissions}
+				<Alert variant="info">
+					They name the bot's roles, so they are checked once the server has all of them.
+				</Alert>
+			{:else}
+				<ul class="list">
+					{#each report.permissions as channel (channel.id)}
+						<li>
+							<div class="who">
+								<span class="name">{channel.category ? channel.name : `#${channel.name}`}</span>
+								<span class="muted small">
+									{channel.category ? 'Category' : 'Channel'} · <code class="id">{channel.id}</code>
+								</span>
+							</div>
+							<div class="needs">
+								{#if channel.differing.length === 0}
+									<span class="tag ok">Set</span>
+								{:else}
+									{#each channel.differing as who (who)}
+										<span class="tag warn">{who}</span>
+									{/each}
+								{/if}
+							</div>
+						</li>
+					{/each}
+				</ul>
+				{#if permissionsToFix.length > 0}
+					<div class="actions">
+						<ConfirmButton
+							disabled={fixing !== null}
+							question="Set the bot's entries where they differ? Only its own entries change; those added by hand stay."
+							confirmLabel="Set"
+							confirmVariant="primary"
+							onconfirm={() => fix('permissions')}
+						>
+							{fixing === 'permissions' ? 'Setting...' : 'Set permissions'}
+						</ConfirmButton>
+					</div>
+				{/if}
 			{/if}
 		</section>
 
@@ -542,6 +716,42 @@
 					{/each}
 				</ul>
 			{/if}
+		</section>
+
+		<section>
+			<h2>Everyone in the server</h2>
+			<p class="muted">
+				Everyone in the server, by how they stand with the site, with their roles top first.
+			</p>
+			{#each groups as group (group.title)}
+				<details class="group">
+					<summary>
+						{group.title} <span class="muted">({group.people.length})</span>
+					</summary>
+					{#if group.people.length === 0}
+						<p class="muted small">Nobody.</p>
+					{:else}
+						<ul class="list">
+							{#each group.people as person (person.discord_id)}
+								<li>
+									<div class="who">
+										<span class="name">{person.discord_name}</span>
+										<span class="muted small">
+											{#if person.username}{person.username} on the site ·
+											{/if}<code class="id">{person.discord_id}</code>
+										</span>
+									</div>
+									<div class="needs">
+										{#each person.roles as role (role)}
+											<span class="tag extra">{role}</span>
+										{/each}
+									</div>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</details>
+			{/each}
 		</section>
 	{/if}
 {/if}
@@ -656,6 +866,22 @@
 
 	.small {
 		font-size: var(--text-sm);
+	}
+
+	.group {
+		margin-top: var(--space-3);
+	}
+
+	.group summary {
+		cursor: pointer;
+		font-weight: 600;
+	}
+
+	.give {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-2);
 	}
 
 	.needs {

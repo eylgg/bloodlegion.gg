@@ -234,24 +234,28 @@ the changes.
   time; recording loot searches it, and a guild item picked from it is linked by the game's item id.
 
   It is refreshed with the rest of Blizzard's data; see [Blizzard's data](#blizzards-data).
+
 - **Questions**: officers ask yes-or-no questions; members answer and may change their minds.
 
 ## The Discord server
 
 The guild's Discord server is kept by a bot, the same Discord application members link (step 4
-above). It keeps a role for each rank (Leader, Officer, Raider, Trial, Member, Friend) and four
-categories that follow the site's access levels, each open to its level and those above it: Public
-(everyone), Members (every role), Raiders (leader, officers, raiders, trials), and Officers (leader
-and officers). It keeps two announcements channels besides, at the top of the channel list in no
-category, where only the leader and officers post: #public-announcements, which everyone reads and
-whose posts show on the front page (kept in step as they are edited or deleted), and
-#raider-announcements, for the leader, officers, raiders, and trials.
+above). It keeps a role for each access level (Leader, Officer, Raider, Trial, Member; the site's friends
+are due the Member role) and four categories that follow the levels, each open to its level and
+those above it, top to bottom: Officers (leader and officers), Raiders (leader, officers, raiders,
+trials), Members (every role), and Public (everyone). It keeps three announcements channels
+besides, at the top of the channel list in no category, where only the leader and officers post,
+top to bottom: #raider-announcements, for the leader, officers, raiders, and trials;
+#member-announcements, for every role; and #public-announcements, which everyone reads and whose
+posts show on the front page under the poster's site account (kept in step as they are edited or
+deleted; a post by someone whose Discord account is not linked to the site is not shown).
 
-It never removes anything, gives no one a role, and makes nothing on its own: a missing role,
-category, or announcements channel is made only when a superuser presses **Create missing** on the
-Discord page (until all six roles are there, it sets no permissions on its channels). A role or channel of the same name made by hand is taken
-over rather than doubled, and on its own categories and channels it sets only its own permission
-entries, so others added by hand stay. Renaming its roles or categories is fine: it keeps track by
+It changes nothing in Discord on its own; on its own it only reads the server and mirrors
+#public-announcements. Every change is a button a superuser presses on the Discord page, and none
+removes anything or takes a role away: a missing role, category, or announcements channel is made
+only with **Create missing**, and its permission entries are set only with **Set permissions**. A
+role or channel of the same name made by hand is taken over rather than doubled, and on its own
+categories and channels it sets only its own permission entries, so others added by hand stay. Renaming its roles or categories is fine: it keeps track by
 id.
 
 The **Discord page** (`/admin/discord`, superusers) reads the server and shows how it stands, a
@@ -260,14 +264,21 @@ server's people and bots, how many members linked Discord and are in it, and the
 #public-announcements; its **roles** and **categories** with their Discord ids (each role with its
 holders against the linked members whose rank calls for it, each category with its channels), and
 whether they stand top to bottom as the site has them; the announcements channels, and whether they
-are at the top under their own names; channels in the bot's categories not synced with them (with
+are at the top under their own names and in order; the bot's permission entries on its categories and announcements channels, and whose are missing or
+set otherwise (checked once the server has all five roles); channels in the bot's categories not
+synced with them (with
 permissions of their own); linked members not in the server, without their rank's role, or holding
-another of the bot's roles besides; and people holding one of the bot's roles who have not linked
-Discord. The bot never reorders, moves, or syncs anything on its own: an order that is off has a
+another of the bot's roles besides; people holding one of the bot's roles who have not linked
+Discord; and, last, everyone in the server with their roles, grouped: linked to the site, not
+linked with one of the bot's roles, not linked with other roles only, no roles, and bots. The bot never reorders, moves, or syncs anything on its own: an order that is off has a
 **Fix order** button, which moves only the bot's own roles or categories among the places they
 already hold, so everything else keeps its place; announcements channels out of place have a **Fix**
-button that moves them to the top under their own names; and each unsynced channel has a **Sync**
-button that gives it its category's permissions again. The page also checks the bot's own highest
+button that moves them to the top under their own names and puts them in order among the places
+they hold there; and each unsynced channel has a **Sync**
+button that gives it its category's permissions again. The server's other roles (not the bot's,
+and not ones an integration keeps, such as the booster role) are listed with their holders, each
+with a **Give** button that gives one of the bot's roles to everyone holding it: to move people off
+a role the server is dropping, give them the bot's role, then remove the old role by hand. The page also checks the bot's own highest
 role: it should be the server's top role, since Discord lets the bot move only roles below it and
 lets no one raise their own (if not, someone above it drags it to the top in Server Settings, Roles),
 shown separately in the member list, and not mentionable by anyone; for the same reason these are
@@ -321,8 +332,7 @@ cargo xtask build-images   # both, tagged with the version
 ```
 
 The backend container needs `ORIGIN`, `DATABASE_URL`, and `ENCRYPTION_KEY`, and listens on 8080.
-The web container needs `ORIGIN` and `BACKEND_URL` (e.g. `http://bloodlegion-server:8080`), and listens on
-3000. Put a reverse proxy in front that sends `/api`, `/auth`, and `/.well-known` to the backend and
+The web container needs `ORIGIN` and `BACKEND_URL` (e.g. `http://bloodlegion-server:8080`), and listens on 3000. Put a reverse proxy in front that sends `/api`, `/auth`, and `/.well-known` to the backend and
 everything else to the web container, and that sets `X-Forwarded-For` (the backend's login
 throttle keys on it).
 

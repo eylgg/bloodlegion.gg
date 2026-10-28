@@ -69,13 +69,12 @@ export type DiscordReport = {
 	linked: number;
 	linked_in_server: number;
 	/**
-	 * The bot's roles, top first: its Discord id (a string; `null` when the server lacks it), who
-	 * holds it, and how many linked members' ranks call for it.
+	 * The bot's roles, top first: its key (`role:member`), its Discord id (a string; `null` when the
+	 * server lacks it), who holds it, and how many linked members' ranks call for it.
 	 */
-	roles: { id: string | null; name: string; holders: number; due: number }[];
+	roles: { key: string; id: string | null; name: string; holders: number; due: number }[];
 	/** Whether the bot's roles stand in that order in Discord's list. */
 	roles_in_order: boolean;
-	/** The bot's own highest role: it can move only roles below it. */
 	/**
 	 * The bot's own highest role: the server's roles above it (top first; none at the top), whether
 	 * the member list shows it separately, and whether anyone may mention it (it should not be).
@@ -87,13 +86,18 @@ export type DiscordReport = {
 		shown_separately: boolean;
 		mentionable: boolean;
 	} | null;
-	/** The bot's roles not below its own highest role, which it cannot move. */
+	/** The bot's roles not below its own highest role, which it cannot move or give. */
 	roles_out_of_reach: string[];
+	/**
+	 * The server's roles besides the bot's, `@everyone`, and those integrations keep, top first, with
+	 * how many people hold each: one of the bot's roles can be given to all of them.
+	 */
+	other_roles: { id: string; name: string; holders: number }[];
 	/** The bot's categories, in the order it keeps them. */
 	categories: { id: string | null; name: string; channels: number }[];
 	categories_in_order: boolean;
 	/**
-	 * The announcements channels, public first: the name each should have, its id (`null` when
+	 * The announcements channels, top first: the name each should have, its id (`null` when
 	 * missing), its name now when that differs (`named`), and the category it is in, if any.
 	 */
 	announcements: {
@@ -102,6 +106,14 @@ export type DiscordReport = {
 		named: string | null;
 		category: string | null;
 	}[];
+	/** Whether those at the top of the list stand in that order. */
+	announcements_in_order: boolean;
+	/**
+	 * The bot's permission entries on its categories and announcements channels, categories first:
+	 * whose are missing or set otherwise (`differing`: `@everyone`, a role's name, or "the bot").
+	 * `null` until the server has all the bot's roles.
+	 */
+	permissions: { id: string; name: string; category: boolean; differing: string[] }[] | null;
 	/** Channels in the bot's categories not synced with them (permissions of their own). */
 	unsynced: { id: string; name: string; category: string }[];
 	/** Linked members out of line: not in the server, lacking their role, or holding another. */
@@ -118,6 +130,24 @@ export type DiscordReport = {
 	}[];
 	/** People in the server holding one of the bot's roles with no linked account. */
 	unlinked: { discord_id: string; discord_name: string; roles: string[] }[];
+	/** Everyone in the server, grouped by how they stand with the site, each group by name. */
+	everyone: {
+		linked: DiscordPerson[];
+		/** Not linked, holding one of the bot's roles. */
+		unlinked_ours: DiscordPerson[];
+		/** Not linked, holding only the server's other roles. */
+		unlinked_others: DiscordPerson[];
+		no_roles: DiscordPerson[];
+		bots: DiscordPerson[];
+	};
+};
+
+/** Someone in the Discord server: their linked site account, if any, and their roles, top first. */
+export type DiscordPerson = {
+	discord_id: string;
+	discord_name: string;
+	username: string | null;
+	roles: string[];
 };
 
 /** A post from the Discord server's #public-announcements, rendered by the backend. */

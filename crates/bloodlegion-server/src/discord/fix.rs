@@ -7,9 +7,14 @@
 //! - Making the bot's roles, categories, and announcements channels that are missing, the channels
 //!   with its permission entries. The bot finds them by itself but makes none.
 //! - Moving the announcements channels to the top of the list (out of any category) under their
-//!   own names.
+//!   own names, in the site's order among the text channels there.
+//! - Setting the bot's permission entries on its categories and announcements channels: only those
+//!   missing or set otherwise, and only its own (entries added by hand stay).
 //! - Syncing a channel in one of the bot's categories with it again: its permissions become the
 //!   category's.
+//! - Giving one of the bot's roles to everyone holding another of the server's roles (moving the
+//!   holders of a role the server is dropping onto one of the bot's). It only gives: nobody loses a
+//!   role, and the other role stays for someone to remove by hand.
 
 use std::cmp::Reverse;
 use std::collections::HashMap;
@@ -20,9 +25,11 @@ use serenity::all::{
     RoleId, UserId,
 };
 
+use super::check::{Channel, server_members, top_level_text};
 use super::db;
 use super::layout::{
     ANNOUNCEMENTS, Access, CATEGORIES, Roles, announcements_overwrites, category_overwrites,
+    differing,
 };
 use super::sync;
 use super::sync::REASON;
@@ -116,6 +123,21 @@ pub enum FixError {
                   bot's role above the guild's roles, then try again."
     )]
     OutOfReach(String),
+    #[error("no such role to give from")]
+    #[problem(
+        status = NOT_FOUND,
+        title = "No Such Role",
+        detail = "That role is not in the server, or is one of the bot's own, @everyone, or one an \
+                  integration keeps. Check again and pick another."
+    )]
+    NoSuchRole,
+    #[error("the role to give is missing")]
+    #[problem(
+        status = CONFLICT,
+        title = "Role Missing",
+        detail = "The server lacks the role to give. Create it with Create missing first."
+    )]
+    RoleMissing,
     #[error("not in one of the bot's categories")]
     #[problem(
         status = NOT_FOUND,
@@ -213,17 +235,7 @@ pub async fn fix_roles(state: &State) -> Result<(), FixError> {
         return Ok(());
     }
 
-    let me: UserId = http.get_current_user().await.map_err(discord)?.id;
-    let top = guild
-        .member(&http, me)
-        .await
-        .map_err(discord)?
-        .roles
-        .iter()
-        .filter_map(|id| roles.get(id))
-        .map(|role| role.position)
-        .max()
-        .unwrap_or(0);
+    let top = bot_top(&http, guild, &roles).await?;
     let position = |id: u64| roles.get(&RoleId::new(id)).map_or(0, |role| role.position);
     let out_of_reach: Vec<String> = moves
         .iter()
@@ -239,6 +251,67 @@ pub async fn fix_roles(state: &State) -> Result<(), FixError> {
     move_roles(state, &token, guild, &moves).await?;
     tracing::info!("discord: put the roles in order");
     Ok(())
+}
+
+/// The bot's own highest role's position: it can move or give only roles below it.
+async fn bot_top(
+    http: &Http,
+    guild: GuildId,
+    roles: &HashMap<RoleId, serenity::all::Role>,
+) -> Result<u16, FixError> {
+    let me: UserId = http.get_current_user().await.map_err(discord)?.id;
+    Ok(guild
+        .member(http, me)
+        .await
+        .map_err(discord)?
+        .roles
+        .iter()
+        .filter_map(|id| roles.get(id))
+        .map(|role| role.position)
+        .max()
+        .unwrap_or(0))
+}
+
+/// Gives the bot's role for `to` to everyone in the server (bots aside) who holds the role `from`
+/// and lacks it, returning how many it was given to. It takes no role from anyone.
+pub async fn give_role(state: &State, from: u64, to: Access) -> Result<usize, FixError> {
+    let (token, guild) = connection(state).await?;
+    let http = Http::new(&token);
+    let roles = guild.roles(&http).await.map_err(discord)?;
+    let mut ours = Vec::new();
+    for access in Access::ALL {
+        if let Some(id) = db::object_id(&state.pool, access.key()).await? {
+            ours.push(RoleId::new(id));
+        }
+    }
+    let from = RoleId::new(from);
+    let everyone = RoleId::new(guild.get());
+    if from == everyone || ours.contains(&from) || roles.get(&from).is_none_or(|role| role.managed)
+    {
+        return Err(Error::External(FixError::NoSuchRole));
+    }
+    let target = db::object_id(&state.pool, to.key())
+        .await?
+        .map(RoleId::new)
+        .and_then(|id| roles.get(&id))
+        .ok_or(Error::External(FixError::RoleMissing))?;
+    if target.position >= bot_top(&http, guild, &roles).await? {
+        return Err(Error::External(FixError::OutOfReach(target.name.clone())));
+    }
+
+    let members = server_members(&http, guild).await.map_err(discord)?;
+    let mut given = 0;
+    for member in members
+        .iter()
+        .filter(|m| !m.bot && m.roles.contains(&from) && !m.roles.contains(&target.id))
+    {
+        http.add_member_role(guild, UserId::new(member.id), target.id, Some(REASON))
+            .await
+            .map_err(discord)?;
+        given += 1;
+    }
+    tracing::info!(role = %target.name, given, "discord: gave a role");
+    Ok(given)
 }
 
 /// Gives roles new positions, all at once. serenity moves one role per request, and Discord shifts
@@ -365,7 +438,8 @@ pub async fn create_channels(state: &State) -> Result<(), FixError> {
 }
 
 /// Moves the announcements channels to the top of the list, out of any category, under their own
-/// names. A missing one is left for the bot to make when it next checks.
+/// names, then puts them in order there among the slots they hold. A missing one is left for
+/// Create missing.
 pub async fn fix_announcements(state: &State) -> Result<(), FixError> {
     let (token, guild) = connection(state).await?;
     let http = Http::new(&token);
@@ -395,6 +469,93 @@ pub async fn fix_announcements(state: &State) -> Result<(), FixError> {
             name = wanted.name,
             "discord: moved an announcements channel to the top"
         );
+    }
+
+    let channels: Vec<Channel> = guild
+        .channels(&http)
+        .await
+        .map_err(discord)?
+        .into_values()
+        .map(|channel| Channel {
+            id: channel.id.get(),
+            name: channel.name,
+            category: channel.kind == ChannelType::Category,
+            text: matches!(channel.kind, ChannelType::Text | ChannelType::News),
+            parent: channel.parent_id.map(|id| id.get()),
+            position: channel.position,
+            overwrites: vec![],
+        })
+        .collect();
+    let mut wanted = Vec::new();
+    for channel in ANNOUNCEMENTS {
+        if let Some(id) = db::object_id(&state.pool, channel.key).await? {
+            wanted.push(id);
+        }
+    }
+    let moves = moves(&top_level_text(&channels), &wanted, List::Categories);
+    if !moves.is_empty() {
+        guild
+            .reorder_channels(
+                &http,
+                moves
+                    .into_iter()
+                    .map(|(id, position)| (ChannelId::new(id), u64::from(position))),
+            )
+            .await
+            .map_err(discord)?;
+        tracing::info!("discord: put the announcements channels in order");
+    }
+    Ok(())
+}
+
+/// Sets the bot's permission entries on its categories and announcements channels where they are
+/// missing or set otherwise. Refused while the server lacks one of the bot's roles.
+pub async fn fix_permissions(state: &State) -> Result<(), FixError> {
+    let (token, guild) = connection(state).await?;
+    let http = Http::new(&token);
+    let existing = guild.roles(&http).await.map_err(discord)?;
+    let mut ids = Vec::new();
+    for access in Access::ALL {
+        let id = db::object_id(&state.pool, access.key())
+            .await?
+            .map(RoleId::new)
+            .filter(|id| existing.contains_key(id))
+            .ok_or(Error::External(FixError::RoleMissing))?;
+        ids.push(id);
+    }
+    let roles = Roles(ids.try_into().expect("one role per access"));
+    let everyone = RoleId::new(guild.get());
+    let me: UserId = http.get_current_user().await.map_err(discord)?.id;
+    let channels = guild.channels(&http).await.map_err(discord)?;
+
+    let mut wanted = Vec::new();
+    for category in &CATEGORIES {
+        let entries = category_overwrites(category.audience, &roles, everyone, me);
+        wanted.push((category.key, entries));
+    }
+    for channel in ANNOUNCEMENTS {
+        let entries = announcements_overwrites(channel.audience, &roles, everyone, me);
+        wanted.push((channel.key, entries));
+    }
+    for (key, entries) in wanted {
+        let Some(channel) = db::object_id(&state.pool, key)
+            .await?
+            .and_then(|id| channels.get(&ChannelId::new(id)))
+        else {
+            continue;
+        };
+        let differing = differing(&entries, &channel.permission_overwrites);
+        if differing.is_empty() {
+            continue;
+        }
+        for entry in differing {
+            channel
+                .id
+                .create_permission(&http, entry.clone())
+                .await
+                .map_err(discord)?;
+        }
+        tracing::info!(name = %channel.name, "discord: set the bot's permissions");
     }
     Ok(())
 }
@@ -447,7 +608,7 @@ mod tests {
     fn categories_move_only_among_their_own_slots() {
         // Top down: General(9), Officers(4), Voice(8), Public(1), Raiders(3), Members(2).
         let items = slots(&[(9, 0), (4, 1), (8, 2), (1, 3), (3, 4), (2, 5)]);
-        let wanted = [1, 2, 3, 4]; // Public, Members, Raiders, Officers.
+        let wanted = [1, 2, 3, 4]; // Officers, Raiders, Members, Public.
         assert!(!in_order(&items, &wanted, List::Categories));
         let moved = moves(&items, &wanted, List::Categories);
         // General and Voice keep their slots; the bot's four fill theirs in order.
@@ -466,7 +627,7 @@ mod tests {
     fn roles_run_from_the_highest_position_down() {
         // Top down: Admin(9, at 6), Member(5), Officer(2), Bots(8), Leader(1), Raider(3).
         let items = slots(&[(9, 6), (5, 5), (2, 4), (8, 3), (1, 2), (3, 1)]);
-        let wanted = [1, 2, 3, 5]; // Leader, Officer, Raider, Member (Trial, Friend missing).
+        let wanted = [1, 2, 3, 5]; // Leader, Officer, Raider, Member (Trial missing).
         assert!(!in_order(&items, &wanted, List::Roles));
         let moved = moves(&items, &wanted, List::Roles);
         let mut after = items.clone();

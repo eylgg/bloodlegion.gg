@@ -1,11 +1,13 @@
-//! What the bot keeps in the server, as the site has it: a role for each rank (the leader,
-//! officers, raiders, trials, members, friends), and four categories that follow the access levels,
-//! each open to its level and the ones above it. The bot makes two channels besides, at the top of
-//! the list in no category, where only the leader and officers post: #public-announcements, which
-//! everyone reads (and the site shows), and #raider-announcements, for the raiding roster.
+//! What the bot keeps in the server, as the site has it: a role for each access level (the leader,
+//! officers, raiders, trials, members; the site's friends count as members), and four categories
+//! that follow the levels, each open to its level and the ones above it. Three channels besides, at
+//! the top of the list in no category, where only the leader and officers post:
+//! #public-announcements, which everyone reads (and the site shows), #member-announcements, and
+//! #raider-announcements, for the raiding roster.
 //!
-//! The bot makes the roles but does not hand them out: the role check (`check`) lists who lacks
-//! theirs. Pure: the permission entries are worked out here and applied by `sync`.
+//! The bot hands out roles only when a superuser asks (`fix`); the role check (`check`) lists who
+//! lacks theirs. Pure: the permission entries are worked out here, checked by `check`, and set by
+//! `fix` when a superuser asks.
 
 use serenity::all::{
     ChannelId, PermissionOverwrite, PermissionOverwriteType, Permissions, RoleId, UserId,
@@ -13,7 +15,8 @@ use serenity::all::{
 
 use crate::guild::Rank;
 
-/// A rank, and the Discord role for it, highest access first.
+/// An access level, and the Discord role for it, highest first. A server once had a Friend role
+/// too: the bot no longer keeps it, and leaves it to be removed by hand.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Access {
     Leader,
@@ -21,17 +24,15 @@ pub enum Access {
     Raider,
     Trial,
     Member,
-    Friend,
 }
 
 impl Access {
-    pub const ALL: [Access; 6] = [
+    pub const ALL: [Access; 5] = [
         Access::Leader,
         Access::Officer,
         Access::Raider,
         Access::Trial,
         Access::Member,
-        Access::Friend,
     ];
 
     pub fn of(rank: Rank) -> Access {
@@ -40,8 +41,7 @@ impl Access {
             Rank::Officer => Access::Officer,
             Rank::Raider => Access::Raider,
             Rank::Trial => Access::Trial,
-            Rank::Member => Access::Member,
-            Rank::Friend => Access::Friend,
+            Rank::Member | Rank::Friend => Access::Member,
         }
     }
 
@@ -53,7 +53,6 @@ impl Access {
             Access::Raider => "role:raider",
             Access::Trial => "role:trial",
             Access::Member => "role:member",
-            Access::Friend => "role:friend",
         }
     }
 
@@ -65,14 +64,13 @@ impl Access {
             Access::Raider => "Raider",
             Access::Trial => "Trial",
             Access::Member => "Member",
-            Access::Friend => "Friend",
         }
     }
 }
 
 /// The ids of the roles, one per [`Access`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Roles(pub [RoleId; 6]);
+pub struct Roles(pub [RoleId; 5]);
 
 impl Roles {
     pub fn get(&self, access: Access) -> RoleId {
@@ -96,17 +94,13 @@ pub struct Category {
     pub audience: Audience,
 }
 
-/// The bot's categories, in the order it makes them (so they line up that way in Discord).
+/// The bot's categories, top to bottom, the most closed first; made in this order, so they line up
+/// that way in Discord.
 pub const CATEGORIES: [Category; 4] = [
     Category {
-        key: "category:public",
-        name: "Public",
-        audience: Audience::Everyone,
-    },
-    Category {
-        key: "category:members",
-        name: "Members",
-        audience: Audience::AtLeast(Access::Friend),
+        key: "category:officers",
+        name: "Officers",
+        audience: Audience::AtLeast(Access::Officer),
     },
     Category {
         key: "category:raiders",
@@ -114,9 +108,14 @@ pub const CATEGORIES: [Category; 4] = [
         audience: Audience::AtLeast(Access::Trial),
     },
     Category {
-        key: "category:officers",
-        name: "Officers",
-        audience: Audience::AtLeast(Access::Officer),
+        key: "category:members",
+        name: "Members",
+        audience: Audience::AtLeast(Access::Member),
+    },
+    Category {
+        key: "category:public",
+        name: "Public",
+        audience: Audience::Everyone,
     },
 ];
 
@@ -136,13 +135,25 @@ pub const PUBLIC_ANNOUNCEMENTS: Announcements = Announcements {
     audience: Audience::Everyone,
 };
 
+pub const MEMBER_ANNOUNCEMENTS: Announcements = Announcements {
+    key: "channel:member-announcements",
+    name: "member-announcements",
+    audience: Audience::AtLeast(Access::Member),
+};
+
 pub const RAIDER_ANNOUNCEMENTS: Announcements = Announcements {
     key: "channel:raider-announcements",
     name: "raider-announcements",
     audience: Audience::AtLeast(Access::Trial),
 };
 
-pub const ANNOUNCEMENTS: [&Announcements; 2] = [&PUBLIC_ANNOUNCEMENTS, &RAIDER_ANNOUNCEMENTS];
+/// The announcements channels, top to bottom, as they stand at the top of the list: the most closed
+/// first, as the categories go.
+pub const ANNOUNCEMENTS: [&Announcements; 3] = [
+    &RAIDER_ANNOUNCEMENTS,
+    &MEMBER_ANNOUNCEMENTS,
+    &PUBLIC_ANNOUNCEMENTS,
+];
 
 /// Where everything the bot keeps is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,6 +200,22 @@ pub fn category_overwrites(
             overwrites
         }
     }
+}
+
+/// Those of `wanted` (the bot's entries for a channel) that `actual` (the channel's entries now)
+/// lacks or has otherwise: each is the bot's for one role or member, which it sets whole.
+pub fn differing<'a>(
+    wanted: &'a [PermissionOverwrite],
+    actual: &[PermissionOverwrite],
+) -> Vec<&'a PermissionOverwrite> {
+    wanted
+        .iter()
+        .filter(|entry| {
+            !actual.iter().any(|now| {
+                now.kind == entry.kind && now.allow == entry.allow && now.deny == entry.deny
+            })
+        })
+        .collect()
 }
 
 /// An announcements channel's permission entries: its readers (by `audience`) read it, and only the
@@ -241,8 +268,7 @@ mod tests {
     const RAIDER: RoleId = RoleId::new(3);
     const TRIAL: RoleId = RoleId::new(4);
     const MEMBER: RoleId = RoleId::new(5);
-    const FRIEND: RoleId = RoleId::new(6);
-    const ROLES: Roles = Roles([LEADER, OFFICER, RAIDER, TRIAL, MEMBER, FRIEND]);
+    const ROLES: Roles = Roles([LEADER, OFFICER, RAIDER, TRIAL, MEMBER]);
     const EVERYONE: RoleId = RoleId::new(100);
     const BOT: UserId = UserId::new(200);
 
@@ -253,7 +279,7 @@ mod tests {
         assert_eq!(Access::of(Rank::Raider), Access::Raider);
         assert_eq!(Access::of(Rank::Trial), Access::Trial);
         assert_eq!(Access::of(Rank::Member), Access::Member);
-        assert_eq!(Access::of(Rank::Friend), Access::Friend);
+        assert_eq!(Access::of(Rank::Friend), Access::Member);
         for (n, access) in Access::ALL.into_iter().enumerate() {
             assert_eq!(ROLES.get(access), ROLES.0[n]);
         }
@@ -307,10 +333,26 @@ mod tests {
                 Role(OFFICER),
                 Role(RAIDER),
                 Role(TRIAL),
-                Role(MEMBER),
-                Role(FRIEND)
+                Role(MEMBER)
             ]
         );
+    }
+
+    #[test]
+    fn finds_the_entries_that_differ() {
+        let public = category_overwrites(Audience::Everyone, &ROLES, EVERYONE, BOT);
+        assert!(differing(&public, &public).is_empty());
+        assert_eq!(differing(&public, &[]).len(), 1);
+        // @everyone's entry there, but denying the view instead.
+        let wrong = role(EVERYONE, Permissions::empty(), Permissions::VIEW_CHANNEL);
+        assert_eq!(differing(&public, &[wrong]), vec![&public[0]]);
+        // An entry of someone else's is no matter.
+        let extra = role(
+            RoleId::new(42),
+            Permissions::VIEW_CHANNEL,
+            Permissions::empty(),
+        );
+        assert!(differing(&public, &[public[0].clone(), extra]).is_empty());
     }
 
     #[test]
@@ -338,7 +380,15 @@ mod tests {
         assert!(trial.deny.contains(Permissions::SEND_MESSAGES));
         assert_eq!(entry(&raider, MEMBER), None);
 
-        for overwrites in [&public, &raider] {
+        let member = announcements_overwrites(MEMBER_ANNOUNCEMENTS.audience, &ROLES, EVERYONE, BOT);
+        assert!(
+            entry(&member, MEMBER)
+                .unwrap()
+                .allow
+                .contains(Permissions::VIEW_CHANNEL)
+        );
+
+        for overwrites in [&public, &member, &raider] {
             for poster in [LEADER, OFFICER] {
                 let poster = entry(overwrites, poster).unwrap();
                 assert!(poster.allow.contains(Permissions::SEND_MESSAGES));

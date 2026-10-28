@@ -1,27 +1,22 @@
-//! Bringing the server in line with the site, through Discord's HTTP API: the bot's roles,
-//! categories, and announcements channels (found, never made: a superuser makes what is missing
-//! with the Discord page's Create button), its own permission entries on them, and the stored copy
-//! of #public-announcements.
+//! What the bot reads from the server: where its roles, categories, and announcements channels are
+//! (found, never made or changed: the Discord page's buttons do that), and the stored copy of
+//! #public-announcements.
 //!
-//! It never removes anything in Discord, and gives no member a role. What it made is found by the
-//! id it stored; failing that, by name, so a role or channel made by hand before the bot is taken
-//! over rather than doubled.
+//! It changes nothing in Discord. What it made is found by the id it stored; failing that, by name,
+//! so a role or channel made by hand before the bot is taken over rather than doubled.
 
 use std::collections::HashMap;
 
 use anyhow::Context;
 use serenity::all::{
     ChannelId, ChannelType, GetMessages, GuildChannel, GuildId, Http, Message, MessageType, Role,
-    RoleId, UserId,
+    RoleId,
 };
 use sqlx::PgPool;
 use time::OffsetDateTime;
 
 use super::db;
-use super::layout::{
-    ANNOUNCEMENTS, Access, CATEGORIES, Layout, PUBLIC_ANNOUNCEMENTS, Roles,
-    announcements_overwrites, category_overwrites,
-};
+use super::layout::{ANNOUNCEMENTS, Access, CATEGORIES, Layout, PUBLIC_ANNOUNCEMENTS};
 use super::markdown::Mentions;
 
 /// Shown in the server's audit log for everything the bot does.
@@ -30,76 +25,43 @@ pub(super) const REASON: &str = "Blood Legion site sync";
 /// How many of #public-announcements' latest posts a catch-up reads.
 const CATCH_UP: u8 = 50;
 
-/// Finds the bot's roles, categories, and announcements channels, and sets its permission entries
-/// on them, returning where everything is. It makes nothing: what is missing waits for a
-/// superuser's Create button (`fix`), and until all six roles are there no permissions are set.
-pub async fn layout(
-    http: &Http,
-    pool: &PgPool,
-    guild: GuildId,
-    bot: UserId,
-) -> anyhow::Result<Layout> {
+/// Finds the bot's roles, categories, and announcements channels, storing the ids of any taken over
+/// by name, and returns where #public-announcements is. It changes nothing in Discord: what is
+/// missing waits for Create missing, and the permissions for the Discord page's button (`fix`).
+pub async fn layout(http: &Http, pool: &PgPool, guild: GuildId) -> anyhow::Result<Layout> {
     let existing = guild
         .roles(http)
         .await
         .context("listing the server's roles")?;
-    let mut ids = Vec::new();
     for access in Access::ALL {
-        if let Some(id) = find_role(pool, &existing, access).await? {
-            ids.push(id);
-        }
+        find_role(pool, &existing, access).await?;
     }
-    let roles = ids.try_into().ok().map(Roles);
-    // @everyone's id is the server's.
-    let everyone = RoleId::new(guild.get());
-
     let channels = guild
         .channels(http)
         .await
         .context("listing the server's channels")?;
     for category in &CATEGORIES {
-        let Some(id) = find_channel(
+        find_channel(
             pool,
             &channels,
             category.key,
             category.name,
             ChannelType::Category,
         )
-        .await?
-        else {
-            continue;
-        };
-        let Some(roles) = &roles else { continue };
-        for overwrite in category_overwrites(category.audience, roles, everyone, bot) {
-            id.create_permission(http, overwrite)
-                .await
-                .with_context(|| {
-                    format!("setting permissions on the {} category", category.name)
-                })?;
-        }
+        .await?;
     }
-
     let mut public = None;
     for channel in ANNOUNCEMENTS {
-        let Some(id) = find_channel(
+        let found = find_channel(
             pool,
             &channels,
             channel.key,
             channel.name,
             ChannelType::Text,
         )
-        .await?
-        else {
-            continue;
-        };
+        .await?;
         if channel.key == PUBLIC_ANNOUNCEMENTS.key {
-            public = Some(id);
-        }
-        let Some(roles) = &roles else { continue };
-        for overwrite in announcements_overwrites(channel.audience, roles, everyone, bot) {
-            id.create_permission(http, overwrite)
-                .await
-                .with_context(|| format!("setting permissions on #{}", channel.name))?;
+            public = found;
         }
     }
     Ok(Layout {
@@ -205,7 +167,9 @@ fn timestamp(at: serenity::all::Timestamp) -> anyhow::Result<OffsetDateTime> {
     Ok(OffsetDateTime::from_unix_timestamp(at.unix_timestamp())?)
 }
 
-/// Stores (or updates) a message from #public-announcements, or drops it when it is not a post.
+/// Stores (or updates) a message from #public-announcements, or drops it when it is not a post. A
+/// post is stored only when its author's Discord account is linked to a member's, as that member's;
+/// a stored post is updated whoever edits it.
 pub async fn store(pool: &PgPool, names: &Names, message: &Message) -> anyhow::Result<()> {
     if !is_post(message) {
         return Ok(db::delete_announcements(pool, &[message.id.get()]).await?);
@@ -227,22 +191,17 @@ pub async fn store(pool: &PgPool, names: &Names, message: &Message) -> anyhow::R
             mentions.channels.insert(id.get().to_string(), name.clone());
         }
     }
-    let nick = message
-        .member
-        .as_ref()
-        .and_then(|member| member.nick.as_ref());
-    db::upsert_announcement(
-        pool,
-        &db::Announcement {
-            message_id: message.id.get(),
-            author: display_name(&message.author, nick),
-            content: message.content.clone(),
-            mentions: serde_json::to_value(&mentions)?,
-            posted_at: timestamp(message.timestamp)?,
-            edited_at: message.edited_timestamp.map(timestamp).transpose()?,
-        },
-    )
-    .await?;
+    let post = db::Post {
+        message_id: message.id.get(),
+        content: message.content.clone(),
+        mentions: serde_json::to_value(&mentions)?,
+        posted_at: timestamp(message.timestamp)?,
+        edited_at: message.edited_timestamp.map(timestamp).transpose()?,
+    };
+    match db::linked_member(pool, message.author.id.get()).await? {
+        Some(author) => db::upsert_announcement(pool, author, &post).await?,
+        None => db::update_announcement(pool, &post).await?,
+    }
     Ok(())
 }
 

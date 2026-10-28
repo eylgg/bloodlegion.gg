@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT message_id, author, content, mentions, posted_at, edited_at\n        FROM discord_announcements\n        ORDER BY posted_at DESC, message_id DESC\n        LIMIT $1\n        ",
+  "query": "\n        SELECT a.message_id, u.username, a.content, a.mentions, a.posted_at, a.edited_at\n        FROM discord_announcements a\n        JOIN users u ON u.id = a.user_id\n        ORDER BY a.posted_at DESC, a.message_id DESC\n        LIMIT $1\n        ",
   "describe": {
     "columns": [
       {
@@ -16,12 +16,12 @@
       },
       {
         "ordinal": 1,
-        "name": "author",
+        "name": "username",
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "discord_announcements",
-            "name": "author"
+            "table": "users",
+            "name": "username"
           }
         }
       },
@@ -84,5 +84,5 @@
       true
     ]
   },
-  "hash": "49fd810923258a3e23cda041f12fbbacecf600cf58dfe7d18545681dab494ed6"
+  "hash": "5856b994d8112caad17af9582f64cab86737e9a7a196992bf57537f50b82743b"
 }

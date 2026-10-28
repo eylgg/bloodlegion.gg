@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 use super::DISCORD_PROVIDER_SLUG;
 use crate::crypto::Ciphertext;
 use crate::guild::Rank;
+use crate::users::UserId;
 
 /// How the bot reaches the server, as stored: either may be unset.
 pub struct Settings {
@@ -170,11 +171,30 @@ pub async fn linked_accounts(pool: &PgPool) -> sqlx::Result<Vec<LinkedAccount>> 
     .await
 }
 
-/// A post in #public-announcements, as stored.
+/// The member whose linked Discord account `discord_user` is, if their account is not disabled.
+pub async fn linked_member(pool: &PgPool, discord_user: u64) -> sqlx::Result<Option<UserId>> {
+    sqlx::query_scalar!(
+        r#"
+        SELECT u.id AS "id: UserId"
+        FROM auth_oauth2_provider_credentials c
+        JOIN auth_providers p ON p.id = c.provider_id
+        JOIN users u ON u.id = c.user_id
+        WHERE p.slug = $1
+          AND c.subject = $2
+          AND c.disconnected_at IS NULL
+          AND u.disabled_at IS NULL
+        "#,
+        DISCORD_PROVIDER_SLUG,
+        discord_user.to_string(),
+    )
+    .fetch_optional(pool)
+    .await
+}
+
+/// A post in #public-announcements, as the bot read it.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Announcement {
+pub struct Post {
     pub message_id: u64,
-    pub author: String,
     /// The Discord Markdown as written.
     pub content: String,
     pub mentions: serde_json::Value,
@@ -182,20 +202,20 @@ pub struct Announcement {
     pub edited_at: Option<OffsetDateTime>,
 }
 
-pub async fn upsert_announcement(pool: &PgPool, post: &Announcement) -> sqlx::Result<()> {
+/// Stores a post by `author`, or updates it when it is stored already (by whoever it was by then).
+pub async fn upsert_announcement(pool: &PgPool, author: UserId, post: &Post) -> sqlx::Result<()> {
     sqlx::query!(
         r#"
         INSERT INTO discord_announcements
-            (message_id, author, content, mentions, posted_at, edited_at)
+            (message_id, user_id, content, mentions, posted_at, edited_at)
         VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (message_id) DO UPDATE SET
-            author = EXCLUDED.author,
             content = EXCLUDED.content,
             mentions = EXCLUDED.mentions,
             edited_at = EXCLUDED.edited_at
         "#,
         post.message_id as i64,
-        post.author,
+        author.0,
         post.content,
         post.mentions,
         post.posted_at,
@@ -204,6 +224,32 @@ pub async fn upsert_announcement(pool: &PgPool, post: &Announcement) -> sqlx::Re
     .execute(pool)
     .await?;
     Ok(())
+}
+
+/// Updates a post if it is stored, and stores nothing otherwise: for a post whose author has no
+/// linked account (now), which is shown only if it was posted while they had one.
+pub async fn update_announcement(pool: &PgPool, post: &Post) -> sqlx::Result<()> {
+    sqlx::query!(
+        r#"
+        UPDATE discord_announcements
+        SET content = $2, mentions = $3, edited_at = $4
+        WHERE message_id = $1
+        "#,
+        post.message_id as i64,
+        post.content,
+        post.mentions,
+        post.edited_at,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// A stored post, under the name of the member it is by.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Announcement {
+    pub post: Post,
+    pub author: String,
 }
 
 pub async fn delete_announcements(pool: &PgPool, message_ids: &[u64]) -> sqlx::Result<()> {
@@ -256,9 +302,10 @@ pub async fn announcement_totals(pool: &PgPool) -> sqlx::Result<(i64, Option<Off
 pub async fn latest_announcements(pool: &PgPool, limit: i64) -> sqlx::Result<Vec<Announcement>> {
     let rows = sqlx::query!(
         r#"
-        SELECT message_id, author, content, mentions, posted_at, edited_at
-        FROM discord_announcements
-        ORDER BY posted_at DESC, message_id DESC
+        SELECT a.message_id, u.username, a.content, a.mentions, a.posted_at, a.edited_at
+        FROM discord_announcements a
+        JOIN users u ON u.id = a.user_id
+        ORDER BY a.posted_at DESC, a.message_id DESC
         LIMIT $1
         "#,
         limit,
@@ -268,12 +315,14 @@ pub async fn latest_announcements(pool: &PgPool, limit: i64) -> sqlx::Result<Vec
     Ok(rows
         .into_iter()
         .map(|row| Announcement {
-            message_id: row.message_id as u64,
-            author: row.author,
-            content: row.content,
-            mentions: row.mentions,
-            posted_at: row.posted_at,
-            edited_at: row.edited_at,
+            post: Post {
+                message_id: row.message_id as u64,
+                content: row.content,
+                mentions: row.mentions,
+                posted_at: row.posted_at,
+                edited_at: row.edited_at,
+            },
+            author: row.username,
         })
         .collect())
 }
@@ -282,10 +331,9 @@ pub async fn latest_announcements(pool: &PgPool, limit: i64) -> sqlx::Result<Vec
 mod tests {
     use super::*;
 
-    fn post(id: u64, minutes: i64) -> Announcement {
-        Announcement {
+    fn post(id: u64, minutes: i64) -> Post {
+        Post {
             message_id: id,
-            author: "Ey".into(),
             content: format!("post {id}"),
             mentions: serde_json::json!({}),
             posted_at: OffsetDateTime::UNIX_EPOCH + time::Duration::minutes(minutes),
@@ -294,13 +342,14 @@ mod tests {
     }
 
     fn ids(posts: &[Announcement]) -> Vec<u64> {
-        posts.iter().map(|post| post.message_id).collect()
+        posts.iter().map(|stored| stored.post.message_id).collect()
     }
 
     #[sqlx::test]
     async fn keeps_announcements_newest_first_and_follows_edits(pool: PgPool) {
+        let ey = member(&pool, "Ey", "officer").await;
         for (id, minutes) in [(1, 1), (2, 2), (3, 3)] {
-            upsert_announcement(&pool, &post(id, minutes))
+            upsert_announcement(&pool, ey, &post(id, minutes))
                 .await
                 .unwrap();
         }
@@ -312,9 +361,15 @@ mod tests {
         let mut edited = post(2, 2);
         edited.content = "edited".into();
         edited.edited_at = Some(OffsetDateTime::UNIX_EPOCH + time::Duration::hours(1));
-        upsert_announcement(&pool, &edited).await.unwrap();
+        upsert_announcement(&pool, ey, &edited).await.unwrap();
         let latest = latest_announcements(&pool, 10).await.unwrap();
-        assert_eq!(latest[1], edited);
+        assert_eq!(
+            latest[1],
+            Announcement {
+                post: edited,
+                author: "Ey".into()
+            }
+        );
 
         delete_announcements(&pool, &[3]).await.unwrap();
         assert_eq!(
@@ -325,8 +380,9 @@ mod tests {
 
     #[sqlx::test]
     async fn prunes_only_what_the_read_covered(pool: PgPool) {
+        let ey = member(&pool, "Ey", "officer").await;
         for (id, minutes) in [(1, 1), (2, 2), (3, 3), (4, 4)] {
-            upsert_announcement(&pool, &post(id, minutes))
+            upsert_announcement(&pool, ey, &post(id, minutes))
                 .await
                 .unwrap();
         }
@@ -405,6 +461,42 @@ mod tests {
                 account("111", "Ey", Rank::Officer),
                 account("222", "Raid", Rank::Raider)
             ]
+        );
+    }
+
+    #[sqlx::test]
+    async fn finds_the_member_behind_a_discord_account(pool: PgPool) {
+        let link = crate::auth::oauth2::providers::link_for_test;
+        let ey = member(&pool, "Ey", "officer").await;
+        let gone = member(&pool, "Gone", "member").await;
+        link(&pool, DISCORD_PROVIDER_SLUG, "111", ey).await;
+        link(&pool, DISCORD_PROVIDER_SLUG, "222", gone).await;
+        sqlx::query!("UPDATE users SET disabled_at = now() WHERE id = $1", gone.0)
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert_eq!(linked_member(&pool, 111).await.unwrap(), Some(ey));
+        assert_eq!(linked_member(&pool, 222).await.unwrap(), None);
+        assert_eq!(linked_member(&pool, 333).await.unwrap(), None);
+    }
+
+    #[sqlx::test]
+    async fn an_update_without_a_member_stores_nothing_new(pool: PgPool) {
+        let ey = member(&pool, "Ey", "officer").await;
+        upsert_announcement(&pool, ey, &post(1, 1)).await.unwrap();
+        // 1 is edited after its author unlinked; 2 was never by a linked member.
+        let mut edited = post(1, 1);
+        edited.content = "edited".into();
+        update_announcement(&pool, &edited).await.unwrap();
+        update_announcement(&pool, &post(2, 2)).await.unwrap();
+
+        let latest = latest_announcements(&pool, 10).await.unwrap();
+        assert_eq!(
+            latest,
+            vec![Announcement {
+                post: edited,
+                author: "Ey".into()
+            }]
         );
     }
 

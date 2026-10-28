@@ -1,7 +1,8 @@
-//! The guild's Discord server, run by a bot: it keeps the bot's roles, categories, and
-//! announcements channels as the site has them (`layout`), and mirrors #public-announcements for
-//! the site (`markdown` renders it). It hands out no roles and fixes nothing by itself; the Discord
-//! page (`check`) shows a superuser what is out of line, and its buttons (`fix`) put it right.
+//! The guild's Discord server, run by a bot: it finds the bot's roles, categories, and
+//! announcements channels (`layout`), and mirrors #public-announcements for the site (`markdown`
+//! renders it). It changes nothing in Discord by itself; the Discord page (`check`) shows a
+//! superuser what is out of line, and its buttons (`fix`) put it right (one of them gives roles,
+//! but none takes any away or removes anything).
 //!
 //! One bot connection serves every instance of the server. Each instance waits on a Postgres
 //! advisory lock held on a connection of its own, and the one holding it runs the bot; when that
@@ -25,7 +26,7 @@ use std::time::Duration;
 use anyhow::Context as _;
 use serenity::all::{
     ChannelId, Client, Context, EventHandler, GatewayIntents, GuildId, Http, Message, MessageId,
-    MessageUpdateEvent, UserId,
+    MessageUpdateEvent,
 };
 use sqlx::PgPool;
 use sqlx::postgres::PgListener;
@@ -48,8 +49,8 @@ const RETRY: Duration = Duration::from_secs(30);
 /// How often the running bot checks it still holds the lock.
 const LOCK_CHECK: Duration = Duration::from_secs(15);
 
-/// How often the bot finds its roles and channels again and sets its permissions on them, in case
-/// someone changed them by hand.
+/// How often the bot finds its roles and channels again, in case someone made or renamed them by
+/// hand.
 const LAYOUT_EVERY: Duration = Duration::from_secs(60 * 60);
 
 /// Where the bot's settings changing is announced.
@@ -189,8 +190,8 @@ impl Bot {
             .is_some_and(|layout| layout.announcements == Some(channel))
     }
 
-    async fn sync_layout(&self, http: &Http, me: UserId) -> anyhow::Result<Layout> {
-        let layout = sync::layout(http, &self.pool, self.guild, me).await?;
+    async fn sync_layout(&self, http: &Http) -> anyhow::Result<Layout> {
+        let layout = sync::layout(http, &self.pool, self.guild).await?;
         *self
             .layout
             .write()
@@ -220,9 +221,8 @@ async fn run(
         .get_current_user()
         .await
         .context("signing in as the bot (is its token right?)")?;
-    let me = current.id;
 
-    let layout = bot.sync_layout(&http, me).await?;
+    let layout = bot.sync_layout(&http).await?;
     db::status_started(pool, &current.name)
         .await
         .context("recording that the bot runs")?;
@@ -245,14 +245,14 @@ async fn run(
             },
             notification = changes.recv() => match notification {
                 Ok(notification) if notification.channel() == LAYOUT_CHANNEL => {
-                    if let Err(error) = bot.sync_layout(&http, me).await {
+                    if let Err(error) = bot.sync_layout(&http).await {
                         warn("could not find what was just made", &error);
                     }
                 }
                 Ok(_) => break Ok(()),
                 Err(error) => break Err(error).context("listening for changes"),
             },
-            _ = layout_check.tick() => match bot.sync_layout(&http, me).await {
+            _ = layout_check.tick() => match bot.sync_layout(&http).await {
                 Ok(_) => {
                     if let Err(error) = db::status_checked(pool).await {
                         tracing::warn!(%error, "discord: could not record the check");

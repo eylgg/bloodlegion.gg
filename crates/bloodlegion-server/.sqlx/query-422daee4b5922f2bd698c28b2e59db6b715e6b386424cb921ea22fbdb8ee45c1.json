@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE discord_announcements\n        SET content = $2, mentions = $3, edited_at = $4\n        WHERE message_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Jsonb",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "422daee4b5922f2bd698c28b2e59db6b715e6b386424cb921ea22fbdb8ee45c1"
+}
