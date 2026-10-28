@@ -413,10 +413,11 @@ pub(super) fn unverified_iss_aud(id_token: &str) -> (String, String) {
 }
 
 /// Verifies the id_token's RS256 signature against the provider's JWKS and
-/// validates the issuer, audience, expiry, and nonce. Returns the typed claims
-/// alongside the raw verified payload (every claim the IdP sent), so the caller
-/// can persist the raw userinfo as well as the parsed identity fields. Lives here
-/// rather than in `http` because it is pure JWT crypto, not a network call.
+/// validates the issuer, audience, expiry, and nonce (see [`check_nonce`]).
+/// Returns the typed claims alongside the raw verified payload (every claim the
+/// IdP sent), so the caller can persist the raw userinfo as well as the parsed
+/// identity fields. Lives here rather than in `http` because it is pure JWT
+/// crypto, not a network call.
 pub(super) fn verify_id_token(
     id_token: &str,
     jwks: &http::Jwks,
@@ -443,10 +444,21 @@ pub(super) fn verify_id_token(
     let claims: http::IdTokenClaims =
         serde_json::from_value(raw.clone()).context("parsing id_token claims")?;
 
-    if claims.nonce.as_deref() != Some(expected_nonce) {
-        anyhow::bail!("id_token nonce mismatch");
-    }
+    check_nonce(claims.nonce.as_deref(), expected_nonce)?;
     Ok((claims, raw))
+}
+
+/// The id_token's nonce must be the one the request sent, when it has one. Discord's id_tokens
+/// carry none at all, so a missing nonce passes: the nonce guards against an id_token injected
+/// into the browser's redirect, and this flow never takes one from there. The id_token comes
+/// straight from the token endpoint, over TLS, for a single-use code bound to this request's
+/// state and PKCE verifier.
+fn check_nonce(nonce: Option<&str>, expected: &str) -> anyhow::Result<()> {
+    match nonce {
+        None => Ok(()),
+        Some(nonce) if nonce == expected => Ok(()),
+        Some(_) => anyhow::bail!("id_token nonce mismatch"),
+    }
 }
 
 #[cfg(test)]
@@ -485,6 +497,14 @@ mod tests {
             .await
             .unwrap()
             .expect("provider should exist")
+    }
+
+    #[test]
+    fn a_nonce_must_match_when_the_id_token_has_one() {
+        assert!(check_nonce(Some("sent"), "sent").is_ok());
+        assert!(check_nonce(Some("other"), "sent").is_err());
+        // Discord's id_tokens have none.
+        assert!(check_nonce(None, "sent").is_ok());
     }
 
     fn claims(sub: &str, email: Option<&str>, email_verified: bool) -> http::IdTokenClaims {

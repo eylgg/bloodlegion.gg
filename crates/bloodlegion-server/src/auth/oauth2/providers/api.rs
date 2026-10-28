@@ -39,6 +39,7 @@ pub struct CallbackQuery {
     code: Option<String>,
     state: Option<String>,
     error: Option<String>,
+    error_description: Option<String>,
 }
 
 /// Where a browser sign-in lands when it fails: the front page, with a code it turns into a
@@ -205,11 +206,17 @@ async fn finish_login(
     // The provider reports a refusal on the callback itself; `access_denied` is the person
     // pressing cancel on its consent screen.
     if let Some(error) = &query.error {
-        return Err(crate::Error::External(if error == "access_denied" {
-            ProviderError::Denied
-        } else {
-            ProviderError::InvalidIdToken
-        }));
+        if error == "access_denied" {
+            return Err(crate::Error::External(ProviderError::Denied));
+        }
+        // Anything else is the provider refusing the request itself (a scope it will not grant,
+        // a redirect it does not know): logged, since the person only sees "could not verify".
+        tracing::warn!(
+            error,
+            error_description = query.error_description.as_deref(),
+            "provider refused the sign-in"
+        );
+        return Err(crate::Error::External(ProviderError::InvalidIdToken));
     }
     let code = query
         .code
