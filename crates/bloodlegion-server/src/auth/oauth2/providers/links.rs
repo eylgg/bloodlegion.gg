@@ -42,9 +42,10 @@ impl Linked {
 }
 
 /// Attaches the verified identity (`subject` at `provider`) to `user_id`. Refused when it already
-/// belongs to someone else, including when another link of the same identity wins a race, and
-/// at a provider that does not allow multiple connections (Discord) when the member already has
-/// an account there.
+/// belongs to someone else, including when another link of the same identity wins a race or it
+/// is one they unlinked (an unlinked Discord account stays theirs; see [`unlink`]), and at a
+/// provider that does not allow multiple connections (Discord) when the member already has an
+/// account there. Linking one they unlinked themselves makes it live again.
 pub(super) async fn link(
     pool: &PgPool,
     provider: &db::Provider,
@@ -52,39 +53,50 @@ pub(super) async fn link(
     subject: &str,
     userinfo: &serde_json::Value,
 ) -> Result<Linked, ProviderError> {
-    match db::find_user_by_credential(pool, provider.id, subject)
+    let owner = db::find_user_by_credential(pool, provider.id, subject)
         .await
-        .context("looking up the provider credential")?
-    {
-        Some(owner) if owner == user_id => {
-            db::reconnect_credential(pool, provider.id, subject, user_id)
-                .await
-                .context("reconnecting the provider credential")?;
-            return Ok(Linked::Existing);
-        }
-        Some(_) => return Err(Error::External(ProviderError::AlreadyLinked)),
-        None => {}
+        .context("looking up the provider credential")?;
+    if owner.is_some_and(|owner| owner != user_id) {
+        return Err(Error::External(ProviderError::AlreadyLinked(
+            provider.name.clone(),
+        )));
     }
-    let profile = build_profile(provider, userinfo)?;
     let mut tx = pool
         .begin()
         .await
         .context("beginning a transaction to link")?;
+    if owner.is_some() {
+        // Theirs already: live (the provider signed them straight back in), or one they unlinked.
+        let live = db::credential_is_live(&mut tx, provider.id, subject)
+            .await
+            .context("checking the provider credential")?;
+        if live {
+            return Ok(Linked::Existing);
+        }
+    }
     if !provider.is_multiple_connections_allowed
         && db::lock_has_credential_at(&mut tx, user_id, provider.id)
             .await
             .context("checking for an account already linked at the provider")?
     {
         return Err(Error::External(
-            ProviderError::MultipleConnectionsNotAllowed,
+            ProviderError::MultipleConnectionsNotAllowed(provider.name.clone()),
         ));
     }
+    if owner.is_some() {
+        db::reconnect_credential(&mut tx, provider.id, subject, user_id)
+            .await
+            .context("reconnecting the provider credential")?;
+        tx.commit().await.context("committing the link")?;
+        return Ok(Linked::New);
+    }
+    let profile = build_profile(provider, userinfo)?;
     db::insert_credential(&mut tx, provider.id, subject, user_id, userinfo, &profile)
         .await
         .map_err(|error| {
             crate::error::classify_db_error(error, |constraint| {
                 (constraint == "auth_oauth2_provider_credentials_provider_id_subject_key")
-                    .then_some(ProviderError::AlreadyLinked)
+                    .then(|| ProviderError::AlreadyLinked(provider.name.clone()))
             })
         })?;
     tx.commit().await.context("committing the link")?;
@@ -158,7 +170,8 @@ pub async fn list(pool: &PgPool, user_id: UserId) -> anyhow::Result<Vec<LinkedAc
 
 /// Unlinks the member's linked account `id`, unless the provider forbids it or it is their last way
 /// to sign in. A connection-only account (Discord) is never a way in, so it never counts as one:
-/// with only Battle.net to sign in through, a member always keeps one Battle.net account.
+/// with only Battle.net to sign in through, a member always keeps one Battle.net account. An
+/// unlinked connection-only account stays theirs (see [`link`]).
 pub async fn unlink(pool: &PgPool, user_id: UserId, id: i64) -> Result<(), LinkError> {
     let local_enabled = crate::auth::local::is_enabled(pool)
         .await
@@ -178,7 +191,13 @@ pub async fn unlink(pool: &PgPool, user_id: UserId, id: i64) -> Result<(), LinkE
     {
         return Err(Error::External(LinkError::LastLoginMethod));
     }
-    db::delete_credential(&mut tx, user_id, id).await?;
+    // A connection-only account (Discord) stays theirs once unlinked, so it cannot move to another
+    // member's account; they may link it again. A sign-in account is deleted, so it can.
+    if policy.is_connection_only {
+        db::disconnect_credential(&mut tx, user_id, id).await?;
+    } else {
+        db::delete_credential(&mut tx, user_id, id).await?;
+    }
     tx.commit().await?;
     Ok(())
 }
@@ -319,7 +338,7 @@ mod tests {
         // Someone else's account cannot take it.
         assert!(matches!(
             link(&pool, &provider, other, "Ey#1111", &userinfo("Ey#1111")).await,
-            Err(Error::External(ProviderError::AlreadyLinked))
+            Err(Error::External(ProviderError::AlreadyLinked(_)))
         ));
 
         let accounts = list(&pool, ey).await.unwrap();
@@ -365,7 +384,7 @@ mod tests {
         assert!(matches!(
             link(&pool, &provider, ey, "EyAlt#2222", &userinfo("EyAlt#2222")).await,
             Err(Error::External(
-                ProviderError::MultipleConnectionsNotAllowed
+                ProviderError::MultipleConnectionsNotAllowed(_)
             ))
         ));
         // The limit is per member: someone else links theirs.
@@ -415,6 +434,69 @@ mod tests {
         ));
         unlink(&pool, ey, at("discord").id).await.unwrap();
         assert_eq!(list(&pool, ey).await.unwrap().len(), 1);
+    }
+
+    #[sqlx::test]
+    async fn an_unlinked_discord_account_stays_its_members(pool: PgPool) {
+        discord(&pool).await;
+        let slug = Slug::try_from("discord").unwrap();
+        db::set_multiple_connections_allowed(&pool, &slug, false)
+            .await
+            .unwrap();
+        let provider = db::find_provider_by_slug(&pool, &slug)
+            .await
+            .unwrap()
+            .unwrap();
+        let one = member(&pool, "One").await;
+        let two = member(&pool, "Two").await;
+        let discord_user = |id: &str| serde_json::json!({ "sub": id });
+
+        // Member 1 links Discord account 1, unlinks it, and links Discord account 2.
+        link(&pool, &provider, one, "1", &discord_user("1"))
+            .await
+            .unwrap();
+        let first = list(&pool, one).await.unwrap()[0].id;
+        unlink(&pool, one, first).await.unwrap();
+        assert!(list(&pool, one).await.unwrap().is_empty());
+        assert_eq!(
+            link(&pool, &provider, one, "2", &discord_user("2"))
+                .await
+                .unwrap(),
+            Linked::New
+        );
+
+        // Discord account 1 cannot move to member 2...
+        let refused = link(&pool, &provider, two, "1", &discord_user("1")).await;
+        assert!(matches!(
+            &refused,
+            Err(Error::External(ProviderError::AlreadyLinked(name))) if name == "Discord"
+        ));
+
+        // ...but member 1 can have it back, once account 2 is unlinked (one Discord account each).
+        assert!(matches!(
+            link(&pool, &provider, one, "1", &discord_user("1")).await,
+            Err(Error::External(
+                ProviderError::MultipleConnectionsNotAllowed(_)
+            ))
+        ));
+        let second = list(&pool, one).await.unwrap()[0].id;
+        unlink(&pool, one, second).await.unwrap();
+        assert_eq!(
+            link(&pool, &provider, one, "1", &discord_user("1"))
+                .await
+                .unwrap(),
+            Linked::New
+        );
+        let accounts = list(&pool, one).await.unwrap();
+        assert_eq!(accounts.len(), 1);
+        assert_eq!(accounts[0].id, first);
+        // Linked again, signing straight back in changes nothing.
+        assert_eq!(
+            link(&pool, &provider, one, "1", &discord_user("1"))
+                .await
+                .unwrap(),
+            Linked::Existing
+        );
     }
 
     #[sqlx::test]

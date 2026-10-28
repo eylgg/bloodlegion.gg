@@ -93,20 +93,22 @@ pub enum ProviderError {
         detail = format!("Signing in needs every permission the site asks for. Please sign in again and allow: {_0}.")
     )]
     ScopesNotGranted(String),
+    /// The identity belongs to another account. Carries the provider's name.
     #[error("identity linked to another account")]
     #[problem(
         status = CONFLICT,
         title = "Already Linked",
-        detail = "That account is already linked to another Blood Legion account."
+        detail = format!("That {_0} account is already linked to another account.")
     )]
-    AlreadyLinked,
+    AlreadyLinked(String),
+    /// The member already has an account at a provider that allows one. Carries its name.
     #[error("the member already has an account linked at this provider")]
     #[problem(
         status = CONFLICT,
         title = "Already Linked One",
-        detail = "Only one account at this provider can be linked."
+        detail = format!("Only one {_0} account can be linked.")
     )]
-    MultipleConnectionsNotAllowed,
+    MultipleConnectionsNotAllowed(String),
     #[error("registration disabled")]
     #[problem(
         status = FORBIDDEN,
@@ -206,8 +208,8 @@ impl ProviderError {
             Self::InvalidIdToken | Self::SubjectMissing => "verification_failed",
             Self::ScopesNotGranted(_) => "permissions_required",
             Self::EmailInUse => "email_in_use",
-            Self::AlreadyLinked => "already_linked",
-            Self::MultipleConnectionsNotAllowed => "one_account_only",
+            Self::AlreadyLinked(_) => "already_linked",
+            Self::MultipleConnectionsNotAllowed(_) => "one_account_only",
             Self::RegistrationDisabled => "registration_closed",
             Self::CreateUser(_) => "account_failed",
             Self::Upstream(_) => "unavailable",

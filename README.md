@@ -135,13 +135,14 @@ Bootstrap, from a fresh database:
    Discord is an OpenID Connect provider too. Connection-only, it is never a way to sign in: the
    front page offers no Discord button, and a linked Discord account never counts as a way in, so
    every member keeps at least one Battle.net account. Members link it from their profile, one
-   Discord account each, and may unlink it.
+   Discord account each, and may unlink it. An unlinked Discord account stays theirs: no other
+   account can link it, and they can link it again later.
 
 A member may link several Battle.net accounts from their profile page (`/profile`), and sign in
 with any of them. Linking signs in at Battle.net again, asking it to prompt for an account; if
 Battle.net signs straight back into an account already linked, the page says so, and signing out
-at battle.net first lets the person pick another. An account linked to one member cannot be linked
-to another until it is unlinked.
+at battle.net first lets the person pick another. A Battle.net account linked to one member cannot
+be linked to another until it is unlinked.
 
 The rest:
 

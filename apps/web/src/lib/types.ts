@@ -72,7 +72,7 @@ export type DiscordReport = {
 	 * The bot's roles, top first: its key (`role:member`), its Discord id (a string; `null` when the
 	 * server lacks it), who holds it, and how many linked members' ranks call for it.
 	 */
-	roles: { key: string; id: string | null; name: string; holders: number; due: number }[];
+	roles: { key: string; id: string | null; name: string; holders: number; linked: number }[];
 	/** Whether the bot's roles stand in that order in Discord's list. */
 	roles_in_order: boolean;
 	/**

@@ -105,8 +105,8 @@ pub struct RoleSummary {
     pub name: String,
     /// People in the server holding it.
     pub holders: usize,
-    /// Linked members in the server whose rank calls for it.
-    pub due: usize,
+    /// Linked members in the server whose rank calls for it: how many should hold it.
+    pub linked: usize,
 }
 
 /// The bot's permission entries on one of its categories or announcements channels.
@@ -327,7 +327,7 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
             id: roles.get(&access).map(|id| id.get().to_string()),
             name: name(access),
             holders: people.iter().filter(|m| held(m).contains(&access)).count(),
-            due: linked
+            linked: linked
                 .iter()
                 .filter(|a| Access::of(a.rank) == access && linked_member(a).is_some())
                 .count(),
@@ -1004,9 +1004,9 @@ mod tests {
         ];
         let report = check(&linked, &server(members));
         let officer = report.roles.iter().find(|r| r.name == "Officer").unwrap();
-        // Held by a and c; due to a and b (Away is not in the server).
+        // Held by a and c; a and b should hold it (Away is not in the server).
         assert_eq!(
-            (officer.id.as_deref(), officer.holders, officer.due),
+            (officer.id.as_deref(), officer.holders, officer.linked),
             (Some("2"), 2, 2)
         );
     }

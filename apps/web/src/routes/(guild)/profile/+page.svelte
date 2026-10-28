@@ -42,7 +42,7 @@
 		const errors: Record<string, string> = {
 			already_linked:
 				`That ${linkedProvider ? `${linkedProvider} ` : ''}account is already linked to ` +
-				'another Blood Legion account. Unlink it there first.',
+				'another account.',
 			one_account_only:
 				`You already have a ${provider} account linked, and only one can be. Unlink it first ` +
 				'to link a different one.',
@@ -52,7 +52,9 @@
 				`at ${provider}, then link it again and leave every permission ticked.`,
 			cancelled: 'Linking was cancelled.',
 			expired: 'That took too long or was already used. Please try again.',
-			verification_failed: 'We could not verify that account. Please try again.',
+			verification_failed:
+				`We could not verify that ${linkedProvider ? `${linkedProvider} ` : ''}account. ` +
+				'Please try again.',
 			unknown_provider: 'That sign-in method is not available.',
 			unavailable: 'Linking is unavailable right now. Please try again later.'
 		};

@@ -467,15 +467,35 @@ pub async fn insert_credential(
     Ok(())
 }
 
+/// Whether the identity's credential is live (not disconnected).
+pub async fn credential_is_live(
+    conn: &mut PgConnection,
+    provider_id: ProviderId,
+    subject: &str,
+) -> sqlx::Result<bool> {
+    sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM auth_oauth2_provider_credentials
+            WHERE provider_id = $1 AND subject = $2 AND disconnected_at IS NULL
+        ) AS "live!"
+        "#,
+        provider_id.0,
+        subject,
+    )
+    .fetch_one(&mut *conn)
+    .await
+}
+
 /// Clears a tombstone on the user's own credential, so an identity they once disconnected is live
-/// again when they link it anew. A no-op for a live credential.
+/// again when they link it anew. Returns whether it was disconnected: a no-op for a live one.
 pub async fn reconnect_credential(
-    pool: &PgPool,
+    conn: &mut PgConnection,
     provider_id: ProviderId,
     subject: &str,
     user_id: UserId,
-) -> sqlx::Result<()> {
-    sqlx::query!(
+) -> sqlx::Result<bool> {
+    let reconnected = sqlx::query!(
         r#"
         UPDATE auth_oauth2_provider_credentials
         SET disconnected_at = NULL
@@ -485,9 +505,10 @@ pub async fn reconnect_credential(
         subject,
         user_id.0,
     )
-    .execute(pool)
-    .await?;
-    Ok(())
+    .execute(&mut *conn)
+    .await?
+    .rows_affected();
+    Ok(reconnected > 0)
 }
 
 /// One live credential of a user, with what the profile page shows of it.
@@ -609,14 +630,50 @@ pub async fn delete_credential(
     let Some(deleted) = deleted else {
         return Ok(false);
     };
+    delete_tokens(conn, deleted.provider_id, &deleted.subject).await?;
+    Ok(true)
+}
+
+/// Marks the user's live credential `id` disconnected, keeping its row so the identity stays
+/// theirs: no other account can link it, and they can link it again. Deletes the tokens stored
+/// for it. Returns whether a credential matched.
+pub async fn disconnect_credential(
+    conn: &mut PgConnection,
+    user_id: UserId,
+    id: i64,
+) -> sqlx::Result<bool> {
+    let disconnected = sqlx::query!(
+        r#"
+        UPDATE auth_oauth2_provider_credentials
+        SET disconnected_at = now()
+        WHERE id = $1 AND user_id = $2 AND disconnected_at IS NULL
+        RETURNING provider_id, subject
+        "#,
+        id,
+        user_id.0,
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    let Some(disconnected) = disconnected else {
+        return Ok(false);
+    };
+    delete_tokens(conn, disconnected.provider_id, &disconnected.subject).await?;
+    Ok(true)
+}
+
+async fn delete_tokens(
+    conn: &mut PgConnection,
+    provider_id: i64,
+    subject: &str,
+) -> sqlx::Result<()> {
     sqlx::query!(
         "DELETE FROM auth_oauth2_provider_tokens WHERE provider_id = $1 AND subject = $2",
-        deleted.provider_id,
-        deleted.subject,
+        provider_id,
+        subject,
     )
     .execute(&mut *conn)
     .await?;
-    Ok(true)
+    Ok(())
 }
 
 /// Admin-facing view of a configured OAuth2 provider. The client secret is

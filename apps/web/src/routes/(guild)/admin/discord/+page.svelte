@@ -334,8 +334,9 @@
 			</div>
 			<p class="muted">
 				The bot's roles, top to bottom, as they should stand in Server Settings, Roles. Holders:
-				everyone in the server with the role. Due: linked members in the server whose rank calls for
-				it. The bot makes none on its own: Create missing makes them.
+				everyone in the server with the role. Linked: members in the server, linked to the site,
+				whose rank calls for it (how many should hold it). The bot makes none on its own: Create
+				missing makes them.
 			</p>
 			{#if fixed === 'roles'}<Alert variant="success">The roles are in order.</Alert>{/if}
 			{#if report.roles_out_of_reach.length > 0}
@@ -346,7 +347,7 @@
 			{/if}
 			<table>
 				<thead>
-					<tr><th>Role</th><th>ID</th><th class="num">Holders</th><th class="num">Due</th></tr>
+					<tr><th>Role</th><th>ID</th><th class="num">Holders</th><th class="num">Linked</th></tr>
 				</thead>
 				<tbody>
 					{#each report.roles as role (role.name)}
@@ -358,7 +359,7 @@
 									>{/if}
 							</td>
 							<td class="num">{role.id ? role.holders : '–'}</td>
-							<td class="num">{role.due}</td>
+							<td class="num">{role.linked}</td>
 						</tr>
 					{/each}
 				</tbody>
