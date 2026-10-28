@@ -50,6 +50,9 @@
 				`Signing in needs every permission the site asks for, and ${provider} remembers what ` +
 				`you allowed before. Remove Blood Legion from the applications connected to your ` +
 				`account at ${provider}, then sign in again and leave every permission ticked.`,
+			unlinked:
+				`That ${provider} account was unlinked. Sign in another way, then link it again ` +
+				'from your profile.',
 			cancelled: 'Sign-in was cancelled.',
 			expired: 'That sign-in took too long or was already used. Please try again.',
 			verification_failed: 'We could not verify your sign-in. Please try again.',

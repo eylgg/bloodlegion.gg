@@ -43,7 +43,7 @@ impl Linked {
 
 /// Attaches the verified identity (`subject` at `provider`) to `user_id`. Refused when it already
 /// belongs to someone else, including when another link of the same identity wins a race or it
-/// is one they unlinked (an unlinked Discord account stays theirs; see [`unlink`]), and at a
+/// is one they unlinked (an unlinked account stays theirs; see [`unlink`]), and at a
 /// provider that does not allow multiple connections (Discord) when the member already has an
 /// account there. Linking one they unlinked themselves makes it live again.
 pub(super) async fn link(
@@ -53,10 +53,10 @@ pub(super) async fn link(
     subject: &str,
     userinfo: &serde_json::Value,
 ) -> Result<Linked, ProviderError> {
-    let owner = db::find_user_by_credential(pool, provider.id, subject)
+    let owner = db::find_credential_owner(pool, provider.id, subject)
         .await
         .context("looking up the provider credential")?;
-    if owner.is_some_and(|owner| owner != user_id) {
+    if owner.is_some_and(|owner| owner.user_id != user_id) {
         return Err(Error::External(ProviderError::AlreadyLinked(
             provider.name.clone(),
         )));
@@ -65,14 +65,9 @@ pub(super) async fn link(
         .begin()
         .await
         .context("beginning a transaction to link")?;
-    if owner.is_some() {
-        // Theirs already: live (the provider signed them straight back in), or one they unlinked.
-        let live = db::credential_is_live(&mut tx, provider.id, subject)
-            .await
-            .context("checking the provider credential")?;
-        if live {
-            return Ok(Linked::Existing);
-        }
+    // Theirs already and live: the provider signed them straight back into it.
+    if owner.is_some_and(|owner| owner.is_live) {
+        return Ok(Linked::Existing);
     }
     if !provider.is_multiple_connections_allowed
         && db::lock_has_credential_at(&mut tx, user_id, provider.id)
@@ -171,7 +166,7 @@ pub async fn list(pool: &PgPool, user_id: UserId) -> anyhow::Result<Vec<LinkedAc
 /// Unlinks the member's linked account `id`, unless the provider forbids it or it is their last way
 /// to sign in. A connection-only account (Discord) is never a way in, so it never counts as one:
 /// with only Battle.net to sign in through, a member always keeps one Battle.net account. An
-/// unlinked connection-only account stays theirs (see [`link`]).
+/// unlinked account stays theirs (see [`link`]): it is no way in, and no one else can link it.
 pub async fn unlink(pool: &PgPool, user_id: UserId, id: i64) -> Result<(), LinkError> {
     let local_enabled = crate::auth::local::is_enabled(pool)
         .await
@@ -191,13 +186,9 @@ pub async fn unlink(pool: &PgPool, user_id: UserId, id: i64) -> Result<(), LinkE
     {
         return Err(Error::External(LinkError::LastLoginMethod));
     }
-    // A connection-only account (Discord) stays theirs once unlinked, so it cannot move to another
-    // member's account; they may link it again. A sign-in account is deleted, so it can.
-    if policy.is_connection_only {
-        db::disconnect_credential(&mut tx, user_id, id).await?;
-    } else {
-        db::delete_credential(&mut tx, user_id, id).await?;
-    }
+    // The account stays theirs once unlinked, so it cannot move to another member; they may link
+    // it again.
+    db::disconnect_credential(&mut tx, user_id, id).await?;
     tx.commit().await?;
     Ok(())
 }
@@ -347,9 +338,10 @@ mod tests {
         assert!(accounts.iter().all(|a| a.can_unlink));
         // Signing in with the second account reaches the same member.
         assert_eq!(
-            db::find_user_by_credential(&pool, provider.id, "EyAlt#2222")
+            db::find_credential_owner(&pool, provider.id, "EyAlt#2222")
                 .await
-                .unwrap(),
+                .unwrap()
+                .map(|owner| owner.user_id),
             Some(ey)
         );
     }
@@ -528,8 +520,19 @@ mod tests {
             Err(Error::External(LinkError::LastLoginMethod))
         ));
 
-        // The unlinked identity is free again, for anyone.
-        assert_eq!(
+        // The unlinked account stays theirs: it signs no one in...
+        assert!(matches!(
+            super::super::provision::provision_user(
+                &pool,
+                &provider,
+                "EyAlt#2222",
+                &userinfo("EyAlt#2222")
+            )
+            .await,
+            Err(Error::External(ProviderError::Unlinked(name))) if name == "Battle.net"
+        ));
+        // ...no one else can link it...
+        assert!(matches!(
             link(
                 &pool,
                 &provider,
@@ -537,10 +540,27 @@ mod tests {
                 "EyAlt#2222",
                 &userinfo("EyAlt#2222")
             )
-            .await
-            .unwrap(),
+            .await,
+            Err(Error::External(ProviderError::AlreadyLinked(_)))
+        ));
+        // ...and they can link it again, when it signs them back in.
+        assert_eq!(
+            link(&pool, &provider, ey, "EyAlt#2222", &userinfo("EyAlt#2222"))
+                .await
+                .unwrap(),
             Linked::New
         );
+        assert_eq!(list(&pool, ey).await.unwrap().len(), 2);
+        assert!(matches!(
+            super::super::provision::provision_user(
+                &pool,
+                &provider,
+                "EyAlt#2222",
+                &userinfo("EyAlt#2222")
+            )
+            .await,
+            Ok(super::super::provision::Provisioned::User(user)) if user == ey
+        ));
     }
 
     #[sqlx::test]

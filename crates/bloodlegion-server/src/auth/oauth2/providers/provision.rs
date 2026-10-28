@@ -214,11 +214,17 @@ pub(super) async fn provision_user(
     subject: &str,
     userinfo: &serde_json::Value,
 ) -> Result<Provisioned, ProviderError> {
-    if let Some(user_id) = db::find_user_by_credential(pool, provider.id, subject)
+    if let Some(owner) = db::find_credential_owner(pool, provider.id, subject)
         .await
         .context("looking up the provider credential")?
     {
-        return Ok(Provisioned::User(user_id));
+        // An account its member unlinked stays theirs, but signs no one in until linked again.
+        if !owner.is_live {
+            return Err(crate::Error::External(ProviderError::Unlinked(
+                provider.name.clone(),
+            )));
+        }
+        return Ok(Provisioned::User(owner.user_id));
     }
 
     // The credential stores the raw userinfo and the translated profile together;

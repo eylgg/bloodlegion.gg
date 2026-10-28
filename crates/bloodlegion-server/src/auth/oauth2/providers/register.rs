@@ -115,11 +115,16 @@ pub async fn choose(
     Json(payload): Json<ChoosePayload>,
 ) -> Result<(CookieJar, Json<RedirectTarget>), ProviderError> {
     let (request, provider) = pending_request(&state, &jar).await?;
-    let user_id = match db::find_user_by_credential(&state.pool, provider.id, &request.subject)
+    let user_id = match db::find_credential_owner(&state.pool, provider.id, &request.subject)
         .await
         .context("looking up the provider credential")?
     {
-        Some(user_id) => user_id,
+        Some(owner) if !owner.is_live => {
+            return Err(crate::Error::External(ProviderError::Unlinked(
+                provider.name.clone(),
+            )));
+        }
+        Some(owner) => owner.user_id,
         None => {
             if !provider.is_registration_allowed {
                 return Err(crate::Error::External(ProviderError::RegistrationDisabled));

@@ -101,6 +101,15 @@ pub enum ProviderError {
         detail = format!("That {_0} account is already linked to another account.")
     )]
     AlreadyLinked(String),
+    /// A sign-in with an account its member unlinked: still theirs, but no way in until they link
+    /// it again. Carries the provider's name.
+    #[error("identity unlinked")]
+    #[problem(
+        status = FORBIDDEN,
+        title = "Account Unlinked",
+        detail = format!("That {_0} account was unlinked. Sign in another way, then link it again from your profile.")
+    )]
+    Unlinked(String),
     /// The member already has an account at a provider that allows one. Carries its name.
     #[error("the member already has an account linked at this provider")]
     #[problem(
@@ -209,6 +218,7 @@ impl ProviderError {
             Self::ScopesNotGranted(_) => "permissions_required",
             Self::EmailInUse => "email_in_use",
             Self::AlreadyLinked(_) => "already_linked",
+            Self::Unlinked(_) => "unlinked",
             Self::MultipleConnectionsNotAllowed(_) => "one_account_only",
             Self::RegistrationDisabled => "registration_closed",
             Self::CreateUser(_) => "account_failed",

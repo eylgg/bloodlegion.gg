@@ -408,14 +408,24 @@ pub async fn find_completed_request(
     .await
 }
 
-pub async fn find_user_by_credential(
+/// Whose an identity is, and whether it is still linked to them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CredentialOwner {
+    pub user_id: UserId,
+    /// `false` once they unlinked it: it stays theirs, but is no way in until they link it again.
+    pub is_live: bool,
+}
+
+pub async fn find_credential_owner(
     pool: &PgPool,
     provider_id: ProviderId,
     subject: &str,
-) -> sqlx::Result<Option<UserId>> {
-    sqlx::query_scalar!(
+) -> sqlx::Result<Option<CredentialOwner>> {
+    sqlx::query_as!(
+        CredentialOwner,
         r#"
-        SELECT user_id AS "user_id: UserId" FROM auth_oauth2_provider_credentials
+        SELECT user_id AS "user_id: UserId", disconnected_at IS NULL AS "is_live!"
+        FROM auth_oauth2_provider_credentials
         WHERE provider_id = $1 AND subject = $2
         "#,
         provider_id.0,
@@ -465,26 +475,6 @@ pub async fn insert_credential(
     .execute(&mut *conn)
     .await?;
     Ok(())
-}
-
-/// Whether the identity's credential is live (not disconnected).
-pub async fn credential_is_live(
-    conn: &mut PgConnection,
-    provider_id: ProviderId,
-    subject: &str,
-) -> sqlx::Result<bool> {
-    sqlx::query_scalar!(
-        r#"
-        SELECT EXISTS (
-            SELECT 1 FROM auth_oauth2_provider_credentials
-            WHERE provider_id = $1 AND subject = $2 AND disconnected_at IS NULL
-        ) AS "live!"
-        "#,
-        provider_id.0,
-        subject,
-    )
-    .fetch_one(&mut *conn)
-    .await
 }
 
 /// Clears a tombstone on the user's own credential, so an identity they once disconnected is live
@@ -607,31 +597,6 @@ pub async fn credential_policy(
     )
     .fetch_optional(&mut *conn)
     .await
-}
-
-/// Deletes the user's credential `id` and the tokens stored for its identity. Returns whether a
-/// credential matched.
-pub async fn delete_credential(
-    conn: &mut PgConnection,
-    user_id: UserId,
-    id: i64,
-) -> sqlx::Result<bool> {
-    let deleted = sqlx::query!(
-        r#"
-        DELETE FROM auth_oauth2_provider_credentials
-        WHERE id = $1 AND user_id = $2
-        RETURNING provider_id, subject
-        "#,
-        id,
-        user_id.0,
-    )
-    .fetch_optional(&mut *conn)
-    .await?;
-    let Some(deleted) = deleted else {
-        return Ok(false);
-    };
-    delete_tokens(conn, deleted.provider_id, &deleted.subject).await?;
-    Ok(true)
 }
 
 /// Marks the user's live credential `id` disconnected, keeping its row so the identity stays
