@@ -217,6 +217,9 @@ pub struct Unsynced {
     pub id: String,
     pub name: String,
     pub category: String,
+    /// How its entries differ from the category's, one line each ("Raider: also allows Send
+    /// Messages").
+    pub differences: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
@@ -502,6 +505,7 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
                     id: c.id.to_string(),
                     name: c.name.clone(),
                     category: category.name.clone(),
+                    differences: overwrite_differences(&c.overwrites, &category.overwrites, server),
                 })
         })
         .collect();
@@ -667,6 +671,76 @@ fn everyone(
         group.sort_by_key(|person| person.discord_name.to_lowercase());
     }
     groups
+}
+
+/// How a channel's permission entries differ from its category's, one line for each role or member
+/// whose entry is not the same: one only the channel has, one it lacks, or the permissions its own
+/// entry allows or denies besides the category's (or no longer does), by Discord's names for them.
+fn overwrite_differences(
+    channel: &[PermissionOverwrite],
+    category: &[PermissionOverwrite],
+    server: &Snapshot,
+) -> Vec<String> {
+    let whose = |kind: PermissionOverwriteType| match kind {
+        PermissionOverwriteType::Role(id) if id == server.everyone => "@everyone".to_string(),
+        PermissionOverwriteType::Role(id) => server
+            .role_names
+            .get(&id)
+            .cloned()
+            .unwrap_or_else(|| format!("role {id}")),
+        PermissionOverwriteType::Member(id) => server
+            .members
+            .iter()
+            .find(|m| m.id == id.get())
+            .map_or_else(|| format!("member {id}"), |m| m.name.clone()),
+        _ => "someone".to_string(),
+    };
+    let names = |permissions: Permissions| permissions.get_permission_names().join(", ");
+    let find =
+        |entries: &[PermissionOverwrite], kind| entries.iter().find(|o| o.kind == kind).cloned();
+    let mut kinds: Vec<PermissionOverwriteType> =
+        channel.iter().chain(category).map(|o| o.kind).collect();
+    kinds.dedup();
+    let mut seen = Vec::new();
+    let mut lines = Vec::new();
+    for kind in kinds {
+        if seen.contains(&kind) {
+            continue;
+        }
+        seen.push(kind);
+        let who = whose(kind);
+        match (find(channel, kind), find(category, kind)) {
+            (Some(own), None) => {
+                let mut parts = Vec::new();
+                if !own.allow.is_empty() {
+                    parts.push(format!("allows {}", names(own.allow)));
+                }
+                if !own.deny.is_empty() {
+                    parts.push(format!("denies {}", names(own.deny)));
+                }
+                lines.push(format!(
+                    "{who}: an entry the category lacks ({})",
+                    parts.join("; ")
+                ));
+            }
+            (None, Some(_)) => lines.push(format!("{who}: no entry (the category has one)")),
+            (Some(own), Some(theirs)) => {
+                let changes = [
+                    ("also allows", own.allow - theirs.allow),
+                    ("no longer allows", theirs.allow - own.allow),
+                    ("also denies", own.deny - theirs.deny),
+                    ("no longer denies", theirs.deny - own.deny),
+                ];
+                for (how, permissions) in changes {
+                    if !permissions.is_empty() {
+                        lines.push(format!("{who}: {how} {}", names(permissions)));
+                    }
+                }
+            }
+            (None, None) => {}
+        }
+    }
+    lines
 }
 
 /// Whether two sets of permission entries are the same, in any order: a channel synced with its
@@ -1348,7 +1422,30 @@ mod tests {
                 id: "203".into(),
                 name: "chat".into(),
                 category: "Members".into(),
+                differences: vec![
+                    "role 9: an entry the category lacks (allows Send Messages)".into()
+                ],
             }]
+        );
+
+        // Raider (3) and Member (5) both on the category; the channel lets Raider post too, drops
+        // Member's view, and has no entry for Leader (1).
+        let both = |allow: u64, deny: u64, id: u64| PermissionOverwrite {
+            allow: serenity::all::Permissions::from_bits_truncate(allow),
+            deny: serenity::all::Permissions::from_bits_truncate(deny),
+            kind: PermissionOverwriteType::Role(RoleId::new(id)),
+        };
+        let category = [both(1024, 0, 1), both(1024, 0, 3), both(1024, 0, 5)];
+        let channel = [both(1024 | 2048, 0, 3), both(0, 1024, 5)];
+        let snapshot = server(vec![]);
+        assert_eq!(
+            overwrite_differences(&channel, &category, &snapshot),
+            vec![
+                "Raiders: also allows Send Messages",
+                "Member: no longer allows View Channel",
+                "Member: also denies View Channel",
+                "Leader: no entry (the category has one)",
+            ]
         );
     }
 }

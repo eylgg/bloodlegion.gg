@@ -816,6 +816,13 @@
 								<span class="muted small">
 									in {channel.category} · <code class="id">{channel.id}</code>
 								</span>
+								{#if channel.differences.length > 0}
+									<ul class="differences">
+										{#each channel.differences as difference (difference)}
+											<li>{difference}</li>
+										{/each}
+									</ul>
+								{/if}
 							</div>
 							<ConfirmButton
 								size="small"
@@ -1043,6 +1050,13 @@
 	.num {
 		text-align: right;
 		font-variant-numeric: tabular-nums;
+	}
+
+	.differences {
+		margin: var(--space-1) 0 0;
+		padding-left: var(--space-4);
+		color: var(--grey-text);
+		font-size: var(--text-sm);
 	}
 
 	.color {

@@ -130,7 +130,8 @@ export type DiscordReport = {
 	 */
 	permissions: { id: string; name: string; category: boolean; differing: string[] }[] | null;
 	/** Channels in the bot's categories not synced with them (permissions of their own). */
-	unsynced: { id: string; name: string; category: string }[];
+	/** `differences`: how its entries differ from the category's, one line each. */
+	unsynced: { id: string; name: string; category: string; differences: string[] }[];
 	/** Linked members out of line: not in the server, lacking their role, or holding another. */
 	members: {
 		username: string;
