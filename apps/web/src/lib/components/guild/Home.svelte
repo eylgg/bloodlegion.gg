@@ -44,7 +44,10 @@
 <header class="hero">
 	<img src="/logo.svg" alt="Blood Legion" width="1024" height="1024" fetchpriority="high" />
 	{#if !launched}
-		<LaunchCountdown />
+		<!-- Centered in the room beside the logo; the countdown keeps its own lines left-aligned. -->
+		<div class="launch">
+			<LaunchCountdown />
+		</div>
 	{:else if week}
 		<p class="kicker">Week {week.number} · {formatWeekSpan(week)}</p>
 	{/if}
@@ -109,6 +112,13 @@
 		height: auto;
 		margin-block: calc(var(--space-6) * -1);
 		animation: reveal 600ms ease-out both;
+	}
+
+	.launch {
+		flex: 1;
+		display: flex;
+		justify-content: center;
+		text-align: left;
 	}
 
 	@media (min-width: 48rem) {

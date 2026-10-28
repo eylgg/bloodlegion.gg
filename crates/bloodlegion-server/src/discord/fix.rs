@@ -5,7 +5,8 @@
 //!   list. Discord lists categories top to bottom by position (then id), and roles top to bottom by
 //!   position from the highest (then id). It can leave several sharing a position, so the fix
 //!   numbers them afresh. A bot can move only roles below its own highest one, so nothing at or
-//!   above that is ever touched.
+//!   above that is ever touched. Officer always stands right under Leader: any role between them
+//!   moves down past Officer.
 //! - Making the bot's roles, categories, and announcements channels that are missing, the channels
 //!   with its permission entries. The bot finds them by itself but makes none.
 //! - Moving the announcements channels to the top of the list (out of any category) under their
@@ -112,13 +113,57 @@ pub fn moves(items: &[Slot], wanted: &[u64]) -> Vec<(u64, u16)> {
         .collect()
 }
 
+/// Whether those of `ids` in `items` stand next to each other, no other item between them.
+pub fn together(items: &[Slot], ids: &[u64], list: List) -> bool {
+    let places: Vec<usize> = top_down(items, list)
+        .iter()
+        .enumerate()
+        .filter(|(_, id)| ids.contains(id))
+        .map(|(n, _)| n)
+        .collect();
+    places.windows(2).all(|pair| pair[1] == pair[0] + 1)
+}
+
+/// Whether the roles `wanted` (top first) stand in that order, and those of `together` (a run of
+/// them) next to each other.
+pub fn roles_in_order(items: &[Slot], wanted: &[u64], together_ids: &[u64]) -> bool {
+    in_order(items, wanted, List::Roles) && together(items, together_ids, List::Roles)
+}
+
+/// `order` (top down) with those of `ids` moved up to stand right under the first of them, in
+/// their order there; whatever stood between them moves down past them, keeping its own order.
+fn grouped(order: Vec<u64>, ids: &[u64]) -> Vec<u64> {
+    let present: Vec<u64> = order
+        .iter()
+        .copied()
+        .filter(|id| ids.contains(id))
+        .collect();
+    let Some(first) = present.first() else {
+        return order;
+    };
+    let at = order
+        .iter()
+        .position(|id| id == first)
+        .expect("present in order");
+    let mut rest: Vec<u64> = order.into_iter().filter(|id| !ids.contains(id)).collect();
+    // Of the others, those above the first stay above it.
+    let before = rest.len().min(at);
+    rest.splice(before..before, present);
+    rest
+}
+
 /// The positions that put the roles `wanted` (top first) in order within the places they hold,
-/// touching only roles below `top` (the bot's own highest role's position): the bot can move no
+/// those of `together_ids` next to each other (see [`grouped`]), touching only roles below `top` (the bot's own highest role's position): the bot can move no
 /// other. Those are numbered afresh from 1 up, which also undoes any positions Discord left shared
 /// (it gives several roles made at once the same one), and only those whose position changes are
 /// returned. `None` when they do not fit below `top`: more roles share positions under the bot
 /// than it has room to number apart.
-pub fn role_moves(items: &[Slot], wanted: &[u64], top: u16) -> Option<Vec<(u64, u16)>> {
+pub fn role_moves(
+    items: &[Slot],
+    wanted: &[u64],
+    together_ids: &[u64],
+    top: u16,
+) -> Option<Vec<(u64, u16)>> {
     let below: Vec<Slot> = items
         .iter()
         .copied()
@@ -130,7 +175,7 @@ pub fn role_moves(items: &[Slot], wanted: &[u64], top: u16) -> Option<Vec<(u64, 
     }
     let old: HashMap<u64, u16> = below.iter().map(|slot| (slot.id, slot.position)).collect();
     Some(
-        reordered(&below, wanted, List::Roles)
+        grouped(reordered(&below, wanted, List::Roles), together_ids)
             .into_iter()
             .enumerate()
             .map(|(n, id)| (id, (count - n) as u16))
@@ -293,12 +338,16 @@ pub async fn fix_roles(state: &State) -> Result<(), FixError> {
         })
         .collect();
     let mut wanted = Vec::new();
+    let mut together_ids = Vec::new();
     for access in Access::ALL {
         if let Some(id) = db::object_id(&state.pool, access.key()).await? {
             wanted.push(id);
+            if Access::TOGETHER.contains(&access) {
+                together_ids.push(id);
+            }
         }
     }
-    if in_order(&items, &wanted, List::Roles) {
+    if roles_in_order(&items, &wanted, &together_ids) {
         return Ok(());
     }
 
@@ -316,8 +365,8 @@ pub async fn fix_roles(state: &State) -> Result<(), FixError> {
             out_of_reach.join(", "),
         )));
     }
-    let moves =
-        role_moves(&items, &wanted, top).ok_or(Error::External(FixError::NoRoomBelowBot))?;
+    let moves = role_moves(&items, &wanted, &together_ids, top)
+        .ok_or(Error::External(FixError::NoRoomBelowBot))?;
     if moves.is_empty() {
         return Ok(());
     }
@@ -886,13 +935,29 @@ mod tests {
         let items = slots(&[(7, 7), (9, 6), (5, 5), (2, 4), (8, 3), (1, 2), (3, 1)]);
         let wanted = [1, 2, 3, 5]; // Leader, Officer, Raider, Member (Trial missing).
         assert!(!in_order(&items, &wanted, List::Roles));
-        let moved = role_moves(&items, &wanted, 7).unwrap();
+        let moved = role_moves(&items, &wanted, &[], 7).unwrap();
         let after = applied(&items, &moved);
         assert_eq!(top_down(&after, List::Roles), vec![7, 9, 1, 2, 8, 3, 5]);
         assert!(moved.iter().all(|(id, _)| ![7, 9, 8].contains(id)));
         assert!(in_order(&after, &wanted, List::Roles));
         // In order already: nothing to do.
-        assert!(role_moves(&after, &wanted, 7).unwrap().is_empty());
+        assert!(role_moves(&after, &wanted, &[], 7).unwrap().is_empty());
+    }
+
+    #[test]
+    fn officer_stands_right_under_leader() {
+        // Top down: Bot(99), Leader(1), Reaction Roles(50), Officer(2), Gamers(51), Raider(3).
+        let items = slots(&[(99, 6), (1, 5), (50, 4), (2, 3), (51, 2), (3, 1)]);
+        let wanted = [1, 2, 3];
+        // The bot's roles are in order among their places, but something stands between the two.
+        assert!(in_order(&items, &wanted, List::Roles));
+        assert!(!roles_in_order(&items, &wanted, &[1, 2]));
+        let moved = role_moves(&items, &wanted, &[1, 2], 6).unwrap();
+        let after = applied(&items, &moved);
+        // Officer moves up under Leader; Reaction Roles moves down past it, the rest stays.
+        assert_eq!(top_down(&after, List::Roles), vec![99, 1, 2, 50, 51, 3]);
+        assert!(roles_in_order(&after, &wanted, &[1, 2]));
+        assert!(role_moves(&after, &wanted, &[1, 2], 6).unwrap().is_empty());
     }
 
     #[test]
@@ -911,7 +976,7 @@ mod tests {
         ]);
         let wanted = [10, 11, 12, 14, 13];
         assert!(!in_order(&items, &wanted, List::Roles));
-        let moved = role_moves(&items, &wanted, 9).unwrap();
+        let moved = role_moves(&items, &wanted, &[], 9).unwrap();
         // The bot's own role never moves, and nothing reaches its position.
         assert!(moved.iter().all(|(id, to)| *id != 99 && *to < 9));
         let after = applied(&items, &moved);
@@ -923,7 +988,7 @@ mod tests {
 
         // With no room to number them apart under the bot, nothing moves.
         let crowded = slots(&[(99, 3), (10, 1), (11, 1), (12, 1)]);
-        assert_eq!(role_moves(&crowded, &[11, 10], 3), None);
+        assert_eq!(role_moves(&crowded, &[11, 10], &[], 3), None);
     }
 
     #[test]

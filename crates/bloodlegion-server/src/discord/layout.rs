@@ -27,6 +27,10 @@ pub enum Access {
 }
 
 impl Access {
+    /// The roles that stand together at the top, no other role between them: Officer directly
+    /// under Leader.
+    pub const TOGETHER: [Access; 2] = [Access::Leader, Access::Officer];
+
     /// Whether the level's role should have Discord's Administrator permission: the leader and the
     /// officers run the server.
     pub fn is_administrator(self) -> bool {

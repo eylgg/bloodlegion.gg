@@ -416,7 +416,11 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         .into_iter()
         .filter_map(|access| roles.get(&access).map(|id| id.get()))
         .collect();
-    let roles_in_order = fix::in_order(&role_slots, &our_roles, List::Roles);
+    let together_ids: Vec<u64> = Access::TOGETHER
+        .into_iter()
+        .filter_map(|access| roles.get(&access).map(|id| id.get()))
+        .collect();
+    let roles_in_order = fix::roles_in_order(&role_slots, &our_roles, &together_ids);
     let bot_roles: &[RoleId] = server
         .members
         .iter()

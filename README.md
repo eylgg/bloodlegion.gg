@@ -274,7 +274,8 @@ another of the bot's roles besides; people holding one of the bot's roles who ha
 Discord; and, last, everyone in the server with their roles, grouped: linked to the site, not
 linked with one of the bot's roles, not linked with other roles only, no roles, and bots. The bot never reorders, moves, or syncs anything on its own: an order that is off has a
 **Fix order** button, which moves only the bot's own roles or categories among the places they
-already hold, so everything else keeps its place; announcements channels out of place have a **Fix**
+already hold, so everything else keeps its place (except that Officer always stands right under
+Leader: a role between them moves down past Officer); announcements channels out of place have a **Fix**
 button that moves them to the top under their own names and puts them in order among the places
 they hold there; and each unsynced channel has a **Sync**
 button that gives it its category's permissions again. The server's other roles (not the bot's,

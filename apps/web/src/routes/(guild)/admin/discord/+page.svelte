@@ -364,15 +364,16 @@
 				{/if}
 			</div>
 			<p class="muted">
-				The bot's roles, top to bottom, as they should stand in Server Settings, Roles. Holders:
-				everyone in the server with the role. Linked: members in the server, linked to the site,
-				whose rank calls for it (how many should hold it). The bot makes none on its own: Create
-				missing makes them. Change points one at another of the server's roles instead, by its id
-				(right-click the role in Server Settings, Roles, and Copy Role ID): it is not renamed, and
-				the one it had stays as it is; Rename gives it the bot's name. The leader's and officers'
-				roles should have Discord's Administrator permission: Give Administrator adds it, keeping
-				whatever else they allow. Each role has its level's color (the game's item qualities, and
-				blood red for raiders): Fix colors sets them.
+				The bot's roles, top to bottom, as they should stand in Server Settings, Roles, with Officer
+				right under Leader (no other role between them). Holders: everyone in the server with the
+				role. Linked: members in the server, linked to the site, whose rank calls for it (how many
+				should hold it). The bot makes none on its own: Create missing makes them. Change points one
+				at another of the server's roles instead, by its id (right-click the role in Server
+				Settings, Roles, and Copy Role ID): it is not renamed, and the one it had stays as it is;
+				Rename gives it the bot's name. The leader's and officers' roles should have Discord's
+				Administrator permission: Give Administrator adds it, keeping whatever else they allow. Each
+				role has its level's color (the game's item qualities, and blood red for raiders): Fix
+				colors sets them.
 			</p>
 			{#if fixed === 'roles'}<Alert variant="success">The roles are in order.</Alert>{/if}
 			{#if fixed?.startsWith('rename/')}<Alert variant="success">The role is renamed.</Alert>{/if}
@@ -530,7 +531,7 @@
 					{#if !report.roles_in_order}
 						<ConfirmButton
 							disabled={fixing !== null}
-							question="Put the bot's roles in order? Only they move; everything else keeps its place."
+							question="Put Leader, Officer, Raider, Trial, and Member in order, with Officer right under Leader? The server's other roles stay where they are, except any between Leader and Officer, which move to just below Officer."
 							confirmLabel="Fix"
 							confirmVariant="primary"
 							onconfirm={() => fix('roles')}
@@ -638,7 +639,7 @@
 					{#if !report.categories_in_order}
 						<ConfirmButton
 							disabled={fixing !== null}
-							question="Put the bot's categories in order? Only they move; everything else keeps its place."
+							question="Put the Officers, Raiders, Members, and Public categories in order? The server's other categories stay where they are."
 							confirmLabel="Fix"
 							confirmVariant="primary"
 							onconfirm={() => fix('categories')}
