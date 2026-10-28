@@ -27,6 +27,12 @@ pub enum Access {
 }
 
 impl Access {
+    /// Whether the level's role should have Discord's Administrator permission: the leader and the
+    /// officers run the server.
+    pub fn is_administrator(self) -> bool {
+        matches!(self, Access::Leader | Access::Officer)
+    }
+
     pub const ALL: [Access; 5] = [
         Access::Leader,
         Access::Officer,

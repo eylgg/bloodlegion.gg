@@ -97,6 +97,29 @@
 		}
 	}
 
+	/** The bot's role being pointed at another of the server's roles (its key), and the id typed. */
+	let editingRole = $state<string | null>(null);
+	let roleId = $state('');
+	let roleSaved = $state<string | null>(null);
+
+	/** Makes the server's role `roleId` the bot's role for `key`, renaming nothing. */
+	async function saveRole(key: string) {
+		fixing = `role/${key}`;
+		fixError = '';
+		fixed = null;
+		roleSaved = null;
+		try {
+			await api.put(`/api/admin/discord/roles/${encodeURIComponent(key)}`, { id: roleId.trim() });
+			await invalidateAll();
+			editingRole = null;
+			roleSaved = key;
+		} catch (err) {
+			fixError = errorMessage(err, 'That did not work. Please try again.');
+		} finally {
+			fixing = null;
+		}
+	}
+
 	/** The bot's roles that are in the server, which can be given. */
 	const givable = $derived(report?.roles.filter((r) => r.id) ?? []);
 
@@ -118,6 +141,10 @@
 	/** The bot's categories and announcements channels whose permission entries differ. */
 	const permissionsToFix = $derived(
 		report?.permissions?.filter((channel) => channel.differing.length > 0) ?? []
+	);
+	/** The bot's roles that should have Administrator (Leader, Officer) and lack it. */
+	const administratorsToSet = $derived(
+		report?.roles.filter((r) => r.id && r.wants_administrator && !r.administrator) ?? []
 	);
 	const announcementsInPlace = $derived(
 		!!report &&
@@ -336,9 +363,20 @@
 				The bot's roles, top to bottom, as they should stand in Server Settings, Roles. Holders:
 				everyone in the server with the role. Linked: members in the server, linked to the site,
 				whose rank calls for it (how many should hold it). The bot makes none on its own: Create
-				missing makes them.
+				missing makes them. Change points one at another of the server's roles instead, by its id
+				(right-click the role in Server Settings, Roles, and Copy Role ID): it is not renamed, and
+				the one it had stays as it is.
 			</p>
 			{#if fixed === 'roles'}<Alert variant="success">The roles are in order.</Alert>{/if}
+			{#if roleSaved}
+				{@const saved = report.roles.find((r) => r.key === roleSaved)}
+				{#if saved}
+					<Alert variant="success">
+						The bot now uses {saved.name} as its {saved.expected_name} role. Set permissions and put the
+						roles in order to bring it in line.
+					</Alert>
+				{/if}
+			{/if}
 			{#if report.roles_out_of_reach.length > 0}
 				<Alert variant="info">
 					The bot cannot move {report.roles_out_of_reach.join(', ')}: they are not below its own
@@ -350,13 +388,61 @@
 					<tr><th>Role</th><th>ID</th><th class="num">Holders</th><th class="num">Linked</th></tr>
 				</thead>
 				<tbody>
-					{#each report.roles as role (role.name)}
+					{#each report.roles as role (role.key)}
 						<tr>
-							<td>{role.name}</td>
 							<td>
-								{#if role.id}<code class="id">{role.id}</code>{:else}<span class="tag warn"
-										>Missing</span
-									>{/if}
+								{role.name}
+								{#if role.id && role.name !== role.expected_name}
+									<span class="tag warn">Not named {role.expected_name}</span>
+								{/if}
+								{#if role.id && role.wants_administrator}
+									{#if role.administrator}
+										<span class="tag ok">Administrator</span>
+									{:else}
+										<span class="tag warn">Not administrator</span>
+									{/if}
+								{/if}
+							</td>
+							<td>
+								{#if editingRole === role.key}
+									<form
+										class="role-id"
+										onsubmit={(event) => {
+											event.preventDefault();
+											saveRole(role.key);
+										}}
+									>
+										<input
+											aria-label={`Discord role id to use as ${role.expected_name}`}
+											inputmode="numeric"
+											autocomplete="off"
+											bind:value={roleId}
+										/>
+										<Button size="small" type="submit" disabled={fixing !== null || !roleId.trim()}>
+											Save
+										</Button>
+										<Button
+											size="small"
+											variant="secondary"
+											type="button"
+											onclick={() => (editingRole = null)}>Cancel</Button
+										>
+									</form>
+								{:else}
+									{#if role.id}<code class="id">{role.id}</code>{:else}<span class="tag warn"
+											>Missing</span
+										>{/if}
+									<Button
+										size="small"
+										variant="secondary"
+										disabled={fixing !== null}
+										onclick={() => {
+											editingRole = role.key;
+											roleId = role.id ?? '';
+											roleSaved = null;
+										}}>Change</Button
+									>
+								{/if}
 							</td>
 							<td class="num">{role.id ? role.holders : '–'}</td>
 							<td class="num">{role.linked}</td>
@@ -554,19 +640,28 @@
 				<h2>Permissions</h2>
 				{#if !report.permissions}
 					<span class="tag warn">Roles missing</span>
-				{:else if permissionsToFix.length === 0}
+				{:else if permissionsToFix.length + administratorsToSet.length === 0}
 					<span class="tag ok">All set</span>
 				{:else}
-					<span class="tag warn">{permissionsToFix.length} to set</span>
+					<span class="tag warn">{permissionsToFix.length + administratorsToSet.length} to set</span
+					>
 				{/if}
 			</div>
 			<p class="muted">
 				The bot's own permission entries on its categories and announcements channels: who may see
 				each, and who may post announcements. Entries added by hand are left alone, and these are
-				set only with the button.
+				set only with the button. The leader's and officers' roles also get Discord's Administrator
+				permission, keeping whatever else they allow.
 			</p>
 			{#if fixed === 'permissions'}
 				<Alert variant="success">The bot's permissions are set.</Alert>
+			{/if}
+			{#if administratorsToSet.length > 0 && !report.bot_is_administrator}
+				<Alert variant="info">
+					{administratorsToSet.map((r) => r.name).join(' and ')} should have Administrator, and Discord
+					lets the bot give it only if it has it itself. In Server Settings, Roles, the server's owner
+					turns on Administrator for {report.bot_role?.name ?? "the bot's role"}.
+				</Alert>
 			{/if}
 			{#if !report.permissions}
 				<Alert variant="info">
@@ -574,6 +669,15 @@
 				</Alert>
 			{:else}
 				<ul class="list">
+					{#each administratorsToSet as role (role.key)}
+						<li>
+							<div class="who">
+								<span class="name">{role.name}</span>
+								<span class="muted small">Role · <code class="id">{role.id}</code></span>
+							</div>
+							<div class="needs"><span class="tag warn">Administrator</span></div>
+						</li>
+					{/each}
 					{#each report.permissions as channel (channel.id)}
 						<li>
 							<div class="who">
@@ -594,11 +698,13 @@
 						</li>
 					{/each}
 				</ul>
-				{#if permissionsToFix.length > 0}
+				{#if permissionsToFix.length + administratorsToSet.length > 0}
 					<div class="actions">
 						<ConfirmButton
 							disabled={fixing !== null}
-							question="Set the bot's entries where they differ? Only its own entries change; those added by hand stay."
+							question={administratorsToSet.length > 0
+								? `Set the bot's entries where they differ, and give ${administratorsToSet.map((r) => r.name).join(' and ')} Administrator? Only its own entries change; those added by hand stay.`
+								: "Set the bot's entries where they differ? Only its own entries change; those added by hand stay."}
 							confirmLabel="Set"
 							confirmVariant="primary"
 							onconfirm={() => fix('permissions')}
@@ -827,6 +933,18 @@
 	.num {
 		text-align: right;
 		font-variant-numeric: tabular-nums;
+	}
+
+	.role-id {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+		align-items: center;
+	}
+
+	.role-id input {
+		width: 22ch;
+		font-family: var(--font-mono);
 	}
 
 	/* Discord ids: long, and for copying into Discord's search or the API. */

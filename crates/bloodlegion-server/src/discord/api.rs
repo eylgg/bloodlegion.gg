@@ -281,6 +281,34 @@ async fn give_role(
     Ok(Json(Given { given }))
 }
 
+/// The server's role to use, a Discord id as a string (it does not fit a JavaScript number).
+#[derive(Debug, serde::Deserialize)]
+pub struct RoleInput {
+    id: String,
+}
+
+/// `PUT /api/admin/discord/roles/{key}`: superusers only. Makes another of the server's roles the
+/// bot's role for that level (`role:officer`), renaming nothing (see `fix`).
+async fn set_role(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+    Path(key): Path<String>,
+    Json(input): Json<RoleInput>,
+) -> Result<StatusCode, FixError> {
+    let access = Access::ALL
+        .into_iter()
+        .find(|access| access.key() == key)
+        .ok_or(Error::External(FixError::RoleMissing))?;
+    let id = input
+        .id
+        .trim()
+        .parse()
+        .map_err(|_| Error::External(FixError::NotAUsableRole))?;
+    fix::set_role(&state, access, id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn router() -> Router<State> {
     Router::new().route("/announcements", get(latest))
 }
@@ -296,6 +324,7 @@ pub fn admin_router() -> Router<State> {
         .route("/discord/fix/announcements", post(fix_announcements))
         .route("/discord/fix/sync/{channel}", post(sync_channel))
         .route("/discord/fix/give", post(give_role))
+        .route("/discord/roles/{key}", axum::routing::put(set_role))
         .route("/discord/fix/permissions", post(fix_permissions))
 }
 

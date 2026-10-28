@@ -279,7 +279,13 @@ they hold there; and each unsynced channel has a **Sync**
 button that gives it its category's permissions again. The server's other roles (not the bot's,
 and not ones an integration keeps, such as the booster role) are listed with their holders, each
 with a **Give** button that gives one of the bot's roles to everyone holding it: to move people off
-a role the server is dropping, give them the bot's role, then remove the old role by hand. The page also checks the bot's own highest
+a role the server is dropping, give them the bot's role, then remove the old role by hand. Each of
+the bot's roles also has a **Change** button that points it at another of the server's roles by
+its id (right-click the role in Server Settings, Roles, **Copy Role ID**), which needs no renaming:
+the role keeps its name and holders (a tag says when the name is not the bot's), and the one it
+replaces stays as it is. The leader's and officers' roles should have Discord's **Administrator**
+permission; **Set permissions** gives it to them, keeping what else they allow, which needs the bot
+to have Administrator itself. The page also checks the bot's own highest
 role: it should be the server's top role, since Discord lets the bot move only roles below it and
 lets no one raise their own (if not, someone above it drags it to the top in Server Settings, Roles),
 shown separately in the member list, and not mentionable by anyone; for the same reason these are

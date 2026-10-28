@@ -11,7 +11,9 @@
 //! - Moving the announcements channels to the top of the list (out of any category) under their
 //!   own names, in the site's order among the text channels there.
 //! - Setting the bot's permission entries on its categories and announcements channels: only those
-//!   missing or set otherwise, and only its own (entries added by hand stay).
+//!   missing or set otherwise, and only its own (entries added by hand stay). With them, the
+//!   leader's and officers' roles get Discord's Administrator permission (which the bot must have
+//!   to give), keeping whatever else they allow; no role loses a permission.
 //! - Syncing a channel in one of the bot's categories with it again: its permissions become the
 //!   category's.
 //! - Giving one of the bot's roles to everyone holding another of the server's roles (moving the
@@ -161,6 +163,32 @@ pub enum FixError {
                   (Discord then numbers every role afresh), then try again."
     )]
     NoRoomBelowBot,
+    #[error("the bot is not an administrator")]
+    #[problem(
+        status = CONFLICT,
+        title = "Bot Not an Administrator",
+        detail = "Discord lets the bot give the Administrator permission only if it has it itself. \
+                  In Server Settings, Roles, the server's owner turns on Administrator for the \
+                  bot's role, then try again."
+    )]
+    BotNotAdministrator,
+    #[error("not a role the bot can use")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Not a Usable Role",
+        detail = "No role in the server has that id, or it is @everyone or one an integration \
+                  keeps. In Server Settings, Roles, right-click the role and Copy Role ID (with \
+                  Developer Mode on), then try again."
+    )]
+    NotAUsableRole,
+    #[error("the role is already the bot's {0}")]
+    #[problem(
+        status = CONFLICT,
+        title = "Role Already Used",
+        detail = format!("That role is already the bot's {_0} role. Give that one another role \
+                          first.")
+    )]
+    RoleAlreadyUsed(&'static str),
     #[error("no such role to give from")]
     #[problem(
         status = NOT_FOUND,
@@ -314,6 +342,39 @@ async fn bot_top(
         .map(|role| role.position)
         .max()
         .unwrap_or(0))
+}
+
+/// Makes the server's role `id` the bot's role for `access`, in place of the one it had: what the
+/// site's checks, fixes, and permissions use for that level from now on. The role is not renamed
+/// and keeps its holders; the one it replaces is left as it is (nobody loses it). Refused when the
+/// id is no role in the server, @everyone, or one an integration keeps, or is already the bot's
+/// role for another level.
+pub async fn set_role(state: &State, access: Access, id: u64) -> Result<(), FixError> {
+    let (token, guild) = connection(state).await?;
+    let http = Http::new(&token);
+    let roles = guild.roles(&http).await.map_err(discord)?;
+    let usable = id != guild.get()
+        && roles
+            .get(&RoleId::new(id))
+            .is_some_and(|role| !role.managed);
+    if !usable {
+        return Err(Error::External(FixError::NotAUsableRole));
+    }
+    for other in Access::ALL.into_iter().filter(|other| *other != access) {
+        if db::object_id(&state.pool, other.key()).await? == Some(id) {
+            return Err(Error::External(FixError::RoleAlreadyUsed(
+                other.role_name(),
+            )));
+        }
+    }
+    db::set_object_id(&state.pool, access.key(), id).await?;
+    sqlx::query("SELECT pg_notify($1, '')")
+        .bind(super::LAYOUT_CHANNEL)
+        .execute(&state.pool)
+        .await
+        .context("telling the bot about the role")?;
+    tracing::info!(role = access.role_name(), id, "discord: chose a role");
+    Ok(())
 }
 
 /// Gives the bot's role for `to` to everyone in the server (bots aside) who holds the role `from`
@@ -552,8 +613,11 @@ pub async fn fix_announcements(state: &State) -> Result<(), FixError> {
     Ok(())
 }
 
-/// Sets the bot's permission entries on its categories and announcements channels where they are
-/// missing or set otherwise. Refused while the server lacks one of the bot's roles.
+/// Gives the leader's and officers' roles Discord's Administrator permission where they lack it
+/// (keeping what else they allow), then sets the bot's permission entries on its categories and
+/// announcements channels where they are missing or set otherwise. Refused while the server lacks
+/// one of the bot's roles, or when a role needs Administrator and the bot lacks it itself (Discord
+/// lets nobody give a permission they do not have).
 pub async fn fix_permissions(state: &State) -> Result<(), FixError> {
     let (token, guild) = connection(state).await?;
     let http = Http::new(&token);
@@ -568,6 +632,42 @@ pub async fn fix_permissions(state: &State) -> Result<(), FixError> {
         ids.push(id);
     }
     let roles = Roles(ids.try_into().expect("one role per access"));
+
+    // The leader's and officers' roles get Administrator, on top of whatever they already allow.
+    let to_administer: Vec<&serenity::all::Role> = Access::ALL
+        .into_iter()
+        .filter(|access| access.is_administrator())
+        .map(|access| &existing[&roles.get(access)])
+        .filter(|role| !role.permissions.contains(Permissions::ADMINISTRATOR))
+        .collect();
+    if !to_administer.is_empty() {
+        let me: UserId = http.get_current_user().await.map_err(discord)?.id;
+        let bot_is_administrator = guild
+            .member(&http, me)
+            .await
+            .map_err(discord)?
+            .roles
+            .iter()
+            .filter_map(|id| existing.get(id))
+            .any(|role| role.permissions.contains(Permissions::ADMINISTRATOR));
+        if !bot_is_administrator {
+            return Err(Error::External(FixError::BotNotAdministrator));
+        }
+    }
+    for role in to_administer {
+        guild
+            .edit_role(
+                &http,
+                role.id,
+                EditRole::new()
+                    .permissions(role.permissions | Permissions::ADMINISTRATOR)
+                    .audit_log_reason(REASON),
+            )
+            .await
+            .map_err(discord)?;
+        tracing::info!(role = %role.name, "discord: made a role an administrator");
+    }
+
     let everyone = RoleId::new(guild.get());
     let me: UserId = http.get_current_user().await.map_err(discord)?.id;
     let channels = guild.channels(&http).await.map_err(discord)?;

@@ -10,8 +10,8 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::Context;
 use serenity::all::{
-    ChannelType, GuildId, Http, Member, PermissionOverwrite, PermissionOverwriteType, RoleId,
-    UserId,
+    ChannelType, GuildId, Http, Member, PermissionOverwrite, PermissionOverwriteType, Permissions,
+    RoleId, UserId,
 };
 use time::OffsetDateTime;
 
@@ -62,6 +62,8 @@ pub struct Snapshot {
     pub mentionable: HashSet<RoleId>,
     /// The roles an integration keeps (a bot's own, the server booster role), which nobody gives.
     pub managed: HashSet<RoleId>,
+    /// The roles with Discord's Administrator permission.
+    pub administrators: HashSet<RoleId>,
     /// The bot's own user id: its highest role decides which roles it can move.
     pub bot_id: u64,
     pub channels: Vec<Channel>,
@@ -103,10 +105,16 @@ pub struct RoleSummary {
     pub id: Option<String>,
     /// As the server names it, or as the bot would when it is missing.
     pub name: String,
+    /// What the bot would name it: a role chosen by hand may be named otherwise.
+    pub expected_name: &'static str,
     /// People in the server holding it.
     pub holders: usize,
     /// Linked members in the server whose rank calls for it: how many should hold it.
     pub linked: usize,
+    /// Whether it has Discord's Administrator permission, and whether its level should (the
+    /// leader's and the officers'; see [`Access::is_administrator`]).
+    pub administrator: bool,
+    pub wants_administrator: bool,
 }
 
 /// The bot's permission entries on one of its categories or announcements channels.
@@ -222,6 +230,9 @@ pub struct Report {
     pub bot_role: Option<BotRole>,
     /// The bot's roles not below the bot's own highest role, which it cannot move or give.
     pub roles_out_of_reach: Vec<String>,
+    /// Whether the bot has Discord's Administrator permission, without which it cannot give it to
+    /// a role.
+    pub bot_is_administrator: bool,
     /// The server's roles besides the bot's, `@everyone`, and those integrations keep, top first.
     pub other_roles: Vec<OtherRole>,
     /// In the order the bot keeps them.
@@ -326,6 +337,11 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
             key: access.key(),
             id: roles.get(&access).map(|id| id.get().to_string()),
             name: name(access),
+            expected_name: access.role_name(),
+            administrator: roles
+                .get(&access)
+                .is_some_and(|id| server.administrators.contains(id)),
+            wants_administrator: access.is_administrator(),
             holders: people.iter().filter(|m| held(m).contains(&access)).count(),
             linked: linked
                 .iter()
@@ -477,6 +493,9 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         linked_in_server: linked.iter().filter(|a| linked_member(a).is_some()).count(),
         roles: role_summaries,
         roles_in_order,
+        bot_is_administrator: bot_roles
+            .iter()
+            .any(|id| server.administrators.contains(id)),
         bot_role: bot_role.map(|(position, id)| {
             let mut above: Vec<(u16, u64)> = server
                 .role_positions
@@ -736,6 +755,11 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         .filter(|role| role.managed)
         .map(|role| role.id)
         .collect();
+    let administrators = roles
+        .values()
+        .filter(|role| role.permissions.contains(Permissions::ADMINISTRATOR))
+        .map(|role| role.id)
+        .collect();
     let role_names = roles
         .into_iter()
         .map(|(id, role)| (id, role.name))
@@ -784,6 +808,7 @@ async fn snapshot(pool: &sqlx::PgPool, http: &Http, guild: GuildId) -> anyhow::R
         hoisted,
         mentionable,
         managed,
+        administrators,
         bot_id,
         channels,
         objects,
@@ -910,6 +935,7 @@ mod tests {
             hoisted: HashSet::from([RoleId::new(99)]),
             mentionable: HashSet::new(),
             managed: HashSet::from([RoleId::new(7), RoleId::new(99)]),
+            administrators: HashSet::from([RoleId::new(99), RoleId::new(1)]),
             bot_id: 1000,
             channels: vec![
                 category(101, "Officers", 0),
@@ -991,7 +1017,7 @@ mod tests {
     }
 
     #[test]
-    fn counts_each_roles_holders_and_whom_it_is_due() {
+    fn counts_each_roles_holders_and_who_should_hold_it() {
         let linked = [
             account("10", "A", Rank::Officer),
             account("20", "B", Rank::Officer),
@@ -1009,6 +1035,25 @@ mod tests {
             (officer.id.as_deref(), officer.holders, officer.linked),
             (Some("2"), 2, 2)
         );
+    }
+
+    #[test]
+    fn says_which_roles_should_be_administrators() {
+        // The bot and Leader have Administrator; Officer lacks it.
+        let report = check(&[], &server(vec![]));
+        let role = |name: &str| {
+            report
+                .roles
+                .iter()
+                .find(|r| r.expected_name == name)
+                .unwrap()
+        };
+        assert!(report.bot_is_administrator);
+        assert!(role("Leader").administrator && role("Leader").wants_administrator);
+        assert!(!role("Officer").administrator && role("Officer").wants_administrator);
+        assert!(!role("Raider").wants_administrator && !role("Member").wants_administrator);
+        // A role chosen by hand keeps its own name, and says what the bot would call it.
+        assert_eq!(role("Raider").name, "Raiders");
     }
 
     #[test]

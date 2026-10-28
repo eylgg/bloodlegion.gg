@@ -72,7 +72,17 @@ export type DiscordReport = {
 	 * The bot's roles, top first: its key (`role:member`), its Discord id (a string; `null` when the
 	 * server lacks it), who holds it, and how many linked members' ranks call for it.
 	 */
-	roles: { key: string; id: string | null; name: string; holders: number; linked: number }[];
+	roles: {
+		key: string;
+		id: string | null;
+		name: string;
+		expected_name: string;
+		holders: number;
+		linked: number;
+		/** Whether it has Discord's Administrator permission, and whether it should (Leader, Officer). */
+		administrator: boolean;
+		wants_administrator: boolean;
+	}[];
 	/** Whether the bot's roles stand in that order in Discord's list. */
 	roles_in_order: boolean;
 	/**
@@ -88,6 +98,8 @@ export type DiscordReport = {
 	} | null;
 	/** The bot's roles not below its own highest role, which it cannot move or give. */
 	roles_out_of_reach: string[];
+	/** Whether the bot has Administrator, without which it cannot give it to a role. */
+	bot_is_administrator: boolean;
 	/**
 	 * The server's roles besides the bot's, `@everyone`, and those integrations keep, top first, with
 	 * how many people hold each: one of the bot's roles can be given to all of them.
