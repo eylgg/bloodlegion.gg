@@ -247,7 +247,7 @@ mod tests {
         // A real raid a test character joined, with an item of a test item's name.
         let ey = member(&pool, "Ey", Rank::Raider).await;
         let real =
-            crate::characters::create(&pool, &ey, &input("Arthas", "Menethil", "paladin", true))
+            crate::characters::tests::add(&pool, &ey, input("Arthas", "Menethil", "paladin", true))
                 .await
                 .unwrap();
         let raid = super::super::create_raid(

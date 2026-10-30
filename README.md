@@ -235,7 +235,10 @@ the changes.
   no longer has an item drops it, unless the guild has won it. The Items page browses it, 50 at a
   time; recording loot searches it, and a guild item picked from it is linked by the game's item id.
 
-  It is refreshed with the rest of Blizzard's data; see [Blizzard's data](#blizzards-data).
+  The snapshot has **no items for now**: Battle.net does not serve Forever's yet, and Classic
+  Era's are not Forever's, so loading them would show the wrong loot. It keeps the game's icons, which Forever's
+  items will mostly share; a load keeps every icon in the snapshot, used or not. The code stays,
+  ready for the real items; see [Blizzard's data](#blizzards-data).
 
 - **Questions**: officers ask yes-or-no questions; members answer and may change their minds.
 
@@ -327,13 +330,13 @@ BATTLENET_CLIENT_ID=... BATTLENET_CLIENT_SECRET=... cargo xtask blizzard sync
 cargo xtask blizzard sync --only classes   # just some: items, spells, classes (classes needs no credentials)
 ```
 
-The credentials are the `battlenet` sign-in client's. Battle.net's Game Data API is read as Classic
-Era (`static-classic1x-us`) until it serves WoW: Forever; icons come from Blizzard's render
-service. A call that fails for a moment (a timeout, a 5xx, a 429) is retried.
+The credentials are the `battlenet` sign-in client's. Battle.net's Game Data API is read in WoW:
+Forever's namespace (`static-forever-us`), which it does not serve yet: until it does, the sync
+says so and leaves the items and spells as they are. Icons come from Blizzard's render service. A call that fails for a moment (a timeout, a 5xx, a 429) is retried.
 
 - **Items**: every epic and legendary item, with its tooltip and icon name, fetched again (a few
-  minutes); only icons not already vendored are downloaded. An item that still fails keeps its last
-  snapshot entry.
+  minutes); only icons not already vendored are downloaded, and icons no item uses any more are
+  removed. An item that still fails keeps its last snapshot entry.
 - **Spells**: which spells each class has, their levels, trees, ranks, and tooltip lines are edited
   by hand in `spells.json`, since the API serves none of them. The sync updates each spell's name,
   description (unless the API leaves a formula unworked), and icon where the API has them, and

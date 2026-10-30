@@ -214,7 +214,8 @@
 <section>
 	<h2>Your characters</h2>
 	<p class="muted">
-		First and last name, as they are in game. Officers record loot and attendance against these.
+		First and last name, as they are in game. Officers record loot and attendance against these{#if !data.officer},
+			and add or remove them for you{/if}.
 	</p>
 
 	<ul class="characters">
@@ -249,17 +250,23 @@
 					>
 						Edit
 					</Button>
-					<ConfirmButton
-						size="small"
-						variant="danger"
-						question="Remove {character.first_name} {character.last_name}?"
-						confirmLabel="Remove"
-						onconfirm={() => remove(character)}>Remove</ConfirmButton
-					>
+					{#if data.officer}
+						<ConfirmButton
+							size="small"
+							variant="danger"
+							question="Remove {character.first_name} {character.last_name}?"
+							confirmLabel="Remove"
+							onconfirm={() => remove(character)}>Remove</ConfirmButton
+						>
+					{/if}
 				</div>
 			</li>
 		{:else}
-			{#if !open}<li class="muted">No characters yet. Start with your main.</li>{/if}
+			{#if !open}
+				<li class="muted">
+					{data.officer ? 'No characters yet. Start with your main.' : 'No characters yet.'}
+				</li>
+			{/if}
 		{/each}
 	</ul>
 
@@ -272,7 +279,7 @@
 				oncancel={() => (open = false)}
 			/>
 		{/key}
-	{:else}
+	{:else if data.officer}
 		<div>
 			<Button
 				variant="primary"

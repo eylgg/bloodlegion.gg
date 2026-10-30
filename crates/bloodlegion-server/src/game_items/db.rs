@@ -92,9 +92,10 @@ pub async fn upsert_items(conn: &mut PgConnection, items: &str) -> sqlx::Result<
     .await
 }
 
-/// Drops the items not in `ids`, unless the guild has an item for them, then the icons no item
-/// uses. Returns how many items went.
-pub async fn prune(conn: &mut PgConnection, ids: &[i32]) -> sqlx::Result<u64> {
+/// Drops the items not in `ids`, unless the guild has an item for them, then the icons neither in
+/// `icons` (the snapshot's, kept for items to come) nor used by an item. Returns how many items
+/// went.
+pub async fn prune(conn: &mut PgConnection, ids: &[i32], icons: &[String]) -> sqlx::Result<u64> {
     let pruned = sqlx::query!(
         r#"
         DELETE FROM game_items g
@@ -109,8 +110,10 @@ pub async fn prune(conn: &mut PgConnection, ids: &[i32]) -> sqlx::Result<u64> {
     sqlx::query!(
         r#"
         DELETE FROM game_item_icons i
-        WHERE NOT EXISTS (SELECT 1 FROM game_items g WHERE g.icon = i.name)
-        "#
+        WHERE NOT (i.name = ANY($1))
+            AND NOT EXISTS (SELECT 1 FROM game_items g WHERE g.icon = i.name)
+        "#,
+        icons,
     )
     .execute(&mut *conn)
     .await?;

@@ -7,10 +7,11 @@ use std::collections::HashMap;
 use anyhow::Context;
 use serde::Deserialize;
 
-/// Where the snapshot reads from: the US API, in English, Classic Era's static data until the API
-/// serves WoW: Forever.
+/// Where the sync reads from: the US API, in English.
 pub const API_HOST: &str = "https://us.api.blizzard.com";
-pub const NAMESPACE: &str = "static-classic1x-us";
+/// WoW: Forever's static data. The API does not serve it yet; until it does, the sync leaves the
+/// items and spells as they are (see [`Client::serves_namespace`]).
+pub const NAMESPACE: &str = "static-forever-us";
 pub const LOCALE: &str = "en_US";
 
 /// Where the render service keeps icons, by name: Classic Era's first, then the older Classic
@@ -289,6 +290,29 @@ impl Client {
         Ok(url)
     }
 
+    /// Whether the API serves [`NAMESPACE`], from its item class index: a 403 or 404 is no.
+    pub async fn serves_namespace(&self) -> anyhow::Result<bool> {
+        retry(|| async {
+            let response = self
+                .http
+                .get(self.url("/data/wow/item-class/index")?)
+                .bearer_auth(&self.token)
+                .send()
+                .await
+                .context("checking the namespace")?;
+            match response.status() {
+                reqwest::StatusCode::FORBIDDEN | reqwest::StatusCode::NOT_FOUND => Ok(false),
+                _ => {
+                    response
+                        .error_for_status()
+                        .context("checking the namespace")?;
+                    Ok(true)
+                }
+            }
+        })
+        .await
+    }
+
     /// One page of items of `quality` (`EPIC`), by id from `from_id`.
     pub async fn search(&self, quality: &str, from_id: i32) -> anyhow::Result<Vec<Summary>> {
         retry(|| self.search_once(quality, from_id)).await
@@ -309,7 +333,7 @@ impl Client {
             .await
             .context("searching items")?
             .error_for_status()
-            .context("searching items")?
+            .with_context(|| "searching items")?
             .json()
             .await
             .context("reading an item search page")?;

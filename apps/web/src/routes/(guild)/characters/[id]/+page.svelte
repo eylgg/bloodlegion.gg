@@ -80,13 +80,15 @@
 	{#if data.detail.can_edit && !editing}
 		<div class="actions">
 			<Button variant="secondary" size="small" onclick={() => (editing = true)}>Edit</Button>
-			<ConfirmButton
-				variant="danger"
-				size="small"
-				question="Remove {character.first_name} {character.last_name}?"
-				confirmLabel="Remove"
-				onconfirm={remove}>Remove</ConfirmButton
-			>
+			{#if data.officer}
+				<ConfirmButton
+					variant="danger"
+					size="small"
+					question="Remove {character.first_name} {character.last_name}?"
+					confirmLabel="Remove"
+					onconfirm={remove}>Remove</ConfirmButton
+				>
+			{/if}
 		</div>
 	{/if}
 </div>

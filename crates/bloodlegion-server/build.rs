@@ -10,15 +10,19 @@ fn main() {
 }
 
 /// Embeds the item snapshot's icons: `$OUT_DIR/game_item_icons.rs` is a slice of every
-/// `data/game-items/icons/<name>.<ext>` as `(name, ext, bytes)`, sorted by name.
+/// `data/game-items/icons/<name>.<ext>` as `(name, ext, bytes)`, sorted by name; none when the
+/// snapshot has no icons directory.
 fn game_item_icons() {
     let manifest = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let dir = Path::new(&manifest).join("data/game-items/icons");
-    let mut icons: Vec<_> = std::fs::read_dir(&dir)
-        .unwrap_or_else(|error| panic!("reading {}: {error}", dir.display()))
-        .map(|entry| entry.unwrap().path())
-        .filter(|path| path.is_file())
-        .collect();
+    let mut icons: Vec<_> = match std::fs::read_dir(&dir) {
+        Ok(entries) => entries
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| path.is_file())
+            .collect(),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+        Err(error) => panic!("reading {}: {error}", dir.display()),
+    };
     icons.sort();
     let mut out = String::from("&[\n");
     for path in icons {

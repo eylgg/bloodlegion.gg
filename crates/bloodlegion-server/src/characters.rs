@@ -36,7 +36,7 @@ pub struct Character {
 }
 
 /// A character as submitted, before validation.
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Deserialize)]
 pub struct CharacterInput {
     pub first_name: String,
     pub last_name: String,
@@ -135,6 +135,13 @@ pub enum CharacterError {
         detail = "Only the character's player or an officer can change it."
     )]
     Forbidden,
+    #[error("only officers add and remove characters")]
+    #[problem(
+        status = FORBIDDEN,
+        title = "Forbidden",
+        detail = "Only officers can add and remove characters."
+    )]
+    OfficersOnly,
     #[error("character has history")]
     #[problem(
         status = CONFLICT,
@@ -238,13 +245,16 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
     db::find(pool, id).await
 }
 
-/// Adds a character. A member's first character becomes their main whether or not they asked;
-/// declaring another main moves the title.
+/// Adds a character (officers only). A member's first character becomes their main whether or
+/// not they asked; declaring another main moves the title.
 pub async fn create(
     pool: &PgPool,
     actor: &User,
     input: &CharacterInput,
 ) -> Result<Character, CharacterError> {
+    if !actor.is_officer() {
+        return external(CharacterError::OfficersOnly);
+    }
     let valid = validate(actor, input, None)?;
     let mut tx = pool.begin().await?;
     let mut is_main = valid.is_main;
@@ -353,14 +363,14 @@ pub async fn set_specs(
     Ok(db::find(pool, id).await?.expect("the character exists"))
 }
 
-/// Removes a character that has never raided or won loot.
+/// Removes a character that has never raided or won loot (officers only).
 pub async fn delete(pool: &PgPool, actor: &User, id: i64) -> Result<(), CharacterError> {
+    if !actor.is_officer() {
+        return external(CharacterError::OfficersOnly);
+    }
     let mut tx = pool.begin().await?;
-    let Some(owner) = db::lock_owner(&mut tx, id).await? else {
+    if db::lock_owner(&mut tx, id).await?.is_none() {
         return external(CharacterError::NotFound);
-    };
-    if owner != Some(actor.id) && !actor.is_officer() {
-        return external(CharacterError::Forbidden);
     }
     if db::has_history(&mut tx, id).await? {
         return external(CharacterError::HasHistory);
@@ -497,6 +507,19 @@ pub(crate) mod tests {
     use crate::guild::Rank;
     use crate::guild::tests::member;
 
+    /// An officer adds `owner`'s character, as only officers can.
+    pub(crate) async fn add(
+        pool: &PgPool,
+        owner: &User,
+        mut input: CharacterInput,
+    ) -> Result<Character, CharacterError> {
+        static ADDERS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let n = ADDERS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let officer = member(pool, &format!("Adder{n}"), Rank::Officer).await;
+        input.user_id = Some(Some(owner.id));
+        create(pool, &officer, &input).await
+    }
+
     pub(crate) fn input(first: &str, last: &str, class: &str, is_main: bool) -> CharacterInput {
         CharacterInput {
             first_name: first.into(),
@@ -513,7 +536,8 @@ pub(crate) mod tests {
         let ey = member(&pool, "Ey", Rank::Raider).await;
         let mut sky = input("Aerin", "Gale", "shaman", false);
         sky.race = Some(" windshaper-skyborne ".into());
-        let made = create(&pool, &ey, &sky).await.unwrap();
+        let made = add(&pool, &ey, sky.clone()).await.unwrap();
+        sky.user_id = None;
         assert_eq!(made.race.as_deref(), Some("windshaper-skyborne"));
 
         // Empty is none recorded.
@@ -546,12 +570,12 @@ pub(crate) mod tests {
         let ey = member(&pool, "Ey", Rank::Raider).await;
         let other = member(&pool, "Other", Rank::Raider).await;
 
-        let first = create(&pool, &ey, &input("Arthas", "Menethil", "paladin", false))
+        let first = add(&pool, &ey, input("Arthas", "Menethil", "paladin", false))
             .await
             .unwrap();
         assert!(first.is_main, "the first character is the main");
         assert_eq!(first.username.as_deref(), Some("Ey"));
-        let second = create(&pool, &ey, &input("Jaina", "Proudmoore", "mage", true))
+        let second = add(&pool, &ey, input("Jaina", "Proudmoore", "mage", true))
             .await
             .unwrap();
         assert!(second.is_main);
@@ -565,16 +589,11 @@ pub(crate) mod tests {
 
         // The full name is unique, whatever the capitals.
         assert!(matches!(
-            create(
-                &pool,
-                &other,
-                &input("arthas", "MENETHIL", "warrior", false)
-            )
-            .await,
+            add(&pool, &other, input("arthas", "MENETHIL", "warrior", false)).await,
             Err(Error::External(CharacterError::NameTaken))
         ));
         // A different last name is a different character.
-        create(&pool, &other, &input("Arthas", "Other", "warrior", false))
+        add(&pool, &other, input("Arthas", "Other", "warrior", false))
             .await
             .unwrap();
 
@@ -595,7 +614,23 @@ pub(crate) mod tests {
             update(&pool, &ey, first.id, &give).await,
             Err(Error::External(CharacterError::Forbidden))
         ));
-        delete(&pool, &ey, first.id).await.unwrap();
+
+        // Members neither add nor remove characters, even their own; officers do.
+        assert!(matches!(
+            create(
+                &pool,
+                &ey,
+                &input("Uther", "Lightbringer", "paladin", false)
+            )
+            .await,
+            Err(Error::External(CharacterError::OfficersOnly))
+        ));
+        assert!(matches!(
+            delete(&pool, &ey, first.id).await,
+            Err(Error::External(CharacterError::OfficersOnly))
+        ));
+        let officer = member(&pool, "Officer", Rank::Officer).await;
+        delete(&pool, &officer, first.id).await.unwrap();
     }
 
     #[sqlx::test]
@@ -640,7 +675,7 @@ pub(crate) mod tests {
     async fn characters_play_any_specs_with_an_optional_main(pool: PgPool) {
         let ey = member(&pool, "Ey", Rank::Raider).await;
         let other = member(&pool, "Other", Rank::Raider).await;
-        let paladin = create(&pool, &ey, &input("Arthas", "Menethil", "paladin", false))
+        let paladin = add(&pool, &ey, input("Arthas", "Menethil", "paladin", false))
             .await
             .unwrap();
         let spec = |spec: &str, talents: &[&str]| SpecInput {
@@ -813,7 +848,7 @@ pub(crate) mod tests {
     async fn notes_are_written_by_the_player(pool: PgPool) {
         let ey = member(&pool, "Ey", Rank::Raider).await;
         let officer = member(&pool, "Officer", Rank::Officer).await;
-        let character = create(&pool, &ey, &input("Arthas", "Menethil", "paladin", false))
+        let character = add(&pool, &ey, input("Arthas", "Menethil", "paladin", false))
             .await
             .unwrap();
 

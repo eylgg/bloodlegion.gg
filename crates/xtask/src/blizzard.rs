@@ -6,6 +6,9 @@
 //! - [`spells`]: the keybind planner's spells, from the Game Data API, and their icons.
 //! - [`classes`]: the class and talent tree icons, from the render service.
 //!
+//! The Game Data API is read in WoW: Forever's namespace ([`api::NAMESPACE`]). Until the API
+//! serves it, the items and spells are skipped and left as they are.
+//!
 //! The Game Data API's credentials are the `battlenet` sign-in client's, from
 //! `BATTLENET_CLIENT_ID` and `BATTLENET_CLIENT_SECRET`: it takes a client credentials token from
 //! the same client. The render service needs none.
@@ -42,11 +45,18 @@ pub async fn sync(workspace: &Path, parts: &[Part]) -> Result<()> {
             &required_env("BATTLENET_CLIENT_SECRET")?,
         )
         .await?;
-        if wants(Part::Items) {
-            items::sync(workspace, &client).await?;
-        }
-        if wants(Part::Spells) {
-            spells::sync(workspace, &client).await?;
+        if !client.serves_namespace().await? {
+            eprintln!(
+                "items, spells: the API does not serve {} yet; left as they are",
+                api::NAMESPACE
+            );
+        } else {
+            if wants(Part::Items) {
+                items::sync(workspace, &client).await?;
+            }
+            if wants(Part::Spells) {
+                spells::sync(workspace, &client).await?;
+            }
         }
     }
     if wants(Part::Classes) {

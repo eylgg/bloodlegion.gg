@@ -1,6 +1,7 @@
 //! The item snapshot the server embeds (`crates/bloodlegion-server/data/game-items`), from
-//! Battle.net's Game Data API. Until the API serves WoW: Forever it reads Classic Era (see
-//! [`api::NAMESPACE`]).
+//! Battle.net's Game Data API, in WoW: Forever's namespace ([`api::NAMESPACE`]). The API
+//! does not serve it yet, so the sync skips it, and the snapshot keeps the icons it has (Classic
+//! Era's, which Forever's items will mostly share) and no items.
 //!
 //! It lists every item of the [`QUALITIES`], fetches each one's page (its tooltip) and icon name,
 //! and downloads the icons not already in the snapshot. `items.json` is one item a line, by id,

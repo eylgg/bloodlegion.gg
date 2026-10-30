@@ -1,6 +1,7 @@
 //! A local mirror of the game's item database, so the site shows items, icons, and tooltips from
 //! its own database instead of a third party's. Until Battle.net's API serves WoW: Forever it
-//! mirrors Classic Era.
+//! has no items: Classic Era's are not Forever's, so the snapshot keeps only the game's icons until
+//! the real items can be had.
 //!
 //! The mirror is a snapshot in the repository (`data/game-items`): `cargo xtask blizzard sync`
 //! fetches it from the API, and the server embeds it. [`load`] puts it in the database after every migrate
@@ -141,7 +142,7 @@ async fn load_snapshot(
     let ids = db::upsert_items(&mut tx, items)
         .await
         .context("loading the snapshot's items")?;
-    let pruned = db::prune(&mut tx, &ids).await?;
+    let pruned = db::prune(&mut tx, &ids, &names).await?;
     db::set_snapshot_sha256(&mut tx, &sha256).await?;
     tx.commit().await?;
     Ok(Loaded::Loaded {
@@ -221,7 +222,7 @@ mod tests {
         );
 
         // A later snapshot drops what it no longer has, except an item the guild has won, and the
-        // icons nothing uses any more.
+        // icons it no longer has that nothing uses.
         sqlx::query!(
             "INSERT INTO items (name, quality, game_item_id) VALUES ('Band of Accuria', 'epic', 17063)"
         )
@@ -231,12 +232,15 @@ mod tests {
         let mut renamed = boots;
         renamed["name"] = "Arcanist Slippers".into();
         let second = snapshot(&[renamed]);
+        let spare = ("inv_misc_gem_01", "jpg", &[0xff, 0xd8][..]);
         assert_eq!(
-            load_snapshot(&pool, &second, &icons[..1]).await.unwrap(),
+            load_snapshot(&pool, &second, &[icons[0], spare])
+                .await
+                .unwrap(),
             Loaded::Loaded {
                 items: 1,
                 pruned: 1,
-                icons: 1
+                icons: 2
             }
         );
         assert_eq!(
@@ -246,8 +250,9 @@ mod tests {
         assert!(find(&pool, 16805).await.unwrap().is_none());
         assert!(find(&pool, 17063).await.unwrap().is_some());
         assert!(icon(&pool, "inv_gauntlets_19").await.unwrap().is_none());
-        // The won item's icon is still in use, so it stays.
+        // The won item's icon is still in use, so it stays; so does a snapshot icon no item uses.
         assert!(icon(&pool, "inv_jewelry_ring_15").await.unwrap().is_some());
+        assert!(icon(&pool, "inv_misc_gem_01").await.unwrap().is_some());
 
         // Browsing finds by any part of the name; unfiltered, it pages through everything.
         load_snapshot(&pool, &first, icons).await.unwrap();
@@ -280,9 +285,10 @@ mod tests {
 
     #[test]
     fn the_embedded_snapshot_parses_and_has_its_icons() {
+        // No items until the mirror has WoW: Forever's; the icons stay for them.
         let items: Vec<serde_json::Value> = serde_json::from_str(ITEMS).unwrap();
-        assert!(!items.is_empty());
         let icons: std::collections::HashSet<_> = ICONS.iter().map(|(name, ..)| *name).collect();
+        assert!(!icons.is_empty());
         for item in &items {
             if let Some(icon) = item["icon"].as_str() {
                 assert!(icons.contains(icon), "{} has no icon {icon}", item["id"]);

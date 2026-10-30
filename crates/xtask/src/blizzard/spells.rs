@@ -7,7 +7,8 @@
 //! sync refreshes what the API does serve, for each spell the API knows: its name (by its first
 //! rank), its description (by its highest rank, unless the API leaves a formula unworked, `$s1`),
 //! and its icon. A spell the API does not know, or that fails, keeps what the catalog has. Then it
-//! downloads the icons not already vendored and removes the ones no spell uses.
+//! downloads the icons not already vendored and removes the ones no spell uses. Until the API
+//! serves WoW: Forever's namespace ([`api::NAMESPACE`]) the sync skips it.
 
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
