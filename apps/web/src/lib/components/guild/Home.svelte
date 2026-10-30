@@ -7,15 +7,19 @@
 	import type { Announcement, Calendar, LootEntry, Raid, Zone } from '$lib/types';
 
 	// A member's front page, signed in: the mark with the countdown to launch (then the week), the
-	// next raids, the latest loot, and the Discord announcements.
+	// next raids, the latest loot, and the Discord announcements. The public get a word on how to
+	// join in place of the raids and the loot.
 	let {
 		zones,
+		member,
 		calendar,
 		raids,
 		loot,
 		announcements
 	}: {
 		zones: Zone[];
+		/** False for the public, who see none of the guild's raids or loot. */
+		member: boolean;
 		calendar: Calendar;
 		/** Latest first, as `GET /api/raids` lists them. */
 		raids: Raid[];
@@ -55,37 +59,48 @@
 
 <div class="columns">
 	<div class="main">
-		<section>
-			<div class="head">
-				<h2>Coming up</h2>
-				<a href={resolve('/raids')}>All raids</a>
-			</div>
-			{#if coming.length === 0}
-				<p class="muted">Nothing scheduled.</p>
-			{:else}
-				<ul class="raids">
-					{#each coming as raid (raid.id)}
-						<li>
-							<a href={resolve('/(guild)/raids/[id]', { id: String(raid.id) })}>
-								<span class="zone-name">{names.get(raid.id)}</span>
-								<span class="muted">{formatInZone(raid.starts_at, raid.time_zone)}</span>
-								<span class="stats" title="Characters signed up">
-									{raid.attendee_count}/{size(raid.zone)}
-								</span>
-							</a>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</section>
+		{#if !member}
+			<section>
+				<h2>Welcome</h2>
+				<p class="muted">
+					Your account is public until an officer gives you a rank in the guild. Then the guild's
+					raids, loot, and roster open up here. Link Discord on
+					<a href={resolve('/profile')}>your profile</a> so the officers know who you are.
+				</p>
+			</section>
+		{:else}
+			<section>
+				<div class="head">
+					<h2>Coming up</h2>
+					<a href={resolve('/raids')}>All raids</a>
+				</div>
+				{#if coming.length === 0}
+					<p class="muted">Nothing scheduled.</p>
+				{:else}
+					<ul class="raids">
+						{#each coming as raid (raid.id)}
+							<li>
+								<a href={resolve('/(guild)/raids/[id]', { id: String(raid.id) })}>
+									<span class="zone-name">{names.get(raid.id)}</span>
+									<span class="muted">{formatInZone(raid.starts_at, raid.time_zone)}</span>
+									<span class="stats" title="Characters signed up">
+										{raid.attendee_count}/{size(raid.zone)}
+									</span>
+								</a>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</section>
 
-		<section>
-			<div class="head">
-				<h2>Recent loot</h2>
-				<a href={resolve('/loot')}>All loot</a>
-			</div>
-			<LootTable {loot} empty="No loot yet." />
-		</section>
+			<section>
+				<div class="head">
+					<h2>Recent loot</h2>
+					<a href={resolve('/loot')}>All loot</a>
+				</div>
+				<LootTable {loot} empty="No loot yet." />
+			</section>
+		{/if}
 	</div>
 
 	{#if announcements.length > 0}

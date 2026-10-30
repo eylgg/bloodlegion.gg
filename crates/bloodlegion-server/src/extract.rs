@@ -197,6 +197,30 @@ impl FromRequestParts<State> for Admin {
     }
 }
 
+/// Extracts the signed-in user and requires them to be in the guild: any rank above public, or a
+/// superuser (see [`User::is_guild_member`]). Rejects like [`Admin`]: `401` without a session,
+/// `403` for the public. Take it in every handler of the guild's pages.
+pub struct GuildMember(pub User);
+
+impl Deref for GuildMember {
+    type Target = User;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl FromRequestParts<State> for GuildMember {
+    type Rejection = Error<AuthRejection>;
+
+    async fn from_request_parts(parts: &mut Parts, state: &State) -> Result<Self, Self::Rejection> {
+        let user = <User as FromRequestParts<State>>::from_request_parts(parts, state).await?;
+        user.is_guild_member()
+            .then_some(GuildMember(user))
+            .ok_or(Error::External(AuthRejection::Forbidden))
+    }
+}
+
 /// Extracts the signed-in user and requires them to be an officer: a guild leader or officer, or
 /// a superuser (see [`User::is_officer`]). Rejects like [`Admin`]: `401` without a session, `403`
 /// for anyone else.

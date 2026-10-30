@@ -3,14 +3,13 @@ use axum::http::StatusCode;
 use axum::routing::{get, put};
 use axum::{Json, Router};
 
-use crate::extract::{Officer, SameOrigin};
-use crate::users::User;
+use crate::extract::{GuildMember, Officer, SameOrigin};
 use crate::{Result, State};
 
 use super::{Answer, Question, QuestionError, QuestionInput};
 
 /// `GET /api/questions`: every question, latest first, with the tally and the caller's answer.
-async fn list(state: State, user: User) -> Result<Json<Vec<Question>>> {
+async fn list(state: State, user: GuildMember) -> Result<Json<Vec<Question>>> {
     Ok(Json(super::list(&state.pool, &user).await?))
 }
 
@@ -34,7 +33,7 @@ struct QuestionDetail {
 /// `GET /api/questions/{id}`.
 async fn detail(
     state: State,
-    user: User,
+    user: GuildMember,
     Path(id): Path<i64>,
 ) -> Result<Json<QuestionDetail>, QuestionError> {
     let question = super::find(&state.pool, &user, id).await?;
@@ -77,7 +76,7 @@ struct AnswerInput {
 async fn answer(
     state: State,
     _: SameOrigin,
-    user: User,
+    user: GuildMember,
     Path(id): Path<i64>,
     Json(input): Json<AnswerInput>,
 ) -> Result<Json<Question>, QuestionError> {

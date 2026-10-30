@@ -33,7 +33,8 @@ pub enum Rank {
     Raider,
     Trial,
     Member,
-    Friend,
+    /// A new account, until an officer gives it a rank: anyone can sign in.
+    Public,
 }
 
 impl Rank {
@@ -43,7 +44,7 @@ impl Rank {
         Rank::Raider,
         Rank::Trial,
         Rank::Member,
-        Rank::Friend,
+        Rank::Public,
     ];
 
     pub fn is_officer(self) -> bool {
@@ -57,7 +58,7 @@ impl Rank {
             Rank::Raider => "raider",
             Rank::Trial => "trial",
             Rank::Member => "member",
-            Rank::Friend => "friend",
+            Rank::Public => "public",
         }
     }
 
@@ -256,7 +257,11 @@ pub(crate) mod tests {
         for rank in Rank::ALL {
             assert_eq!(Rank::parse(rank.slug()), Some(rank));
         }
-        assert!(Rank::Leader < Rank::Officer && Rank::Trial < Rank::Friend);
+        assert!(
+            Rank::Leader < Rank::Officer
+                && Rank::Trial < Rank::Member
+                && Rank::Member < Rank::Public
+        );
         assert!(Rank::Officer.is_officer() && !Rank::Raider.is_officer());
     }
 

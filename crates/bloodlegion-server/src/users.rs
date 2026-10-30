@@ -88,6 +88,12 @@ impl User {
     pub fn is_officer(&self) -> bool {
         self.is_superuser || self.guild_rank.is_officer()
     }
+
+    /// Whether they may see the guild's pages: anyone with a rank above public. Anyone can sign
+    /// in, so a new account waits for an officer to give it one.
+    pub fn is_guild_member(&self) -> bool {
+        self.is_superuser || self.guild_rank != crate::guild::Rank::Public
+    }
 }
 
 /// One of a user's email addresses, for the admin listing. `Deserialize` so it can be read back

@@ -1,7 +1,7 @@
 import type { Quality, Rank, User, Zone } from '$lib/types';
 
 /** Highest first, as the backend orders them. */
-export const RANKS: Rank[] = ['leader', 'officer', 'raider', 'trial', 'member', 'friend'];
+export const RANKS: Rank[] = ['leader', 'officer', 'raider', 'trial', 'member', 'public'];
 
 export const RANK_LABEL: Record<Rank, string> = {
 	leader: 'Leader',
@@ -9,11 +9,29 @@ export const RANK_LABEL: Record<Rank, string> = {
 	raider: 'Raider',
 	trial: 'Trial',
 	member: 'Member',
-	friend: 'Friend'
+	public: 'Public'
+};
+
+/** A rank's heading over its members, as the roster groups them. */
+export const RANK_GROUP: Record<Rank, string> = {
+	leader: 'Leaders',
+	officer: 'Officers',
+	raider: 'Raiders',
+	trial: 'Trials',
+	member: 'Members',
+	public: 'Public'
 };
 
 /** The raiding roster: leaders through trials. */
 export const RAIDING_RANKS: Rank[] = ['leader', 'officer', 'raider', 'trial'];
+
+/**
+ * Mirrors `User::is_guild_member` on the backend: who sees the guild's pages. Anyone can sign in,
+ * so a new account is public until an officer gives it a rank.
+ */
+export function isGuildMember(user: User): boolean {
+	return user.is_superuser || user.guild_rank !== 'public';
+}
 
 /** Mirrors `User::is_officer` on the backend: who runs raids and records loot. */
 export function isOfficer(user: User): boolean {

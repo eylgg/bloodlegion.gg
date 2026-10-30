@@ -4,12 +4,13 @@ import type { GuildCharacter, LinkedAccount, LoginOptions } from '$lib/types';
 import { api, statusFrom } from '$lib/api';
 
 export const load: PageLoad = async ({ parent, fetch }) => {
-	const { user } = await parent();
+	const { user, member } = await parent();
 	try {
 		const [accounts, options, characters] = await Promise.all([
 			api.get<LinkedAccount[]>('/api/auth/linked-accounts', { fetch }),
 			api.get<LoginOptions>('/api/auth/providers', { fetch }),
-			api.get<GuildCharacter[]>('/api/characters', { fetch })
+			// The public have none, and may not list the guild's.
+			member ? api.get<GuildCharacter[]>('/api/characters', { fetch }) : []
 		]);
 		return {
 			accounts,

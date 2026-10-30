@@ -4,7 +4,7 @@
 	import { api } from '$lib/api';
 	import type { Snippet } from 'svelte';
 	import type { User } from '$lib/types';
-	import { isOfficer } from '$lib/guild';
+	import { isGuildMember, isOfficer } from '$lib/guild';
 
 	// The guild's pages around their content: the wordmark, the pages, and who is signed in. The
 	// front page uses it too for a member signed in, with no page picked.
@@ -12,16 +12,22 @@
 	const officer = $derived(isOfficer(user));
 	let signingOut = $state(false);
 
+	// The public see none of the guild's pages, only their profile.
+	const member = $derived(isGuildMember(user));
 	const links = $derived([
-		{ href: resolve('/roster'), label: 'Roster' },
-		{ href: resolve('/raids'), label: 'Raids' },
-		...(officer ? [{ href: resolve('/planner'), label: 'Planner' }] : []),
-		{ href: resolve('/loot'), label: 'Loot' },
-		{ href: resolve('/bosses'), label: 'Bosses' },
-		{ href: resolve('/items'), label: 'Items' },
-		{ href: resolve('/characters'), label: 'Characters' },
-		{ href: resolve('/questions'), label: 'Questions' },
-		...(officer ? [{ href: resolve('/notes'), label: 'Notes' }] : []),
+		...(member
+			? [
+					{ href: resolve('/roster'), label: 'Roster' },
+					{ href: resolve('/raids'), label: 'Raids' },
+					...(officer ? [{ href: resolve('/planner'), label: 'Planner' }] : []),
+					{ href: resolve('/loot'), label: 'Loot' },
+					{ href: resolve('/bosses'), label: 'Bosses' },
+					{ href: resolve('/items'), label: 'Items' },
+					{ href: resolve('/characters'), label: 'Characters' },
+					{ href: resolve('/questions'), label: 'Questions' },
+					...(officer ? [{ href: resolve('/notes'), label: 'Notes' }] : [])
+				]
+			: []),
 		// Superusers only, and in red, so it reads as the admin's corner rather than a guild page.
 		...(user.is_superuser
 			? [{ href: resolve('/admin'), label: 'Administration', admin: true }]

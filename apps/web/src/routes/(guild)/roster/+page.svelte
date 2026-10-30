@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { api, errorMessage } from '$lib/api';
-	import { RANKS, RANK_LABEL, RAIDING_RANKS } from '$lib/guild';
+	import { RANKS, RANK_GROUP, RANK_LABEL, RAIDING_RANKS } from '$lib/guild';
 	import { classIcon } from '$lib/wow/icons';
 	import Alert from '$lib/components/Alert.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
@@ -11,14 +11,10 @@
 
 	// svelte-ignore state_referenced_locally
 	let members = $state<Member[]>(data.members);
-	let everyone = $state(false);
 	let error = $state('');
 
-	const shown = $derived(
-		everyone ? members : members.filter((m) => RAIDING_RANKS.includes(m.guild_rank))
-	);
 	const byRank = $derived(
-		RANKS.map((rank) => ({ rank, members: shown.filter((m) => m.guild_rank === rank) })).filter(
+		RANKS.map((rank) => ({ rank, members: members.filter((m) => m.guild_rank === rank) })).filter(
 			(group) => group.members.length > 0
 		)
 	);
@@ -67,10 +63,6 @@
 	<div>
 		<h1>Roster</h1>
 	</div>
-	<label class="toggle">
-		<input type="checkbox" bind:checked={everyone} />
-		Everyone, not just the raiding roster
-	</label>
 </div>
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
@@ -90,7 +82,7 @@
 
 {#each byRank as group (group.rank)}
 	<section>
-		<h2>{RANK_LABEL[group.rank]}s <span class="count">{group.members.length}</span></h2>
+		<h2>{RANK_GROUP[group.rank]} <span class="count">{group.members.length}</span></h2>
 		<ul class="members">
 			{#each group.members as member (member.id)}
 				{@const main = member.characters.find((c) => c.is_main)}
@@ -141,14 +133,6 @@
 {/each}
 
 <style>
-	.toggle {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-size: var(--text-md);
-		cursor: pointer;
-	}
-
 	.spread {
 		display: grid;
 		grid-template-columns: repeat(9, minmax(0, 1fr));

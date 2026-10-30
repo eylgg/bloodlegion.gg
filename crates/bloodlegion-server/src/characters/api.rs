@@ -3,15 +3,14 @@ use axum::http::StatusCode;
 use axum::routing::{get, put};
 use axum::{Json, Router};
 
-use crate::extract::{Officer, SameOrigin};
+use crate::extract::{GuildMember, Officer, SameOrigin};
 use crate::raids::LootEntry;
-use crate::users::User;
 use crate::{Error, Result, State};
 
 use super::{Character, CharacterError, CharacterInput, Note, NoteListing, SpecsInput};
 
 /// `GET /api/characters`: every character, by name. Members only.
-async fn list(state: State, _user: User) -> Result<Json<Vec<Character>>> {
+async fn list(state: State, _user: GuildMember) -> Result<Json<Vec<Character>>> {
     Ok(Json(super::list(&state.pool).await?))
 }
 
@@ -19,7 +18,7 @@ async fn list(state: State, _user: User) -> Result<Json<Vec<Character>>> {
 async fn create(
     state: State,
     _: SameOrigin,
-    user: User,
+    user: GuildMember,
     Json(input): Json<CharacterInput>,
 ) -> Result<(StatusCode, Json<Character>), CharacterError> {
     let character = super::create(&state.pool, &user, &input).await?;
@@ -44,7 +43,7 @@ struct CharacterDetail {
 /// `GET /api/characters/{id}`.
 async fn detail(
     state: State,
-    user: User,
+    user: GuildMember,
     Path(id): Path<i64>,
 ) -> Result<Json<CharacterDetail>, CharacterError> {
     let Some(character) = super::find(&state.pool, id).await? else {
@@ -70,7 +69,7 @@ async fn detail(
 async fn update(
     state: State,
     _: SameOrigin,
-    user: User,
+    user: GuildMember,
     Path(id): Path<i64>,
     Json(input): Json<CharacterInput>,
 ) -> Result<Json<Character>, CharacterError> {
@@ -81,7 +80,7 @@ async fn update(
 async fn delete(
     state: State,
     _: SameOrigin,
-    user: User,
+    user: GuildMember,
     Path(id): Path<i64>,
 ) -> Result<StatusCode, CharacterError> {
     super::delete(&state.pool, &user, id).await?;
@@ -92,7 +91,7 @@ async fn delete(
 async fn set_specs(
     state: State,
     _: SameOrigin,
-    user: User,
+    user: GuildMember,
     Path(id): Path<i64>,
     Json(input): Json<SpecsInput>,
 ) -> Result<Json<Character>, CharacterError> {
@@ -111,7 +110,7 @@ struct NoteInput {
 async fn set_note(
     state: State,
     _: SameOrigin,
-    user: User,
+    user: GuildMember,
     Path(id): Path<i64>,
     Json(input): Json<NoteInput>,
 ) -> Result<Json<Option<Note>>, CharacterError> {

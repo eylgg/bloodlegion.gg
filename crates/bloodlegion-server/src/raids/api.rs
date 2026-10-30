@@ -7,8 +7,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get};
 use axum::{Json, Router};
 
-use crate::extract::{Officer, SameOrigin};
-use crate::users::User;
+use crate::extract::{GuildMember, Officer, SameOrigin};
 use crate::{Result, State};
 
 use super::{
@@ -38,7 +37,11 @@ struct WeekPlan {
 }
 
 /// `GET /api/raids/weeks/{number}`: any raid week, past or to come. Members only.
-async fn week(state: State, _user: User, Path(number): Path<i64>) -> Result<Response, RaidError> {
+async fn week(
+    state: State,
+    _user: GuildMember,
+    Path(number): Path<i64>,
+) -> Result<Response, RaidError> {
     let settings = crate::guild::settings(&state.pool).await?;
     let plan = calendar::week(number).and_then(|week| {
         calendar::default_start(number, &settings.time_zone, settings.default_raid_time).map(
@@ -61,7 +64,7 @@ async fn calendar() -> Json<calendar::Calendar> {
 
 /* --- raids --- */
 
-async fn list_raids(state: State, _user: User) -> Result<Json<Vec<Raid>>> {
+async fn list_raids(state: State, _user: GuildMember) -> Result<Json<Vec<Raid>>> {
     Ok(Json(super::raids(&state.pool).await?))
 }
 
@@ -77,7 +80,7 @@ async fn create_raid(
 
 async fn raid_detail(
     state: State,
-    _user: User,
+    _user: GuildMember,
     Path(id): Path<i64>,
 ) -> Result<Json<RaidDetail>, RaidError> {
     Ok(Json(super::raid_detail(&state.pool, id).await?))
@@ -198,7 +201,7 @@ async fn record_loot(
 /// history, latest first.
 async fn list_loot(
     state: State,
-    _user: User,
+    _user: GuildMember,
     Query(filter): Query<LootFilter>,
 ) -> Result<Json<Vec<LootEntry>>> {
     Ok(Json(super::loot(&state.pool, &filter).await?))
@@ -226,13 +229,13 @@ async fn delete_loot(
 
 /* --- bosses --- */
 
-async fn list_bosses(state: State, _user: User) -> Result<Json<Vec<Boss>>> {
+async fn list_bosses(state: State, _user: GuildMember) -> Result<Json<Vec<Boss>>> {
     Ok(Json(super::bosses(&state.pool).await?))
 }
 
 async fn boss_detail(
     state: State,
-    _user: User,
+    _user: GuildMember,
     Path(id): Path<i64>,
 ) -> Result<Json<BossDetail>, RaidError> {
     Ok(Json(super::boss_detail(&state.pool, id).await?))
@@ -241,7 +244,7 @@ async fn boss_detail(
 /// `GET /api/bosses/{id}/items`: the items a boss is known to drop.
 async fn boss_items(
     state: State,
-    _user: User,
+    _user: GuildMember,
     Path(id): Path<i64>,
 ) -> Result<Json<Vec<Drop>>, RaidError> {
     Ok(Json(super::boss_items(&state.pool, id).await?))
@@ -249,7 +252,7 @@ async fn boss_items(
 
 /* --- items --- */
 
-async fn list_items(state: State, _user: User) -> Result<Json<Vec<Item>>> {
+async fn list_items(state: State, _user: GuildMember) -> Result<Json<Vec<Item>>> {
     Ok(Json(super::items(&state.pool).await?))
 }
 
@@ -265,7 +268,7 @@ async fn create_item(
 
 async fn item_detail(
     state: State,
-    _user: User,
+    _user: GuildMember,
     Path(id): Path<i64>,
 ) -> Result<Json<ItemDetail>, RaidError> {
     Ok(Json(super::item_detail(&state.pool, id).await?))

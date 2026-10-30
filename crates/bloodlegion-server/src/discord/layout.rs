@@ -1,7 +1,7 @@
 //! What the bot keeps in the server, as the site has it: a role for each access level (the leader,
-//! officers, raiders, trials, members; the site's friends count as members), and four categories
-//! that follow the levels, each open to its level and the ones above it. Three channels besides, at
-//! the top of the list in no category, where only the leader and officers post:
+//! officers, raiders, trials, members; the public have none), and four categories that follow the levels, each open to
+//! its level and the ones above it. Three channels besides, at the top of the list in no category,
+//! where only the leader and officers post:
 //! #public-announcements, which everyone reads (and the site shows), #member-announcements, and
 //! #raider-announcements, for the raiding roster.
 //!
@@ -56,13 +56,15 @@ impl Access {
         Access::Member,
     ];
 
-    pub fn of(rank: Rank) -> Access {
+    /// The level a rank has; none for the public, who see what everyone does (`@everyone`).
+    pub fn of(rank: Rank) -> Option<Access> {
         match rank {
-            Rank::Leader => Access::Leader,
-            Rank::Officer => Access::Officer,
-            Rank::Raider => Access::Raider,
-            Rank::Trial => Access::Trial,
-            Rank::Member | Rank::Friend => Access::Member,
+            Rank::Leader => Some(Access::Leader),
+            Rank::Officer => Some(Access::Officer),
+            Rank::Raider => Some(Access::Raider),
+            Rank::Trial => Some(Access::Trial),
+            Rank::Member => Some(Access::Member),
+            Rank::Public => None,
         }
     }
 
@@ -289,12 +291,12 @@ mod tests {
 
     #[test]
     fn each_rank_has_its_role() {
-        assert_eq!(Access::of(Rank::Leader), Access::Leader);
-        assert_eq!(Access::of(Rank::Officer), Access::Officer);
-        assert_eq!(Access::of(Rank::Raider), Access::Raider);
-        assert_eq!(Access::of(Rank::Trial), Access::Trial);
-        assert_eq!(Access::of(Rank::Member), Access::Member);
-        assert_eq!(Access::of(Rank::Friend), Access::Member);
+        assert_eq!(Access::of(Rank::Leader), Some(Access::Leader));
+        assert_eq!(Access::of(Rank::Officer), Some(Access::Officer));
+        assert_eq!(Access::of(Rank::Raider), Some(Access::Raider));
+        assert_eq!(Access::of(Rank::Trial), Some(Access::Trial));
+        assert_eq!(Access::of(Rank::Member), Some(Access::Member));
+        assert_eq!(Access::of(Rank::Public), None);
         for (n, access) in Access::ALL.into_iter().enumerate() {
             assert_eq!(ROLES.get(access), ROLES.0[n]);
         }

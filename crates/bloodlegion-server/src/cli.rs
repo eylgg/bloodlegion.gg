@@ -148,7 +148,7 @@ pub async fn users_set_superuser(username: String, is_superuser: bool) -> Result
 pub async fn users_set_rank(username: String, rank: String) -> Result<()> {
     let Some(rank) = crate::guild::Rank::parse(&rank) else {
         return Err(anyhow::anyhow!(
-            "'{rank}' is not a rank: leader, officer, raider, trial, member, or friend"
+            "'{rank}' is not a rank: leader, officer, raider, trial, member, or public"
         )
         .into());
     };

@@ -139,8 +139,8 @@ export type DiscordReport = {
 		discord_id: string;
 		/** `null` when they are not in the server. */
 		discord_name: string | null;
-		/** The role their rank calls for, as the server names it. */
-		role: string;
+		/** The role their rank calls for, as the server names it; `null` for the public. */
+		role: string | null;
 		has_role: boolean;
 		other_roles: string[];
 	}[];
@@ -239,7 +239,7 @@ export type Race = { slug: string; name: string; faction: Faction };
 /* --- the guild --- */
 
 /** A guild rank, highest first (see `RANKS`). Leaders and officers run the guild's records. */
-export type Rank = 'leader' | 'officer' | 'raider' | 'trial' | 'member' | 'friend';
+export type Rank = 'leader' | 'officer' | 'raider' | 'trial' | 'member' | 'public';
 
 /** One account at a provider linked to the signed-in member, from `GET /api/auth/linked-accounts`. */
 export type LinkedAccount = {

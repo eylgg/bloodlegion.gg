@@ -473,9 +473,9 @@ pub fn member_role_changes(
         let wanted = Access::of(account.rank);
         for (access, role) in roles {
             let holds = member.roles.contains(role);
-            if *access == wanted && !holds {
+            if Some(*access) == wanted && !holds {
                 give.push((member.id, *role));
-            } else if *access != wanted && holds {
+            } else if Some(*access) != wanted && holds {
                 take.push((member.id, *role));
             }
         }
@@ -1101,16 +1101,18 @@ mod tests {
             account("20", Rank::Raider),  // A demoted officer: has both.
             account("30", Rank::Officer), // Right, with a role of the server's own (77).
             account("40", Rank::Raider),  // Not in the server.
+            account("60", Rank::Public),  // Public, still holding Raider.
         ];
         let members = [
             member(10, &[]),
             member(20, &[2, 3]),
             member(30, &[2, 77]),
             member(50, &[1]), // Not linked: left alone.
+            member(60, &[3]),
         ];
         let (give, take) = member_role_changes(&linked, &members, &roles);
         assert_eq!(give, vec![(10, RoleId::new(3))]);
-        assert_eq!(take, vec![(20, RoleId::new(2))]);
+        assert_eq!(take, vec![(20, RoleId::new(2)), (60, RoleId::new(3))]);
     }
 
     #[test]

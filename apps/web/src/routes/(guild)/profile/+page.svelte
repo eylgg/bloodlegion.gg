@@ -135,6 +135,13 @@
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
 
+{#if !data.member}
+	<Alert variant="info">
+		Your account is public until an officer gives you a rank in the guild. Then the guild's pages
+		open up. Link Discord below so they know who you are.
+	</Alert>
+{/if}
+
 <!-- How a link came out, in the section of the provider it came back from (or above them all
      when that is not known). -->
 {#snippet outcome()}
@@ -211,88 +218,88 @@
 	</section>
 {/each}
 
-<section>
-	<h2>Your characters</h2>
-	<p class="muted">
-		First and last name, as they are in game. Officers record loot and attendance against these{#if !data.officer},
-			and add or remove them for you{/if}.
-	</p>
+{#if data.member}<section>
+		<h2>Your characters</h2>
+		<p class="muted">
+			First and last name, as they are in game. Officers record loot and attendance against these{#if !data.officer},
+				and add or remove them for you{/if}.
+		</p>
 
-	<ul class="characters">
-		{#each characters as character (character.id)}
-			<li>
-				<CharacterLink
-					id={character.id}
-					firstName={character.first_name}
-					lastName={character.last_name}
-					cls={character.class}
-				/>
-				<CharacterSpecs cls={character.class} specs={character.specs} />
-				{#if character.is_main}<span class="main-badge">Main</span>{/if}
-				<div class="actions">
-					<Button
-						size="small"
-						variant="secondary"
-						href="{resolve('/profile/keybinds')}?character={character.id}">Keybinds</Button
-					>
-					{#if !character.is_main}
-						<Button size="small" variant="secondary" onclick={() => makeMain(character)}>
-							Make main
-						</Button>
-					{/if}
-					<Button
-						size="small"
-						variant="secondary"
-						onclick={() => {
-							editing = character;
-							open = true;
-						}}
-					>
-						Edit
-					</Button>
-					{#if data.officer}
-						<ConfirmButton
+		<ul class="characters">
+			{#each characters as character (character.id)}
+				<li>
+					<CharacterLink
+						id={character.id}
+						firstName={character.first_name}
+						lastName={character.last_name}
+						cls={character.class}
+					/>
+					<CharacterSpecs cls={character.class} specs={character.specs} />
+					{#if character.is_main}<span class="main-badge">Main</span>{/if}
+					<div class="actions">
+						<Button
 							size="small"
-							variant="danger"
-							question="Remove {character.first_name} {character.last_name}?"
-							confirmLabel="Remove"
-							onconfirm={() => remove(character)}>Remove</ConfirmButton
+							variant="secondary"
+							href="{resolve('/profile/keybinds')}?character={character.id}">Keybinds</Button
 						>
-					{/if}
-				</div>
-			</li>
-		{:else}
-			{#if !open}
-				<li class="muted">
-					{data.officer ? 'No characters yet. Start with your main.' : 'No characters yet.'}
+						{#if !character.is_main}
+							<Button size="small" variant="secondary" onclick={() => makeMain(character)}>
+								Make main
+							</Button>
+						{/if}
+						<Button
+							size="small"
+							variant="secondary"
+							onclick={() => {
+								editing = character;
+								open = true;
+							}}
+						>
+							Edit
+						</Button>
+						{#if data.officer}
+							<ConfirmButton
+								size="small"
+								variant="danger"
+								question="Remove {character.first_name} {character.last_name}?"
+								confirmLabel="Remove"
+								onconfirm={() => remove(character)}>Remove</ConfirmButton
+							>
+						{/if}
+					</div>
 				</li>
-			{/if}
-		{/each}
-	</ul>
+			{:else}
+				{#if !open}
+					<li class="muted">
+						{data.officer ? 'No characters yet. Start with your main.' : 'No characters yet.'}
+					</li>
+				{/if}
+			{/each}
+		</ul>
 
-	{#if open}
-		{#key editing?.id}
-			<CharacterForm
-				character={editing}
-				firstIsMain={characters.length === 0}
-				onsaved={saved}
-				oncancel={() => (open = false)}
-			/>
-		{/key}
-	{:else if data.officer}
-		<div>
-			<Button
-				variant="primary"
-				onclick={() => {
-					editing = null;
-					open = true;
-				}}
-			>
-				{characters.length === 0 ? 'Add your main' : 'Add a character'}
-			</Button>
-		</div>
-	{/if}
-</section>
+		{#if open}
+			{#key editing?.id}
+				<CharacterForm
+					character={editing}
+					firstIsMain={characters.length === 0}
+					onsaved={saved}
+					oncancel={() => (open = false)}
+				/>
+			{/key}
+		{:else if data.officer}
+			<div>
+				<Button
+					variant="primary"
+					onclick={() => {
+						editing = null;
+						open = true;
+					}}
+				>
+					{characters.length === 0 ? 'Add your main' : 'Add a character'}
+				</Button>
+			</div>
+		{/if}
+	</section>{/if}
 
 <style>
 	.accounts,

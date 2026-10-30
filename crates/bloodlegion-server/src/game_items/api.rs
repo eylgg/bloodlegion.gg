@@ -4,24 +4,28 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
 
-use crate::users::User;
+use crate::extract::GuildMember;
 use crate::{Result, State};
 
 use super::{Browse, GameItem, Page};
 
 /// `GET /api/game-items?q=&quality=&slot=&offset=&limit=`: a page of mirrored items, for the item
 /// browser and the item picker. Every filter is optional.
-async fn browse(state: State, _user: User, Query(browse): Query<Browse>) -> Result<Json<Page>> {
+async fn browse(
+    state: State,
+    _user: GuildMember,
+    Query(browse): Query<Browse>,
+) -> Result<Json<Page>> {
     Ok(Json(super::browse(&state.pool, &browse).await?))
 }
 
 /// `GET /api/game-items/slots`: the slots the mirror's items go in.
-async fn slots(state: State, _user: User) -> Result<Json<Vec<String>>> {
+async fn slots(state: State, _user: GuildMember) -> Result<Json<Vec<String>>> {
     Ok(Json(super::slots(&state.pool).await?))
 }
 
 /// `GET /api/game-items/{id}`: one mirrored item with its tooltip; 404 when the mirror lacks it.
-async fn find(state: State, _user: User, Path(id): Path<i32>) -> Result<Response> {
+async fn find(state: State, _user: GuildMember, Path(id): Path<i32>) -> Result<Response> {
     Ok(match super::find(&state.pool, id).await? {
         Some(item) => Json::<GameItem>(item).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),

@@ -80,6 +80,7 @@
 		<Home
 			zones={data.zones}
 			calendar={data.home.calendar}
+			member={data.home.member}
 			raids={data.home.raids}
 			loot={data.home.loot}
 			announcements={data.announcements}

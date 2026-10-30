@@ -11,6 +11,7 @@ import type {
 	Zone
 } from '$lib/types';
 import { api, statusFrom } from '$lib/api';
+import { isGuildMember } from '$lib/guild';
 
 /** How many of the latest items won a member's front page shows. */
 const RECENT_LOOT = 8;
@@ -20,7 +21,8 @@ const RECENT_LOOT = 8;
  * Discord announcements; an unreachable backend means none of either, and the page falls back to
  * a plain link to the sign-in page, which then says what is wrong. Signed in: the member's own
  * front page (`home`), inside the guild's pages: the raids (for the next few), the latest loot, and
- * the announcements, with the zone and class catalogs and the calendar the guild's pages load.
+ * the announcements, with the zone and class catalogs and the calendar the guild's pages load. The
+ * public (a new account without a rank yet) get the same page without the raids and the loot.
  */
 export const load: PageServerLoad = async ({ fetch, parent }) => {
 	const { user } = await parent();
@@ -40,13 +42,14 @@ export const load: PageServerLoad = async ({ fetch, parent }) => {
 			home: null
 		};
 	}
+	const member = isGuildMember(user);
 	try {
 		const [zones, classes, calendar, raids, loot] = await Promise.all([
 			api.get<Zone[]>('/api/raids/zones', { fetch }),
 			api.get<WowClass[]>('/api/wow/classes', { fetch }),
 			api.get<Calendar>('/api/raids/calendar', { fetch }),
-			api.get<Raid[]>('/api/raids', { fetch }),
-			api.get<LootEntry[]>(`/api/loot?limit=${RECENT_LOOT}`, { fetch })
+			member ? api.get<Raid[]>('/api/raids', { fetch }) : [],
+			member ? api.get<LootEntry[]>(`/api/loot?limit=${RECENT_LOOT}`, { fetch }) : []
 		]);
 		return {
 			providers: [] as LoginProvider[],
@@ -54,7 +57,7 @@ export const load: PageServerLoad = async ({ fetch, parent }) => {
 			// Top level, where the loot table looks for them as on the guild's pages.
 			zones,
 			classes,
-			home: { user, calendar, raids, loot }
+			home: { user, member, calendar, raids, loot }
 		};
 	} catch (err) {
 		error(statusFrom(err, 503), 'The guild pages are unavailable right now.');

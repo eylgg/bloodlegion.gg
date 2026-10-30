@@ -82,8 +82,10 @@ pub struct MemberStatus {
     pub discord_id: String,
     /// How the server shows them; `None` when they are not in it.
     pub discord_name: Option<String>,
-    /// The role their rank calls for, by its name in the server.
-    pub role: String,
+    /// The role their rank calls for, by its name in the server; `None` for the public, who need
+    /// none.
+    pub role: Option<String>,
+    /// Whether they hold it (always, when their rank calls for none).
     pub has_role: bool,
     /// The bot's other roles they hold, which their rank does not call for.
     pub other_roles: Vec<String>,
@@ -310,21 +312,23 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         let wanted = Access::of(account.rank);
         let member = linked_member(account);
         let holds = member.map(held).unwrap_or_default();
-        let has_role = holds.contains(&wanted);
+        let has_role = wanted.is_none_or(|wanted| holds.contains(&wanted));
         let other_roles: Vec<String> = holds
             .iter()
-            .filter(|access| **access != wanted)
+            .filter(|access| Some(**access) != wanted)
             .map(|access| name(*access))
             .collect();
         // A role the server lacks cannot be held, so it is not counted against anyone.
-        let missing = !has_role && roles.contains_key(&wanted);
-        if member.is_none() || missing || !other_roles.is_empty() {
+        let missing = !has_role && wanted.is_some_and(|wanted| roles.contains_key(&wanted));
+        // The public need not be in the server.
+        let absent = member.is_none() && wanted.is_some();
+        if absent || missing || !other_roles.is_empty() {
             statuses.push(MemberStatus {
                 username: account.username.clone(),
                 rank: account.rank,
                 discord_id: account.subject.clone(),
                 discord_name: member.map(|m| m.name.clone()),
-                role: name(wanted),
+                role: wanted.map(name),
                 has_role,
                 other_roles,
             });
@@ -366,7 +370,7 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
             holders: people.iter().filter(|m| held(m).contains(&access)).count(),
             linked: linked
                 .iter()
-                .filter(|a| Access::of(a.rank) == access && linked_member(a).is_some())
+                .filter(|a| Access::of(a.rank) == Some(access) && linked_member(a).is_some())
                 .count(),
         })
         .collect();
@@ -1079,6 +1083,8 @@ mod tests {
             account("20", "Lacking", Rank::Raider),
             account("30", "Promoted", Rank::Officer),
             account("40", "Away", Rank::Member),
+            account("80", "Guest", Rank::Public),
+            account("90", "Demoted", Rank::Public),
         ];
         let mut members = vec![
             member(10, "right", &[OFFICER, 99]),
@@ -1086,6 +1092,7 @@ mod tests {
             member(30, "promoted", &[OFFICER, RAIDER]),
             member(50, "stranger", &[MEMBER]),
             member(60, "nobody", &[99]),
+            member(90, "demoted", &[MEMBER]),
         ];
         members.push(ServerMember {
             bot: true,
@@ -1109,18 +1116,32 @@ mod tests {
         assert_eq!(status("Right"), None);
         assert_eq!(
             status("Lacking"),
-            Some((Some("lacking".into()), "Raiders".into(), false, vec![]))
+            Some((
+                Some("lacking".into()),
+                Some("Raiders".into()),
+                false,
+                vec![]
+            ))
         );
         assert_eq!(
             status("Promoted"),
             Some((
                 Some("promoted".into()),
-                "Officer".into(),
+                Some("Officer".into()),
                 true,
                 vec!["Raiders".into()]
             ))
         );
-        assert_eq!(status("Away"), Some((None, "Member".into(), false, vec![])));
+        assert_eq!(
+            status("Away"),
+            Some((None, Some("Member".into()), false, vec![]))
+        );
+        // The public need no role, nor to be in the server, but hold none of the bot's.
+        assert_eq!(status("Guest"), None);
+        assert_eq!(
+            status("Demoted"),
+            Some((Some("demoted".into()), None, true, vec!["Member".into()]))
+        );
         // A bot holding a role is neither someone out of line nor counted among the people.
         assert_eq!(
             report.unlinked,
@@ -1130,8 +1151,8 @@ mod tests {
                 roles: vec!["Member".into()],
             }]
         );
-        assert_eq!((report.people, report.bots), (5, 2));
-        assert_eq!((report.linked, report.linked_in_server), (4, 3));
+        assert_eq!((report.people, report.bots), (6, 2));
+        assert_eq!((report.linked, report.linked_in_server), (6, 4));
     }
 
     #[test]
@@ -1274,8 +1295,7 @@ mod tests {
         let mut lacking = server(vec![member(10, "pal", &[])]);
         lacking.role_names.remove(&RoleId::new(5));
         lacking.channels.retain(|channel| channel.id != 101);
-        // A friend on the site is due the Member role.
-        let report = check(&[account("10", "Pal", Rank::Friend)], &lacking);
+        let report = check(&[account("10", "Pal", Rank::Member)], &lacking);
         let member = report.roles.iter().find(|r| r.name == "Member").unwrap();
         assert_eq!(member.id, None);
         assert!(report.members.is_empty());

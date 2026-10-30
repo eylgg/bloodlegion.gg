@@ -150,7 +150,7 @@ The rest:
 bloodlegion-server users list
 bloodlegion-server users demote <username>
 bloodlegion-server users rename <username> <new username>
-bloodlegion-server users rank <username> <rank>  # leader, officer, raider, trial, member, friend
+bloodlegion-server users rank <username> <rank>  # leader, officer, raider, trial, member, public
 bloodlegion-server users characters <username>   # the WoW characters on each linked Battle.net account
 bloodlegion-server characters seed              # test characters: four per class, linked to no one
 bloodlegion-server characters unseed            # remove them (keeps any that raided or won loot)
@@ -180,7 +180,8 @@ The loot tracker from the old site (Project Blood Legion, a Django app for a Cla
 for WoW: Forever. Every page needs a signed-in member; leaders and officers (and superusers) make
 the changes.
 
-- **Ranks**: leader, officer, raider, trial, member, friend. New accounts are members.
+- **Ranks**: leader, officer, raider, trial, member, public. Anyone can sign in, so new accounts are
+  public until an officer gives them a rank (the Discord bot keeps no role for the public).
   Officers set ranks from the roster; only the leader makes or unmakes officers, and nobody sets
   their own.
 - **Characters** have a first and a last name (2 to 24 letters each) and no realm: Forever has
@@ -249,10 +250,10 @@ the changes.
 ## The Discord server
 
 The guild's Discord server is kept by a bot, the same Discord application members link (step 4
-above). It keeps a role for each access level (Leader, Officer, Raider, Trial, Member; the site's friends
-are due the Member role) and four categories that follow the levels, each open to its level and
-those above it, top to bottom: Officers (leader and officers), Raiders (leader, officers, raiders,
-trials), Members (every role), and Public (everyone). It keeps three announcements channels
+above). It keeps a role for each access level (Leader, Officer, Raider, Trial, Member; none for
+the public) and four categories that follow the levels, each open to its level and those above it,
+top to bottom: Officers (leader and officers), Raiders (leader, officers, raiders, trials), Members
+(every role), and Public (everyone). It keeps three announcements channels
 besides, at the top of the channel list in no category, where only the leader and officers post,
 top to bottom: #raider-announcements, for the leader, officers, raiders, and trials;
 #member-announcements, for every role; and #public-announcements, which everyone reads and whose
