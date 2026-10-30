@@ -190,10 +190,11 @@ the changes.
   at `/api/wow/races`; any race may be any class). Members add their own on their profile, with one main; officers may add anyone's, including a
   character no account claims (a pug who won loot). A character's notes are written by its player
   and read by officers (`/notes`).
-- **Raids** are one night in a zone, with the characters who came and the loot they won. The zones
-  and their sizes are the app's catalog (`raids::catalog`, mirrored by the database's
-  `raid_zone_size()`, which caps attendance): Barrow Deeps (10), Hyjal Summit (20), and Onyxia's
-  Lair (40). A raid's start is stored as local time (`starts_local`, the guild's clock: 8 PM) with
+- **Raids** are one night in a zone, with the characters who came and the loot they won. The zones,
+  their sizes, and their bosses are a file in the repository
+  (`crates/bloodlegion-server/data/raids.json`): Barrow Deeps (10), Hyjal Summit (20), and Onyxia's
+  Lair (40). It is embedded and synced to the database (`raid_zones`, which caps attendance) on
+  every migrate like the item snapshot below. A raid's start is stored as local time (`starts_local`, the guild's clock: 8 PM) with
   its time zone; the database derives the instant (`starts_at`). A raid keeps the zone it was
   scheduled in.
 - **Administration** (`/admin`, superusers): the guild's time zone (default `America/New_York`) and
@@ -224,9 +225,12 @@ the changes.
   with daylight saving. Week 1 runs from the release to the first reset (December 15); each reset
   starts the next. A raid's week is derived from its start, never stored, so moving the release
   renumbers everything.
-- **Bosses and items** are entered as the guild meets them, since Forever's raids are new. Only
-  Onyxia is seeded. Recording loot by item name creates the item on first sight. A boss's page shows
-  how often each item dropped.
+- **Zones and bosses** come only from `data/raids.json` (bosses in encounter order): one added to
+  the file is added, and one removed from it is removed, unless something refers to it (a zone's
+  raids or priorities, a boss's loot or priorities); then it stays, last. Officers do not edit
+  them; to add a raid or a boss, add it to the file and deploy.
+- **Items** are entered as the guild meets them, since Forever's raids are new: recording loot by
+  item name creates the item on first sight. A boss's page shows how often each item dropped.
 - **The item database** is a local mirror of the game's (`game_items`), with tooltips and icons
   served from it: no third-party tooltip script. It is a snapshot in the repository
   (`crates/bloodlegion-server/data/game-items`: `items.json`, one item a line, and the icons) that

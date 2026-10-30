@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO loot (raid_id, boss_id, item_id) SELECT $1, b.id, i.id FROM bosses b, items i WHERE b.name = 'Old Onyxia'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b2a4b7dd224e4b1b495ff4a8f4b274513715d7e2cb8293c59787729d6d494e3f"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM raid_zones z\n        WHERE NOT (z.slug = ANY($1))\n            AND NOT EXISTS (SELECT 1 FROM raids r WHERE r.zone = z.slug)\n            AND NOT EXISTS (SELECT 1 FROM bosses b WHERE b.zone = z.slug)\n            AND NOT EXISTS (SELECT 1 FROM loot_priorities p WHERE p.zone = z.slug)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e735c4c65ff9c8729d5b82c69d27d4535fefb358ed47cbbe6201eb1f45d24b05"
+}

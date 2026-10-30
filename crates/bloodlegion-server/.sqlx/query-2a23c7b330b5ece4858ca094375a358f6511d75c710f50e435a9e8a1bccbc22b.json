@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE raid_zones SET position = NULL WHERE NOT (slug = ANY($1))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2a23c7b330b5ece4858ca094375a358f6511d75c710f50e435a9e8a1bccbc22b"
+}

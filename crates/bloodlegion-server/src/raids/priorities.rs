@@ -86,7 +86,7 @@ pub async fn priorities(pool: &PgPool) -> sqlx::Result<Vec<Priority>> {
 pub async fn create(pool: &PgPool, input: &PriorityInput) -> Result<Priority, RaidError> {
     let zone = zone(&input.zone)?;
     let mut tx = pool.begin().await?;
-    check_boss(&mut tx, input.boss_id, zone.slug).await?;
+    check_boss(&mut tx, input.boss_id, &zone.slug).await?;
     let label = input
         .label
         .as_deref()
@@ -97,7 +97,7 @@ pub async fn create(pool: &PgPool, input: &PriorityInput) -> Result<Priority, Ra
             if label.chars().count() > 64 {
                 return external(RaidError::InvalidPriority);
             }
-            insert(&mut tx, zone.slug, input.boss_id, None, Some(label)).await?
+            insert(&mut tx, &zone.slug, input.boss_id, None, Some(label)).await?
         }
         None => {
             let item = LootInput {
@@ -109,7 +109,7 @@ pub async fn create(pool: &PgPool, input: &PriorityInput) -> Result<Priority, Ra
                 game_item_id: input.game_item_id,
             };
             let item_id = resolve_item(&mut tx, &item).await?;
-            insert(&mut tx, zone.slug, input.boss_id, Some(item_id), None).await?
+            insert(&mut tx, &zone.slug, input.boss_id, Some(item_id), None).await?
         }
     };
     tx.commit().await?;
@@ -292,9 +292,7 @@ mod tests {
     use crate::Error;
     use crate::characters::tests::input as character;
     use crate::guild::{Rank, tests::member};
-    use crate::raids::{
-        BossInput, RaidInput, add_attendees, create_boss, create_raid, record_loot,
-    };
+    use crate::raids::{RaidInput, add_attendees, create_raid, record_loot};
 
     fn item(zone: &str, boss_id: Option<i64>, name: &str) -> PriorityInput {
         PriorityInput {
@@ -404,15 +402,12 @@ mod tests {
             Err(Error::External(RaidError::PriorityExists))
         ));
         // A boss of another zone.
-        let boss = create_boss(
-            &pool,
-            &BossInput {
-                zone: "barrow-deeps".into(),
-                name: "Barrow King".into(),
-            },
-        )
-        .await
-        .unwrap();
+        let boss = crate::raids::bosses(&pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|b| b.zone == "barrow-deeps")
+            .unwrap();
         assert!(matches!(
             create(&pool, &item("hyjal-summit", Some(boss.id), "Other")).await,
             Err(Error::External(RaidError::BossNotInZone))

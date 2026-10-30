@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO raid_zones (slug, name, size, position)\n        SELECT * FROM UNNEST($1::text[], $2::text[], $3::int[], $4::int[])\n        ON CONFLICT (slug) DO UPDATE\n            SET name = EXCLUDED.name, size = EXCLUDED.size, position = EXCLUDED.position\n        RETURNING (xmax = 0) AS \"inserted!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "inserted!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray",
+        "Int4Array",
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "7efc310be4488e316bae10d142eacb5edf4dc7ded1f7f68c2408da90abfdd1d3"
+}

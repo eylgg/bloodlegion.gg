@@ -89,30 +89,9 @@ pub enum RaidError {
         detail = "No such character."
     )]
     UnknownCharacter,
-    #[error("invalid boss name")]
-    #[problem(
-        status = UNPROCESSABLE_ENTITY,
-        title = "Invalid Name",
-        detail = "A boss's name is 1 to 64 characters."
-    )]
-    InvalidBossName,
-    #[error("boss taken")]
-    #[problem(
-        status = CONFLICT,
-        title = "Boss Exists",
-        detail = "That zone already has a boss of that name."
-    )]
-    BossTaken,
     #[error("boss not found")]
     #[problem(status = NOT_FOUND, title = "Not Found", detail = "No such boss.")]
     BossNotFound,
-    #[error("boss has loot")]
-    #[problem(
-        status = CONFLICT,
-        title = "Boss Has Loot",
-        detail = "Loot from this boss is recorded; remove that first."
-    )]
-    BossHasLoot,
     #[error("boss not in zone")]
     #[problem(
         status = UNPROCESSABLE_ENTITY,
@@ -205,7 +184,6 @@ fn classify(error: sqlx::Error) -> Error<RaidError> {
         "raid_attendees_character_id_fkey"
         | "loot_character_id_fkey"
         | "loot_priority_characters_character_id_fkey" => Some(RaidError::UnknownCharacter),
-        "bosses_zone_name_key" => Some(RaidError::BossTaken),
         "loot_boss_id_fkey" => Some(RaidError::BossNotFound),
         "loot_boss_zone_consistent_check" => Some(RaidError::BossNotInZone),
         "items_name_normalized_unlinked_idx" => Some(RaidError::ItemNameTaken),
@@ -233,47 +211,10 @@ pub struct Boss {
     pub name: String,
 }
 
-#[derive(Debug, serde::Deserialize)]
-pub struct BossInput {
-    pub zone: String,
-    pub name: String,
-}
-
-fn boss_name(name: &str) -> Result<&str, RaidError> {
-    let name = name.trim();
-    if (1..=64).contains(&name.chars().count()) {
-        Ok(name)
-    } else {
-        external(RaidError::InvalidBossName)
-    }
-}
-
-/// Every boss, in the order they were added.
+/// Every boss: each zone's in encounter order (see [`catalog`]), then any the catalog no longer
+/// has, kept for their loot.
 pub async fn bosses(pool: &PgPool) -> sqlx::Result<Vec<Boss>> {
     db::list_bosses(pool).await
-}
-
-pub async fn create_boss(pool: &PgPool, input: &BossInput) -> Result<Boss, RaidError> {
-    let zone = zone(&input.zone)?;
-    db::insert_boss(pool, zone.slug, boss_name(&input.name)?)
-        .await
-        .map_err(classify)
-}
-
-/// Renames a boss. Its zone stays: its loot was won there.
-pub async fn rename_boss(pool: &PgPool, id: i64, name: &str) -> Result<Boss, RaidError> {
-    db::rename_boss(pool, id, boss_name(name)?)
-        .await
-        .map_err(classify)?
-        .ok_or(Error::External(RaidError::BossNotFound))
-}
-
-pub async fn delete_boss(pool: &PgPool, id: i64) -> Result<(), RaidError> {
-    match db::delete_boss_without_loot(pool, id).await? {
-        db::Deleted::Yes => Ok(()),
-        db::Deleted::InUse => external(RaidError::BossHasLoot),
-        db::Deleted::Missing => external(RaidError::BossNotFound),
-    }
 }
 
 /// How often a boss dropped an item: of the raids that recorded loot from it, how many had it.
@@ -494,7 +435,7 @@ pub async fn raids(pool: &PgPool) -> sqlx::Result<Vec<Raid>> {
 pub async fn create_raid(pool: &PgPool, input: &RaidInput) -> Result<Raid, RaidError> {
     let zone = zone(&input.zone)?;
     let time_zone = crate::guild::settings(pool).await?.time_zone;
-    let id = db::insert_raid(pool, zone.slug, input.starts_local, &time_zone).await?;
+    let id = db::insert_raid(pool, &zone.slug, input.starts_local, &time_zone).await?;
     Ok(db::find_raid(pool, id)
         .await?
         .expect("the raid was just created"))
@@ -504,7 +445,7 @@ pub async fn create_raid(pool: &PgPool, input: &RaidInput) -> Result<Raid, RaidE
 /// zone must hold everyone who came, and a raid with boss loot keeps its zone.
 pub async fn update_raid(pool: &PgPool, id: i64, input: &RaidInput) -> Result<Raid, RaidError> {
     let zone = zone(&input.zone)?;
-    if !db::update_raid(pool, id, zone.slug, input.starts_local)
+    if !db::update_raid(pool, id, &zone.slug, input.starts_local)
         .await
         .map_err(classify)?
     {
@@ -633,7 +574,7 @@ async fn join(
     )
     .await?;
     if let Some(busy) = busy {
-        let zone = catalog::find(&busy.zone).map_or(busy.zone.as_str(), |z| z.name);
+        let zone = catalog::find(&busy.zone).map_or(busy.zone.as_str(), |z| z.name.as_str());
         return external(RaidError::PlayerBusy(format!(
             "{} is already in {zone}, which overlaps this raid.",
             busy.who
@@ -650,7 +591,7 @@ async fn join(
         )
         .await?
     {
-        let zone = catalog::find(&raid.zone).map_or(raid.zone.as_str(), |z| z.name);
+        let zone = catalog::find(&raid.zone).map_or(raid.zone.as_str(), |z| z.name.as_str());
         return external(RaidError::LockedOut(format!(
             "That character is already saved to {zone} in week {}.",
             week.number
@@ -1160,16 +1101,12 @@ mod tests {
             .into_iter()
             .find(|b| b.name == "Onyxia")
             .expect("Onyxia is seeded");
-        let deeps_boss = create_boss(
-            &pool,
-            &BossInput {
-                zone: "barrow-deeps".into(),
-                name: " Barrow King ".into(),
-            },
-        )
-        .await
-        .unwrap();
-        assert_eq!(deeps_boss.name, "Barrow King");
+        let deeps_boss = bosses(&pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|b| b.zone == "barrow-deeps")
+            .expect("the Barrow Deeps have bosses");
 
         let first = create_raid(&pool, &raid("onyxias-lair")).await.unwrap();
         let second = create_raid(&pool, &raid("onyxias-lair")).await.unwrap();
@@ -1247,15 +1184,10 @@ mod tests {
         .unwrap();
         assert_eq!(given.character_id, Some(ids[1]));
         assert!(matches!(
-            delete_boss(&pool, onyxia.id).await,
-            Err(Error::External(RaidError::BossHasLoot))
-        ));
-        assert!(matches!(
             delete_item(&pool, won.item_id).await,
             Err(Error::External(RaidError::ItemHasLoot))
         ));
         delete_loot(&pool, again.id).await.unwrap();
-        delete_boss(&pool, deeps_boss.id).await.unwrap();
 
         let items = items(&pool).await.unwrap();
         assert_eq!(

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM bosses WHERE name = 'Chillhowl'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c0ee265cd124ec7e496f109172d46492055c71f5fdff8458d8722f5492e80836"
+}

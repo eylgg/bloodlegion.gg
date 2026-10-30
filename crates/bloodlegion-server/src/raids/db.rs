@@ -18,62 +18,18 @@ pub enum Deleted {
 /* --- bosses --- */
 
 pub async fn list_bosses(pool: &PgPool) -> sqlx::Result<Vec<Boss>> {
-    sqlx::query_as!(Boss, "SELECT id, zone, name FROM bosses ORDER BY id")
-        .fetch_all(pool)
-        .await
+    sqlx::query_as!(
+        Boss,
+        "SELECT id, zone, name FROM bosses ORDER BY position NULLS LAST, name"
+    )
+    .fetch_all(pool)
+    .await
 }
 
 pub async fn find_boss(pool: &PgPool, id: i64) -> sqlx::Result<Option<Boss>> {
     sqlx::query_as!(Boss, "SELECT id, zone, name FROM bosses WHERE id = $1", id)
         .fetch_optional(pool)
         .await
-}
-
-pub async fn insert_boss(pool: &PgPool, zone: &str, name: &str) -> sqlx::Result<Boss> {
-    sqlx::query_as!(
-        Boss,
-        "INSERT INTO bosses (zone, name) VALUES ($1, $2) RETURNING id, zone, name",
-        zone,
-        name,
-    )
-    .fetch_one(pool)
-    .await
-}
-
-pub async fn rename_boss(pool: &PgPool, id: i64, name: &str) -> sqlx::Result<Option<Boss>> {
-    sqlx::query_as!(
-        Boss,
-        "UPDATE bosses SET name = $2 WHERE id = $1 RETURNING id, zone, name",
-        id,
-        name,
-    )
-    .fetch_optional(pool)
-    .await
-}
-
-pub async fn delete_boss_without_loot(pool: &PgPool, id: i64) -> sqlx::Result<Deleted> {
-    let mut tx = pool.begin().await?;
-    let exists = sqlx::query_scalar!("SELECT id FROM bosses WHERE id = $1 FOR UPDATE", id)
-        .fetch_optional(&mut *tx)
-        .await?
-        .is_some();
-    if !exists {
-        return Ok(Deleted::Missing);
-    }
-    let in_use = sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM loot WHERE boss_id = $1) AS "exists!""#,
-        id,
-    )
-    .fetch_one(&mut *tx)
-    .await?;
-    if in_use {
-        return Ok(Deleted::InUse);
-    }
-    sqlx::query!("DELETE FROM bosses WHERE id = $1", id)
-        .execute(&mut *tx)
-        .await?;
-    tx.commit().await?;
-    Ok(Deleted::Yes)
 }
 
 pub async fn boss_kills(pool: &PgPool, id: i64) -> sqlx::Result<i64> {
@@ -146,7 +102,8 @@ pub async fn find_item(pool: &PgPool, id: i64) -> sqlx::Result<Option<Item>> {
     sqlx::query_as!(
         Item,
         r#"
-        SELECT i.id, i.name, i.quality, i.game_item_id, g.icon AS "icon?",
+        SELECT i.id AS "id!", i.name AS "name!", i.quality AS "quality!", i.game_item_id,
+               g.icon AS "icon?",
                (SELECT count(*) FROM loot l WHERE l.item_id = i.id) AS "drops!"
         FROM items i
         LEFT JOIN game_items g ON g.id = i.game_item_id

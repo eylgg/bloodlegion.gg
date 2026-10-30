@@ -70,7 +70,7 @@ pub async fn seed(pool: &PgPool, characters: &[i64]) -> Result<SeedReport, RaidE
     let mut drops = 0;
 
     for (z, zone) in catalog::ZONES.iter().enumerate() {
-        if seeded.iter().any(|(_, slug)| slug == zone.slug) {
+        if seeded.iter().any(|(_, slug)| *slug == zone.slug) {
             continue;
         }
         let zone_bosses: Vec<_> = bosses.iter().filter(|b| b.zone == zone.slug).collect();

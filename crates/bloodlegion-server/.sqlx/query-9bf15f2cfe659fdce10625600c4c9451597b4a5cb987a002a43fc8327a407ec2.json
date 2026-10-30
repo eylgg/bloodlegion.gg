@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO loot_priorities (zone, boss_id, label) SELECT zone, id, 'caster trinket' FROM bosses WHERE name = 'Old Bandalar'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9bf15f2cfe659fdce10625600c4c9451597b4a5cb987a002a43fc8327a407ec2"
+}

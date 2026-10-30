@@ -1,28 +1,26 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id FROM bosses WHERE id = $1 FOR UPDATE",
+  "query": "SELECT name FROM bosses ORDER BY zone, position",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
-        "type_info": "Int8",
+        "name": "name",
+        "type_info": "Text",
         "origin": {
           "Table": {
             "table": "bosses",
-            "name": "id"
+            "name": "name"
           }
         }
       }
     ],
     "parameters": {
-      "Left": [
-        "Int8"
-      ]
+      "Left": []
     },
     "nullable": [
       false
     ]
   },
-  "hash": "9f8e225ebb559150b70c438c28502060108122bd2ae4532361e86d58cd0d283b"
+  "hash": "6e66f58ba41f901c4c6a74d96fc9eda325986daafe6c70cdcb377eb96b6790ab"
 }

@@ -52,6 +52,10 @@ pub async fn migrate() -> Result<()> {
         crate::game_items::Loaded::Unchanged => tracing::debug!("game items: snapshot unchanged"),
         loaded => tracing::info!(?loaded, "game items: loaded the snapshot"),
     }
+    let raids = crate::raids::catalog::sync(&pool)
+        .await
+        .context("syncing the raid zones and bosses")?;
+    tracing::info!(?raids, "raids: synced data/raids.json");
     Ok(())
 }
 

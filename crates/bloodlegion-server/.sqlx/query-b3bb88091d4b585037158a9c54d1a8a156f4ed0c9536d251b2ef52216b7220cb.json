@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE bosses SET name = $2 WHERE id = $1 RETURNING id, zone, name",
+  "query": "SELECT id, zone, name FROM bosses ORDER BY position NULLS LAST, name",
   "describe": {
     "columns": [
       {
@@ -38,10 +38,7 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Int8",
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -49,5 +46,5 @@
       false
     ]
   },
-  "hash": "818da47781ee815b03a19562dd3e9a11a2f95f88dba6e34869f8c0e116663cd1"
+  "hash": "b3bb88091d4b585037158a9c54d1a8a156f4ed0c9536d251b2ef52216b7220cb"
 }

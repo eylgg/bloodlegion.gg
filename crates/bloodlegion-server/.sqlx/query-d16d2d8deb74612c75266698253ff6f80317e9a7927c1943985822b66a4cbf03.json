@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO items (name, quality) VALUES ('Head of Onyxia', 'epic')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d16d2d8deb74612c75266698253ff6f80317e9a7927c1943985822b66a4cbf03"
+}

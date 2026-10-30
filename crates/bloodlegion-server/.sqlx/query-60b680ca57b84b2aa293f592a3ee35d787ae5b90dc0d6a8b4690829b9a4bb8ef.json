@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE bosses b SET position = NULL\n        WHERE (b.zone, b.name) NOT IN (SELECT * FROM UNNEST($1::text[], $2::text[]))\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "60b680ca57b84b2aa293f592a3ee35d787ae5b90dc0d6a8b4690829b9a4bb8ef"
+}

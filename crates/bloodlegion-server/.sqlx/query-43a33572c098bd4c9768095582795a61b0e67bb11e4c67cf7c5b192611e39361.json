@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO bosses (zone, name) VALUES ('barrow-deeps', 'Barrow King'), ('onyxias-lair', 'Old Onyxia'), ('hyjal-summit', 'Old Bandalar')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "43a33572c098bd4c9768095582795a61b0e67bb11e4c67cf7c5b192611e39361"
+}

@@ -12,14 +12,14 @@ use crate::users::User;
 use crate::{Result, State};
 
 use super::{
-    Attendee, Boss, BossDetail, BossInput, Drop, Item, ItemDetail, ItemInput, LootEntry,
-    LootFilter, LootInput, LootUpdate, Placement, Raid, RaidDetail, RaidError, RaidInput, calendar,
-    catalog, effects, priorities,
+    Attendee, Boss, BossDetail, Drop, Item, ItemDetail, ItemInput, LootEntry, LootFilter,
+    LootInput, LootUpdate, Placement, Raid, RaidDetail, RaidError, RaidInput, calendar, catalog,
+    effects, priorities,
 };
 
 /// `GET /api/raids/zones`: the raid zones and their sizes. Public, like the class catalog.
 async fn zones() -> Json<&'static [catalog::Zone]> {
-    Json(catalog::ZONES)
+    Json(catalog::ZONES.as_slice())
 }
 
 /// `GET /api/raids/effects`: what each class, spec, and talent brings a raid, for the raid
@@ -230,16 +230,6 @@ async fn list_bosses(state: State, _user: User) -> Result<Json<Vec<Boss>>> {
     Ok(Json(super::bosses(&state.pool).await?))
 }
 
-async fn create_boss(
-    state: State,
-    _: SameOrigin,
-    _officer: Officer,
-    Json(input): Json<BossInput>,
-) -> Result<(StatusCode, Json<Boss>), RaidError> {
-    let boss = super::create_boss(&state.pool, &input).await?;
-    Ok((StatusCode::CREATED, Json(boss)))
-}
-
 async fn boss_detail(
     state: State,
     _user: User,
@@ -255,33 +245,6 @@ async fn boss_items(
     Path(id): Path<i64>,
 ) -> Result<Json<Vec<Drop>>, RaidError> {
     Ok(Json(super::boss_items(&state.pool, id).await?))
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct RenameInput {
-    name: String,
-}
-
-async fn rename_boss(
-    state: State,
-    _: SameOrigin,
-    _officer: Officer,
-    Path(id): Path<i64>,
-    Json(input): Json<RenameInput>,
-) -> Result<Json<Boss>, RaidError> {
-    Ok(Json(
-        super::rename_boss(&state.pool, id, &input.name).await?,
-    ))
-}
-
-async fn delete_boss(
-    state: State,
-    _: SameOrigin,
-    _officer: Officer,
-    Path(id): Path<i64>,
-) -> Result<StatusCode, RaidError> {
-    super::delete_boss(&state.pool, id).await?;
-    Ok(StatusCode::NO_CONTENT)
 }
 
 /* --- items --- */
@@ -408,11 +371,8 @@ pub fn router() -> Router<State> {
             "/loot/{id}",
             axum::routing::put(update_loot).delete(delete_loot),
         )
-        .route("/bosses", get(list_bosses).post(create_boss))
-        .route(
-            "/bosses/{id}",
-            get(boss_detail).put(rename_boss).delete(delete_boss),
-        )
+        .route("/bosses", get(list_bosses))
+        .route("/bosses/{id}", get(boss_detail))
         .route("/bosses/{id}/items", get(boss_items))
         .route(
             "/loot-priorities",

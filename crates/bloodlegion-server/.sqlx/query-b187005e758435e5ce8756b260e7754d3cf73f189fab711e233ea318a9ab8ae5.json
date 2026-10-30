@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO bosses (zone, name, position)\n        SELECT * FROM UNNEST($1::text[], $2::text[], $3::int[])\n        ON CONFLICT (zone, name) DO UPDATE SET position = EXCLUDED.position\n        RETURNING (xmax = 0) AS \"inserted!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "inserted!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray",
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b187005e758435e5ce8756b260e7754d3cf73f189fab711e233ea318a9ab8ae5"
+}
