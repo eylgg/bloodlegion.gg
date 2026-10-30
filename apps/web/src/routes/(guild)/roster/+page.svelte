@@ -31,6 +31,10 @@
 		}))
 	);
 
+	// A member's main's class color, for the edge of their card; grey without a main.
+	const classColor = (cls: string | undefined) =>
+		data.classes.find((c) => c.slug === cls)?.color ?? 'var(--grey-solid)';
+
 	// Mirrors the backend's `may_set_rank`, so the picker only appears where it can work.
 	function canSetRank(member: Member): boolean {
 		if (data.user.is_superuser) return true;
@@ -87,20 +91,33 @@
 			{#each group.members as member (member.id)}
 				{@const main = member.characters.find((c) => c.is_main)}
 				{@const alts = member.characters.filter((c) => !c.is_main)}
-				<li>
-					<div class="who">
-						{#if main}
+				<li style:--class-color={classColor(main?.class)}>
+					<div class="head">
+						<span class="username">{member.username}</span>
+						{#if canSetRank(member)}
+							<select
+								aria-label="Rank of {member.username}"
+								value={member.guild_rank}
+								onchange={(event) => setRank(member, event.currentTarget.value as Rank)}
+							>
+								{#each rankChoices() as rank (rank)}
+									<option value={rank}>{RANK_LABEL[rank]}</option>
+								{/each}
+							</select>
+						{/if}
+					</div>
+					{#if main}
+						<div class="main">
 							<CharacterLink
 								id={main.id}
 								firstName={main.first_name}
 								lastName={main.last_name}
 								cls={main.class}
 							/>
-						{:else}
-							<span class="muted">No main yet</span>
-						{/if}
-						<span class="username">{member.username}</span>
-					</div>
+						</div>
+					{:else}
+						<p class="none">No characters yet</p>
+					{/if}
 					{#if alts.length > 0}
 						<div class="alts">
 							{#each alts as alt (alt.id)}
@@ -112,17 +129,6 @@
 								/>
 							{/each}
 						</div>
-					{/if}
-					{#if canSetRank(member)}
-						<select
-							aria-label="Rank of {member.username}"
-							value={member.guild_rank}
-							onchange={(event) => setRank(member, event.currentTarget.value as Rank)}
-						>
-							{#each rankChoices() as rank (rank)}
-								<option value={rank}>{RANK_LABEL[rank]}</option>
-							{/each}
-						</select>
 					{/if}
 				</li>
 			{/each}
@@ -193,28 +199,52 @@
 		padding: var(--space-3) var(--space-4);
 		background-color: var(--grey-bg);
 		border: 1px solid var(--grey-surface);
+		border-left: 3px solid var(--class-color);
 		border-radius: var(--radius-lg);
 	}
 
-	.who {
+	/* The person first: their name, with the rank picker beside it for officers. */
+	.head {
 		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
+		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-2);
+		min-height: 1.75rem;
 	}
 
 	.username {
-		color: var(--grey-text);
-		font-family: var(--font-mono);
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		color: var(--foreground);
+		font-size: var(--text-lg);
+		font-weight: 700;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* Compact beside the name, not the full width forms give a select. */
+	.head select {
+		flex: none;
+		width: auto;
 		font-size: var(--text-sm);
 	}
 
+	.none {
+		margin: 0;
+		color: var(--grey-text);
+		font-size: var(--text-sm);
+		font-style: italic;
+	}
+
+	/* One a line, smaller than the main: that is what marks them as alts. */
 	.alts {
 		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-1) var(--space-3);
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--space-1);
+		padding-top: var(--space-2);
 		font-size: var(--text-sm);
-		opacity: 0.75;
+		border-top: 1px solid var(--grey-surface);
 	}
 </style>
