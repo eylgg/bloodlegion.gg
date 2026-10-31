@@ -236,6 +236,9 @@ export type Faction = 'alliance' | 'horde';
 /** A WoW: Forever race, from `GET /api/wow/races`: Classic's eight and the two Skyborne. */
 export type Race = { slug: string; name: string; faction: Faction };
 
+/** A character's sex, which picks its race's portrait. */
+export type Sex = 'female' | 'male';
+
 /* --- the guild --- */
 
 /** A guild rank, highest first (see `RANKS`). Leaders and officers run the guild's records. */
@@ -263,6 +266,7 @@ export type GuildCharacter = {
 	class: string;
 	/** Its race's slug, or null while nobody has recorded it. */
 	race: string | null;
+	sex: Sex;
 	is_main: boolean;
 	/** The specs it plays, its main (if it has one) first. */
 	specs: CharacterSpec[];
@@ -282,6 +286,7 @@ export type GuildCharacterInput = {
 	class: string;
 	/** Its race's slug, or null for none recorded. Sent with every save: leaving it out clears it. */
 	race: string | null;
+	sex: Sex;
 	is_main: boolean;
 	/** Officers only: omit for yourself, a member's id, or null for an unclaimed character. */
 	user_id?: number | null;

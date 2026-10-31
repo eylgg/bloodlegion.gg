@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { api, errorMessage } from '$lib/api';
 	import { RANKS, RANK_GROUP, RANK_LABEL, RAIDING_RANKS } from '$lib/guild';
-	import { classIcon } from '$lib/wow/icons';
+	import { classIcon, raceIcon } from '$lib/wow/icons';
 	import Alert from '$lib/components/Alert.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import type { Member, Rank } from '$lib/types';
@@ -34,6 +34,8 @@
 	// A member's main's class color, for the edge of their card; grey without a main.
 	const classColor = (cls: string | undefined) =>
 		data.classes.find((c) => c.slug === cls)?.color ?? 'var(--grey-solid)';
+
+	const findRace = (slug: string | null) => data.races.find((r) => r.slug === slug);
 
 	// Mirrors the backend's `may_set_rank`, so the picker only appears where it can work.
 	function canSetRank(member: Member): boolean {
@@ -107,7 +109,17 @@
 						{/if}
 					</div>
 					{#if main}
+						{@const race = findRace(main.race)}
 						<div class="main">
+							{#if race}
+								<img
+									src={raceIcon(race.slug, main.sex)}
+									alt={race.name}
+									title={race.name}
+									width="18"
+									height="18"
+								/>
+							{/if}
 							<CharacterLink
 								id={main.id}
 								firstName={main.first_name}
@@ -228,6 +240,18 @@
 		flex: none;
 		width: auto;
 		font-size: var(--text-sm);
+	}
+
+	/* The main's race icon, then its class icon and name: the icons alike. */
+	.main {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+	}
+
+	.main img {
+		display: block;
+		border-radius: var(--radius-sm);
 	}
 
 	.none {

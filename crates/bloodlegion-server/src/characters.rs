@@ -26,6 +26,7 @@ pub struct Character {
     pub class: String,
     /// Its race's slug (`wow::catalog::RACES`), or `None` while nobody has recorded it.
     pub race: Option<String>,
+    pub sex: Sex,
     pub is_main: bool,
     /// The specs it plays, its main (if it has one) first, then in the catalog's order.
     pub specs: sqlx::types::Json<Vec<CharacterSpec>>,
@@ -44,12 +45,22 @@ pub struct CharacterInput {
     /// Its race's slug; absent, `null`, or empty for none recorded.
     #[serde(default)]
     pub race: Option<String>,
+    pub sex: Sex,
     #[serde(default)]
     pub is_main: bool,
     /// Who plays it: absent for the caller themselves; an officer may name any member, or send
     /// `null` for an unclaimed character.
     #[serde(default, deserialize_with = "crate::api::double_option")]
     pub user_id: Option<Option<UserId>>,
+}
+
+/// A character's sex, which picks its race's portrait.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, sqlx::Type)]
+#[sqlx(type_name = "text", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+pub enum Sex {
+    Female,
+    Male,
 }
 
 /// A spec a character plays: any of its class's, with the notable talents it takes there (see
@@ -187,6 +198,7 @@ struct Valid {
     last_name: String,
     class: &'static str,
     race: Option<&'static str>,
+    sex: Sex,
     user_id: Option<UserId>,
     is_main: bool,
 }
@@ -222,6 +234,7 @@ fn validate(
         last_name: name(&input.last_name)?,
         class: class.slug,
         race,
+        sex: input.sex,
         // An unclaimed character is nobody's main.
         is_main: input.is_main && user_id.is_some(),
         user_id,
@@ -526,6 +539,7 @@ pub(crate) mod tests {
             last_name: last.into(),
             class: class.into(),
             race: None,
+            sex: Sex::Female,
             is_main,
             user_id: None,
         }
@@ -554,6 +568,28 @@ pub(crate) mod tests {
         sky.race = Some("high-order-skyborne".into());
         let again = update(&pool, &ey, made.id, &sky).await.unwrap();
         assert_eq!(again.race.as_deref(), Some("high-order-skyborne"));
+    }
+
+    #[sqlx::test]
+    async fn records_a_sex(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let mut sky = input("Aerin", "Gale", "shaman", false);
+        let made = add(&pool, &ey, sky.clone()).await.unwrap();
+        assert_eq!(made.sex, Sex::Female);
+
+        sky.sex = Sex::Male;
+        let changed = update(&pool, &ey, made.id, &sky).await.unwrap();
+        assert_eq!(changed.sex, Sex::Male);
+
+        // Required, and only the two.
+        let json = |sex: &str| {
+            serde_json::from_str::<CharacterInput>(&format!(
+                r#"{{"first_name":"A","last_name":"B","class":"mage"{sex}}}"#
+            ))
+        };
+        assert!(json("").is_err());
+        assert!(json(r#","sex":"other""#).is_err());
+        assert_eq!(json(r#","sex":"male""#).unwrap().sex, Sex::Male);
     }
 
     #[test]

@@ -101,6 +101,7 @@
 					last_name: character.last_name,
 					class: character.class,
 					race: character.race,
+					sex: character.sex,
 					is_main: true
 				})
 			);

@@ -1,4 +1,4 @@
-import type { Role } from '$lib/types';
+import type { Role, Sex } from '$lib/types';
 
 /**
  * Blizzard's own artwork, vendored under `static/wow` (see the backend's `wow::catalog` for
@@ -8,6 +8,9 @@ import type { Role } from '$lib/types';
 export const classIcon = (classSlug: string) => `/wow/classes/${classSlug}.jpg`;
 export const specIcon = (classSlug: string, specSlug: string) =>
 	`/wow/specs/${classSlug}-${specSlug}.jpg`;
+/** A race's portrait, from Forever's character creation; both Skyborne share the one it has. */
+export const raceIcon = (raceSlug: string, sex: Sex) =>
+	`/wow/races/${raceSlug.endsWith('-skyborne') ? 'skyborne' : raceSlug}-${sex}.jpg`;
 
 export const ROLES: Role[] = ['tank', 'healer', 'melee', 'ranged'];
 

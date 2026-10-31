@@ -2,7 +2,7 @@ use sqlx::{PgConnection, PgPool};
 
 use sqlx::types::Json;
 
-use super::{Character, CharacterSpec, Note, NoteListing, Valid, order_specs};
+use super::{Character, CharacterSpec, Note, NoteListing, Sex, Valid, order_specs};
 use crate::users::UserId;
 
 pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
@@ -11,7 +11,7 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.race, c.is_main AS "is_main!",
+               c.race, c.sex AS "sex!: Sex", c.is_main AS "is_main!",
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -43,7 +43,7 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.race, c.is_main AS "is_main!",
+               c.race, c.sex AS "sex!: Sex", c.is_main AS "is_main!",
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -100,8 +100,8 @@ pub(super) async fn insert(
 ) -> sqlx::Result<i64> {
     sqlx::query_scalar!(
         r#"
-        INSERT INTO characters (user_id, first_name, last_name, class, race, is_main)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO characters (user_id, first_name, last_name, class, race, sex, is_main)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
         "#,
         character.user_id.map(|id| id.0),
@@ -109,6 +109,7 @@ pub(super) async fn insert(
         character.last_name,
         character.class,
         character.race,
+        character.sex as Sex,
         is_main,
     )
     .fetch_one(&mut *conn)
@@ -134,7 +135,8 @@ pub(super) async fn update(
     sqlx::query!(
         r#"
         UPDATE characters
-        SET user_id = $2, first_name = $3, last_name = $4, class = $5, race = $6, is_main = $7
+        SET user_id = $2, first_name = $3, last_name = $4, class = $5, race = $6, sex = $7,
+            is_main = $8
         WHERE id = $1
         "#,
         id,
@@ -143,6 +145,7 @@ pub(super) async fn update(
         character.last_name,
         character.class,
         character.race,
+        character.sex as Sex,
         character.is_main,
     )
     .execute(&mut *conn)

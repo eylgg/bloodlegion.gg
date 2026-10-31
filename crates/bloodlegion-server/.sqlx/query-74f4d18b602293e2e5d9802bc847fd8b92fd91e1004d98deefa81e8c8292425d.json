@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO characters (user_id, first_name, last_name, class, race, is_main)\n        VALUES ($1, $2, $3, $4, $5, $6)\n        RETURNING id\n        ",
+  "query": "\n        INSERT INTO characters (user_id, first_name, last_name, class, race, sex, is_main)\n        VALUES ($1, $2, $3, $4, $5, $6, $7)\n        RETURNING id\n        ",
   "describe": {
     "columns": [
       {
@@ -22,6 +22,7 @@
         "Text",
         "Text",
         "Text",
+        "Text",
         "Bool"
       ]
     },
@@ -29,5 +30,5 @@
       false
     ]
   },
-  "hash": "bed7d1fd9299cc711131c11798b9f1bc793de29478c6e3e0e27b2958177edc4d"
+  "hash": "74f4d18b602293e2e5d9802bc847fd8b92fd91e1004d98deefa81e8c8292425d"
 }

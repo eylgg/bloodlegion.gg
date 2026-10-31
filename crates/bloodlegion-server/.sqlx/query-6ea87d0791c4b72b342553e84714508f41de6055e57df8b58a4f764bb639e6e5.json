@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE characters\n        SET user_id = $2, first_name = $3, last_name = $4, class = $5, race = $6, sex = $7,\n            is_main = $8\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6ea87d0791c4b72b342553e84714508f41de6055e57df8b58a4f764bb639e6e5"
+}

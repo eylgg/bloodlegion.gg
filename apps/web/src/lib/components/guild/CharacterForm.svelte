@@ -5,7 +5,14 @@
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import SpecsPicker from './SpecsPicker.svelte';
-	import type { GuildCharacter, GuildCharacterInput, Race, SpecsInput, WowClass } from '$lib/types';
+	import type {
+		GuildCharacter,
+		GuildCharacterInput,
+		Race,
+		Sex,
+		SpecsInput,
+		WowClass
+	} from '$lib/types';
 
 	/**
 	 * Adds or edits a character. `owners` turns on the officers' owner picker: any member, or
@@ -44,6 +51,8 @@
 	// svelte-ignore state_referenced_locally
 	let raceSlug = $state(character?.race ?? '');
 	// svelte-ignore state_referenced_locally
+	let sex = $state<Sex>(character?.sex ?? 'female');
+	// svelte-ignore state_referenced_locally
 	let isMain = $state(character?.is_main ?? firstIsMain);
 	// The owner picker's value: a member's id, or '' for nobody.
 	// svelte-ignore state_referenced_locally
@@ -79,6 +88,7 @@
 			last_name: lastName,
 			class: classSlug,
 			race: raceSlug || null,
+			sex,
 			is_main: isMain && (!owners || owner !== '')
 		};
 		if (owners) body.user_id = owner === '' ? null : Number(owner);
@@ -112,19 +122,28 @@
 		</label>
 	</div>
 
-	<label class="field">
-		Race
-		<select bind:value={raceSlug}>
-			<option value="">Not recorded</option>
-			{#each FACTIONS as { faction, label } (faction)}
-				<optgroup {label}>
-					{#each races.filter((r) => r.faction === faction) as race (race.slug)}
-						<option value={race.slug}>{race.name}</option>
-					{/each}
-				</optgroup>
-			{/each}
-		</select>
-	</label>
+	<div class="row">
+		<label class="field">
+			Race
+			<select bind:value={raceSlug}>
+				<option value="">Not recorded</option>
+				{#each FACTIONS as { faction, label } (faction)}
+					<optgroup {label}>
+						{#each races.filter((r) => r.faction === faction) as race (race.slug)}
+							<option value={race.slug}>{race.name}</option>
+						{/each}
+					</optgroup>
+				{/each}
+			</select>
+		</label>
+		<label class="field">
+			Sex
+			<select bind:value={sex}>
+				<option value="female">Female</option>
+				<option value="male">Male</option>
+			</select>
+		</label>
+	</div>
 
 	<fieldset>
 		<legend>Class</legend>
