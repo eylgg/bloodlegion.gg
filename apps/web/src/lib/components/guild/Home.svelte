@@ -48,7 +48,7 @@
 <header class="hero">
 	<img src="/logo.svg" alt="Blood Legion" width="1024" height="1024" fetchpriority="high" />
 	{#if !launched}
-		<!-- Centered in the room beside the logo; the countdown keeps its own lines left-aligned. -->
+		<!-- Centered under the logo on a phone, and in the room beside it on a wider screen. -->
 		<div class="launch">
 			<LaunchCountdown />
 		</div>
@@ -129,17 +129,23 @@
 		animation: reveal 600ms ease-out both;
 	}
 
+	/* Under the logo on a phone, centered like it; beside it on a wider screen, its lines
+	   left-aligned in the room there. */
 	.launch {
+		--units-justify: center;
 		flex: 1;
 		display: flex;
 		justify-content: center;
-		text-align: left;
 	}
 
 	@media (min-width: 48rem) {
 		.hero {
 			justify-content: flex-start;
 			text-align: left;
+		}
+
+		.launch {
+			--units-justify: flex-start;
 		}
 	}
 

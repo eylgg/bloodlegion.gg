@@ -37,6 +37,38 @@
 	const isActive = (href: string) =>
 		page.url.pathname === href || page.url.pathname.startsWith(href + '/');
 
+	// On a phone the links scroll sideways: fade the edge and show an arrow on whichever side has
+	// more, so it is plain there is more to see.
+	let nav = $state<HTMLElement>();
+	let more = $state({ left: false, right: false });
+
+	function measure() {
+		if (!nav) return;
+		more = {
+			left: nav.scrollLeft > 1,
+			right: nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1
+		};
+	}
+
+	$effect(() => {
+		if (!nav) return;
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(nav);
+		return () => observer.disconnect();
+	});
+
+	// The current page's link in view, rather than scrolled off past the edge.
+	$effect(() => {
+		void page.url.pathname;
+		nav
+			?.querySelector('[aria-current="page"]')
+			?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+	});
+
+	const nudge = (direction: number) =>
+		nav?.scrollBy({ left: direction * nav.clientWidth * 0.6, behavior: 'smooth' });
+
 	async function signOut() {
 		signingOut = true;
 		try {
@@ -47,20 +79,59 @@
 	}
 </script>
 
+{#snippet chevron()}
+	<svg viewBox="0 0 8 12" width="8" height="12" aria-hidden="true">
+		<path
+			d="M1.5 1l5 5-5 5"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="1.75"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		/>
+	</svg>
+{/snippet}
+
 <div class="shell">
 	<header>
 		<a href={resolve('/')} class="brand">
 			<img src="/wordmark-claws.svg" alt="Blood Legion" width="817" height="221" />
 		</a>
-		<nav aria-label="Guild">
-			{#each links as link (link.href)}
-				<a
-					href={link.href}
-					class:admin={'admin' in link}
-					aria-current={isActive(link.href) ? 'page' : undefined}>{link.label}</a
+		<div class="links" class:more-left={more.left} class:more-right={more.right}>
+			<nav aria-label="Guild" bind:this={nav} onscroll={measure}>
+				{#each links as link (link.href)}
+					<a
+						href={link.href}
+						class:admin={'admin' in link}
+						aria-current={isActive(link.href) ? 'page' : undefined}>{link.label}</a
+					>
+				{/each}
+			</nav>
+			<!-- Only a hint for the eye and the pointer: the links themselves are all reachable by
+			     keyboard. -->
+			{#if more.left}
+				<button
+					type="button"
+					class="more prev"
+					tabindex="-1"
+					aria-hidden="true"
+					onclick={() => nudge(-1)}
 				>
-			{/each}
-		</nav>
+					{@render chevron()}
+				</button>
+			{/if}
+			{#if more.right}
+				<button
+					type="button"
+					class="more next"
+					tabindex="-1"
+					aria-hidden="true"
+					onclick={() => nudge(1)}
+				>
+					{@render chevron()}
+				</button>
+			{/if}
+		</div>
 		<div class="account">
 			<a
 				href={resolve('/profile')}
@@ -98,13 +169,69 @@
 		height: auto;
 	}
 
+	.links {
+		--fade-left: 0px;
+		--fade-right: 0px;
+		position: relative;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.links.more-left {
+		--fade-left: 4rem;
+	}
+
+	.links.more-right {
+		--fade-right: 4rem;
+	}
+
 	nav {
 		display: flex;
-		flex: 1;
 		gap: var(--space-1);
-		/* On a phone the links scroll sideways rather than wrapping into a wall. */
+		/* On a phone the links scroll sideways rather than wrapping into a wall, fading out at
+		   whichever edge has more past it. */
 		overflow-x: auto;
 		scrollbar-width: none;
+		mask-image: linear-gradient(
+			to right,
+			transparent,
+			#000 var(--fade-left),
+			#000 calc(100% - var(--fade-right)),
+			transparent
+		);
+	}
+
+	nav::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* Over the faded edge, which the arrow sits in. */
+	.more {
+		position: absolute;
+		inset-block: 0;
+		display: flex;
+		align-items: center;
+		padding: 0 var(--space-1);
+		color: var(--grey-text-active);
+		background: none;
+		border: 0;
+		cursor: pointer;
+	}
+
+	.more:hover {
+		color: var(--foreground);
+	}
+
+	.more.prev {
+		left: 0;
+	}
+
+	.more.prev svg {
+		transform: scaleX(-1);
+	}
+
+	.more.next {
+		right: 0;
 	}
 
 	nav a,
@@ -167,7 +294,7 @@
 	}
 
 	@media (max-width: 48rem) {
-		nav {
+		.links {
 			order: 3;
 			flex-basis: 100%;
 		}

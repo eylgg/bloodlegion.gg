@@ -76,6 +76,8 @@
 		margin: 0;
 		padding: 0;
 		display: flex;
+		/* Left by default; a page centering the countdown sets `--units-justify: center`. */
+		justify-content: var(--units-justify, flex-start);
 		gap: var(--space-2);
 	}
 
