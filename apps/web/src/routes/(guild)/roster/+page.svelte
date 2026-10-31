@@ -4,7 +4,7 @@
 	import { classIcon, raceIcon } from '$lib/wow/icons';
 	import Alert from '$lib/components/Alert.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
-	import type { Member, Rank } from '$lib/types';
+	import type { GuildCharacter, Member, Rank } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -37,6 +37,9 @@
 
 	const findRace = (slug: string | null) => data.races.find((r) => r.slug === slug);
 
+	// For now only officers see alts; members see each other's mains.
+	const showAlts = $derived(data.officer);
+
 	// Mirrors the backend's `may_set_rank`, so the picker only appears where it can work.
 	function canSetRank(member: Member): boolean {
 		if (data.user.is_superuser) return true;
@@ -60,6 +63,23 @@
 		}
 	}
 </script>
+
+<!-- A character as the roster shows it: its race's icon (when recorded), then its class icon and name. -->
+{#snippet character(c: GuildCharacter)}
+	{@const race = findRace(c.race)}
+	<span class="character">
+		{#if race}
+			<img
+				src={raceIcon(race.slug, c.sex)}
+				alt={race.name}
+				title={race.name}
+				width="18"
+				height="18"
+			/>
+		{/if}
+		<CharacterLink id={c.id} firstName={c.first_name} lastName={c.last_name} cls={c.class} />
+	</span>
+{/snippet}
 
 <svelte:head>
 	<title>Roster | Blood Legion</title>
@@ -88,11 +108,14 @@
 
 {#each byRank as group (group.rank)}
 	<section>
-		<h2>{RANK_GROUP[group.rank]} <span class="count">{group.members.length}</span></h2>
+		<h2>
+			{group.members.length === 1 ? RANK_LABEL[group.rank] : RANK_GROUP[group.rank]}
+			<span class="count">{group.members.length}</span>
+		</h2>
 		<ul class="members">
 			{#each group.members as member (member.id)}
 				{@const main = member.characters.find((c) => c.is_main)}
-				{@const alts = member.characters.filter((c) => !c.is_main)}
+				{@const alts = showAlts ? member.characters.filter((c) => !c.is_main) : []}
 				<li style:--class-color={classColor(main?.class)}>
 					<div class="head">
 						<span class="username">{member.username}</span>
@@ -109,37 +132,13 @@
 						{/if}
 					</div>
 					{#if main}
-						{@const race = findRace(main.race)}
-						<div class="main">
-							{#if race}
-								<img
-									src={raceIcon(race.slug, main.sex)}
-									alt={race.name}
-									title={race.name}
-									width="18"
-									height="18"
-								/>
-							{/if}
-							<CharacterLink
-								id={main.id}
-								firstName={main.first_name}
-								lastName={main.last_name}
-								cls={main.class}
-							/>
-						</div>
+						<div class="main">{@render character(main)}</div>
 					{:else}
 						<p class="none">No characters yet</p>
 					{/if}
 					{#if alts.length > 0}
 						<div class="alts">
-							{#each alts as alt (alt.id)}
-								<CharacterLink
-									id={alt.id}
-									firstName={alt.first_name}
-									lastName={alt.last_name}
-									cls={alt.class}
-								/>
-							{/each}
+							{#each alts as alt (alt.id)}{@render character(alt)}{/each}
 						</div>
 					{/if}
 				</li>
@@ -242,14 +241,14 @@
 		font-size: var(--text-sm);
 	}
 
-	/* The main's race icon, then its class icon and name: the icons alike. */
-	.main {
-		display: flex;
+	/* A race icon, then the class icon and name: the icons alike. */
+	.character {
+		display: inline-flex;
 		align-items: center;
 		gap: var(--space-1);
 	}
 
-	.main img {
+	.character img {
 		display: block;
 		border-radius: var(--radius-sm);
 	}
