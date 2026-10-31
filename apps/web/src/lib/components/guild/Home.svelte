@@ -116,7 +116,7 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: center;
-		gap: var(--space-2) var(--space-6);
+		gap: var(--space-8) var(--space-6);
 		text-align: center;
 	}
 
