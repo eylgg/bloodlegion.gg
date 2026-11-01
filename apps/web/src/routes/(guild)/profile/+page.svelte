@@ -222,8 +222,8 @@
 {#if data.member}<section>
 		<h2>Your characters</h2>
 		<p class="muted">
-			First and last name, as they are in game. Officers record loot and attendance against these{#if !data.officer},
-				and add or remove them for you{/if}.
+			First and last name, as they are in game. Officers record loot and attendance against these{#if !data.user.is_superuser},
+				and the administrator adds them for you{/if}.
 		</p>
 
 		<ul class="characters">
@@ -272,7 +272,9 @@
 			{:else}
 				{#if !open}
 					<li class="muted">
-						{data.officer ? 'No characters yet. Start with your main.' : 'No characters yet.'}
+						{data.user.is_superuser
+							? 'No characters yet. Start with your main.'
+							: 'No characters yet.'}
 					</li>
 				{/if}
 			{/each}
@@ -287,7 +289,7 @@
 					oncancel={() => (open = false)}
 				/>
 			{/key}
-		{:else if data.officer}
+		{:else if data.user.is_superuser}
 			<div>
 				<Button
 					variant="primary"

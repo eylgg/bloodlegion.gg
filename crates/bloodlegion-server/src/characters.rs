@@ -146,11 +146,18 @@ pub enum CharacterError {
         detail = "Only the character's player or an officer can change it."
     )]
     Forbidden,
-    #[error("only officers add and remove characters")]
+    #[error("only the admin adds characters")]
     #[problem(
         status = FORBIDDEN,
         title = "Forbidden",
-        detail = "Only officers can add and remove characters."
+        detail = "Only the administrator can add characters."
+    )]
+    AdminOnly,
+    #[error("only officers remove characters")]
+    #[problem(
+        status = FORBIDDEN,
+        title = "Forbidden",
+        detail = "Only officers can remove characters."
     )]
     OfficersOnly,
     #[error("character has history")]
@@ -254,19 +261,28 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
     db::list(pool).await
 }
 
+/// The characters `actor` may see, by name. Unclaimed ones (pugs) are the admin's, except that an
+/// officer who records raids and loot may ask for them (`unclaimed`) where they pick attendees.
+pub async fn visible(pool: &PgPool, actor: &User, unclaimed: bool) -> sqlx::Result<Vec<Character>> {
+    let pugs = actor.is_superuser || (unclaimed && actor.is_officer());
+    let mut characters = db::list(pool).await?;
+    characters.retain(|c| pugs || c.user_id.is_some());
+    Ok(characters)
+}
+
 pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
     db::find(pool, id).await
 }
 
-/// Adds a character (officers only). A member's first character becomes their main whether or
+/// Adds a character (the admin only). A member's first character becomes their main whether or
 /// not they asked; declaring another main moves the title.
 pub async fn create(
     pool: &PgPool,
     actor: &User,
     input: &CharacterInput,
 ) -> Result<Character, CharacterError> {
-    if !actor.is_officer() {
-        return external(CharacterError::OfficersOnly);
+    if !actor.is_superuser {
+        return external(CharacterError::AdminOnly);
     }
     let valid = validate(actor, input, None)?;
     let mut tx = pool.begin().await?;
@@ -518,9 +534,9 @@ pub async fn raiding_notes(pool: &PgPool) -> sqlx::Result<Vec<NoteListing>> {
 pub(crate) mod tests {
     use super::*;
     use crate::guild::Rank;
-    use crate::guild::tests::member;
+    use crate::guild::tests::{admin, member};
 
-    /// An officer adds `owner`'s character, as only officers can.
+    /// The admin adds `owner`'s character, as only the admin can.
     pub(crate) async fn add(
         pool: &PgPool,
         owner: &User,
@@ -528,9 +544,9 @@ pub(crate) mod tests {
     ) -> Result<Character, CharacterError> {
         static ADDERS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let n = ADDERS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let officer = member(pool, &format!("Adder{n}"), Rank::Officer).await;
+        let admin = admin(pool, &format!("Adder{n}")).await;
         input.user_id = Some(Some(owner.id));
-        create(pool, &officer, &input).await
+        create(pool, &admin, &input).await
     }
 
     pub(crate) fn input(first: &str, last: &str, class: &str, is_main: bool) -> CharacterInput {
@@ -651,32 +667,65 @@ pub(crate) mod tests {
             Err(Error::External(CharacterError::Forbidden))
         ));
 
-        // Members neither add nor remove characters, even their own; officers do.
-        assert!(matches!(
-            create(
-                &pool,
-                &ey,
-                &input("Uther", "Lightbringer", "paladin", false)
-            )
-            .await,
-            Err(Error::External(CharacterError::OfficersOnly))
-        ));
+        // Only the admin adds characters, not even an officer; officers remove them, members don't,
+        // even their own.
+        let officer = member(&pool, "Officer", Rank::Officer).await;
+        for actor in [&ey, &officer] {
+            assert!(matches!(
+                create(
+                    &pool,
+                    actor,
+                    &input("Uther", "Lightbringer", "paladin", false)
+                )
+                .await,
+                Err(Error::External(CharacterError::AdminOnly))
+            ));
+        }
         assert!(matches!(
             delete(&pool, &ey, first.id).await,
             Err(Error::External(CharacterError::OfficersOnly))
         ));
-        let officer = member(&pool, "Officer", Rank::Officer).await;
         delete(&pool, &officer, first.id).await.unwrap();
     }
 
     #[sqlx::test]
-    async fn officers_add_unclaimed_characters_and_reassign(pool: PgPool) {
+    async fn only_the_admin_sees_unclaimed_characters_unless_an_officer_asks(pool: PgPool) {
+        let admin = admin(&pool, "Admin").await;
+        let officer = member(&pool, "Officer", Rank::Officer).await;
+        let raider = member(&pool, "Raider", Rank::Raider).await;
+        add(&pool, &raider, input("Arthas", "Menethil", "paladin", true))
+            .await
+            .unwrap();
+        let mut pug = input("Random", "Pug", "rogue", false);
+        pug.user_id = Some(None);
+        create(&pool, &admin, &pug).await.unwrap();
+
+        let names = |characters: Vec<Character>| -> Vec<String> {
+            characters.into_iter().map(|c| c.first_name).collect()
+        };
+        let seen = |actor, unclaimed| visible(&pool, actor, unclaimed);
+        assert_eq!(
+            names(seen(&admin, false).await.unwrap()),
+            ["Arthas", "Random"]
+        );
+        assert_eq!(names(seen(&officer, false).await.unwrap()), ["Arthas"]);
+        assert_eq!(
+            names(seen(&officer, true).await.unwrap()),
+            ["Arthas", "Random"]
+        );
+        assert_eq!(names(seen(&raider, false).await.unwrap()), ["Arthas"]);
+        assert_eq!(names(seen(&raider, true).await.unwrap()), ["Arthas"]);
+    }
+
+    #[sqlx::test]
+    async fn the_admin_adds_unclaimed_characters_and_officers_reassign(pool: PgPool) {
+        let admin = admin(&pool, "Admin").await;
         let officer = member(&pool, "Officer", Rank::Officer).await;
         let raider = member(&pool, "Raider", Rank::Raider).await;
 
         let mut pug = input("Random", "Pug", "rogue", true);
         pug.user_id = Some(None);
-        let pug = create(&pool, &officer, &pug).await.unwrap();
+        let pug = create(&pool, &admin, &pug).await.unwrap();
         assert_eq!(pug.user_id, None);
         assert!(!pug.is_main, "an unclaimed character is nobody's main");
 
@@ -702,7 +751,7 @@ pub(crate) mod tests {
         let mut nobody = input("Ghost", "Owner", "rogue", false);
         nobody.user_id = Some(Some(UserId(999_999)));
         assert!(matches!(
-            create(&pool, &officer, &nobody).await,
+            create(&pool, &admin, &nobody).await,
             Err(Error::External(CharacterError::UnknownMember))
         ));
     }
@@ -854,8 +903,8 @@ pub(crate) mod tests {
         assert_eq!(enhancement.talents, ["enhancing-totems", "stormstrike"]);
 
         // Unseeding removes them, except one with history; a member's own character stays.
-        let officer = member(&pool, "Officer", Rank::Officer).await;
-        create(&pool, &officer, &input("Shaman", "Five", "shaman", false))
+        let admin = admin(&pool, "Admin").await;
+        create(&pool, &admin, &input("Shaman", "Five", "shaman", false))
             .await
             .unwrap();
         let raid = crate::raids::create_raid(

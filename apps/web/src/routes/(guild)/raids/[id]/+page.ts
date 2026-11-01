@@ -12,7 +12,9 @@ export const load: PageLoad = async ({ params, parent, fetch }) => {
 			api.get<Effect[]>('/api/raids/effects', { fetch }),
 			// What officers pick from when recording attendance and loot.
 			officer ? api.get<Item[]>('/api/items', { fetch }) : Promise.resolve([]),
-			officer ? api.get<GuildCharacter[]>('/api/characters', { fetch }) : Promise.resolve([])
+			officer
+				? api.get<GuildCharacter[]>('/api/characters?unclaimed=true', { fetch })
+				: Promise.resolve([])
 		]);
 		return { detail, bosses, effects, items, characters };
 	} catch (err) {

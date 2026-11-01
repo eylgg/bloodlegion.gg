@@ -15,7 +15,7 @@ export const load: PageLoad = async ({ parent, url, fetch }) => {
 	try {
 		const [raids, characters, effects] = await Promise.all([
 			api.get<Raid[]>('/api/raids', { fetch }),
-			api.get<GuildCharacter[]>('/api/characters', { fetch }),
+			api.get<GuildCharacter[]>('/api/characters?unclaimed=true', { fetch }),
 			api.get<Effect[]>('/api/raids/effects', { fetch })
 		]);
 		const param = url.searchParams.get('week');

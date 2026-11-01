@@ -37,9 +37,6 @@
 
 	const findRace = (slug: string | null) => data.races.find((r) => r.slug === slug);
 
-	// For now only officers see alts; members see each other's mains.
-	const showAlts = $derived(data.officer);
-
 	// Mirrors the backend's `may_set_rank`, so the picker only appears where it can work.
 	function canSetRank(member: Member): boolean {
 		if (data.user.is_superuser) return true;
@@ -115,7 +112,7 @@
 		<ul class="members">
 			{#each group.members as member (member.id)}
 				{@const main = member.characters.find((c) => c.is_main)}
-				{@const alts = showAlts ? member.characters.filter((c) => !c.is_main) : []}
+				{@const alts = member.characters.filter((c) => !c.is_main)}
 				<li style:--class-color={classColor(main?.class)}>
 					<div class="head">
 						<span class="username">{member.username}</span>

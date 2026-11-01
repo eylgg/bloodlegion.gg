@@ -291,7 +291,7 @@ mod tests {
     use super::*;
     use crate::Error;
     use crate::characters::tests::input as character;
-    use crate::guild::{Rank, tests::member};
+    use crate::guild::tests::admin;
     use crate::raids::{RaidInput, add_attendees, create_raid, record_loot};
 
     fn item(zone: &str, boss_id: Option<i64>, name: &str) -> PriorityInput {
@@ -316,13 +316,13 @@ mod tests {
     }
 
     async fn characters(pool: &PgPool, names: &[&str]) -> Vec<i64> {
-        let officer = member(pool, "Officer", Rank::Officer).await;
+        let admin = admin(pool, "Admin").await;
         let mut ids = Vec::new();
         for name in names {
             let mut input = character(name, "Line", "mage", false);
             input.user_id = Some(None);
             ids.push(
-                crate::characters::create(pool, &officer, &input)
+                crate::characters::create(pool, &admin, &input)
                     .await
                     .unwrap()
                     .id,

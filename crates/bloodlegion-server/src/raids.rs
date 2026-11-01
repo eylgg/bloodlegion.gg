@@ -928,7 +928,7 @@ mod tests {
 
     /// `count` characters of a fresh member, for filling raids.
     async fn characters(pool: &PgPool, count: usize) -> Vec<i64> {
-        let officer = member(pool, "Officer", Rank::Officer).await;
+        let admin = crate::guild::tests::admin(pool, "Admin").await;
         let mut ids = Vec::new();
         for i in 0..count {
             // Letters only: a two-letter suffix per character.
@@ -939,7 +939,7 @@ mod tests {
             let mut input = character("Raider", &format!("Num{suffix}"), "warrior", false);
             input.user_id = Some(None);
             ids.push(
-                crate::characters::create(pool, &officer, &input)
+                crate::characters::create(pool, &admin, &input)
                     .await
                     .unwrap()
                     .id,
@@ -1469,16 +1469,16 @@ mod tests {
     #[sqlx::test]
     async fn a_player_raids_once_at_a_time_and_a_character_once_a_week(pool: PgPool) {
         use time::macros::datetime;
-        let officer = member(&pool, "Officer", Rank::Officer).await;
+        let admin = crate::guild::tests::admin(&pool, "Admin").await;
         let ey = member(&pool, "Ey", Rank::Raider).await;
         let mut alt = character("Arlen", "Ashvale", "warrior", false);
         alt.user_id = Some(Some(ey.id));
-        let main = crate::characters::create(&pool, &officer, &alt)
+        let main = crate::characters::create(&pool, &admin, &alt)
             .await
             .unwrap();
         let mut second = character("Sela", "Ashvale", "priest", false);
         second.user_id = Some(Some(ey.id));
-        let alt = crate::characters::create(&pool, &officer, &second)
+        let alt = crate::characters::create(&pool, &admin, &second)
             .await
             .unwrap();
 

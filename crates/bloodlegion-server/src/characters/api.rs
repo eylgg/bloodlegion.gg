@@ -1,4 +1,4 @@
-use axum::extract::Path;
+use axum::extract::{Path, Query};
 use axum::http::StatusCode;
 use axum::routing::{get, put};
 use axum::{Json, Router};
@@ -9,9 +9,24 @@ use crate::{Error, Result, State};
 
 use super::{Character, CharacterError, CharacterInput, Note, NoteListing, SpecsInput};
 
-/// `GET /api/characters`: every character, by name. Members only.
-async fn list(state: State, _user: GuildMember) -> Result<Json<Vec<Character>>> {
-    Ok(Json(super::list(&state.pool).await?))
+/// Which characters `GET /api/characters` lists.
+#[derive(Debug, Default, serde::Deserialize)]
+struct ListQuery {
+    /// Include the unclaimed ones (pugs): for an officer picking attendees and loot. The admin
+    /// always gets them; anyone else never does.
+    #[serde(default)]
+    unclaimed: bool,
+}
+
+/// `GET /api/characters?unclaimed=`: every character the caller may see, by name. Members only.
+async fn list(
+    state: State,
+    user: GuildMember,
+    Query(query): Query<ListQuery>,
+) -> Result<Json<Vec<Character>>> {
+    Ok(Json(
+        super::visible(&state.pool, &user, query.unclaimed).await?,
+    ))
 }
 
 /// `POST /api/characters`.

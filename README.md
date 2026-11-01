@@ -185,14 +185,15 @@ the changes.
   Officers set ranks from the roster; only the leader makes or unmakes officers, and nobody sets
   their own.
 - **Characters** have a first and a last name (2 to 24 letters each) and no realm: Forever has
-  rulesets instead, and the guild plays on one (PvP), so a full name is unique across the site.
-  Each has a class and, once recorded, a race: Classic's eight and Forever's Skyborne, Windshaper
-  Skyborne for the Horde and High Order Skyborne for the Alliance (`wow::catalog::RACES`, served
-  at `/api/wow/races`; any race may be any class), and a sex, which picks the race's portrait
-  (`static/wow/races`, from Forever's character creation). Members add their own on their
-  profile, with one main; officers may add anyone's, including a character no account claims (a
-  pug who won loot). A character's notes are written by its player and read by officers
-  (`/notes`).
+  rulesets instead, and the guild plays on one (PvP), so a full name is unique across the site. Each
+  has a class and, once recorded, a race: Classic's eight and Forever's Skyborne, Windshaper
+  Skyborne for the Horde and High Order Skyborne for the Alliance (`wow::catalog::RACES`, served at
+  `/api/wow/races`; any race may be any class), and a sex, which picks the race's portrait
+  (`static/wow/races`, from Forever's character creation). Only the administrator adds them, to a
+  member or to no account (a pug who won loot, which only the administrator is sent, and officers
+  where they record raids and loot: `GET /api/characters?unclaimed=true`); a member edits their own
+  and picks one main, and officers edit or remove anyone's. A character's notes are written by its
+  player and read by officers (`/notes`).
 - **Raids** are one night in a zone, with the characters who came and the loot they won. The zones,
   their sizes, and their bosses are a file in the repository
   (`crates/bloodlegion-server/data/raids.json`): Barrow Deeps (10), Hyjal Summit (20), and Onyxia's

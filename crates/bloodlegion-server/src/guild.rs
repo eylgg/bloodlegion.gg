@@ -224,6 +224,27 @@ pub(crate) mod tests {
         user
     }
 
+    /// A superuser (the admin) for tests, with no rank in the guild.
+    pub(crate) async fn admin(pool: &PgPool, username: &str) -> User {
+        let mut tx = pool.begin().await.unwrap();
+        let user = crate::users::insert_user(
+            &mut tx,
+            &CreateUserPayload {
+                username: username.into(),
+                email: None,
+                first_name: None,
+                last_name: None,
+                is_superuser: true,
+            },
+            false,
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+        assert!(user.is_superuser);
+        user
+    }
+
     #[sqlx::test]
     async fn settings_take_known_time_zones_only(pool: PgPool) {
         let defaults = settings(&pool).await.unwrap();

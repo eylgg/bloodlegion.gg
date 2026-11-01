@@ -14,7 +14,7 @@ export const load: PageLoad = async ({ parent, url, fetch }) => {
 		const [priorities, bosses, characters, raids] = await Promise.all([
 			api.get<LootPriority[]>('/api/loot-priorities', { fetch }),
 			api.get<Boss[]>('/api/bosses', { fetch }),
-			api.get<GuildCharacter[]>('/api/characters', { fetch }),
+			api.get<GuildCharacter[]>('/api/characters?unclaimed=true', { fetch }),
 			api.get<Raid[]>('/api/raids', { fetch })
 		]);
 		const week = Number(url.searchParams.get('week')) || (calendar.current_week?.number ?? 1);
