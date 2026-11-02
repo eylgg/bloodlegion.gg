@@ -73,7 +73,7 @@ impl Files {
 }
 
 #[derive(Parser)]
-#[command(about = "Blood Legion's companion app: sends the addon's guild roster to bloodlegion.gg")]
+#[command(about = "Blood Legion's companion app: sends the addon's guild roster to bloodlegion.com")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -84,10 +84,11 @@ enum Command {
     /// Signs in on the site in your browser (an officer's account) and remembers it.
     Login {
         /// The site.
-        #[arg(long, default_value = "https://bloodlegion.gg")]
+        #[arg(long, default_value = "https://bloodlegion.com")]
         site: Url,
-        /// The OAuth2 client an administrator registered for this app.
-        #[arg(long)]
+        /// The OAuth2 client registered for this app on the site. A public client's id is no
+        /// secret: PKCE, not the id, keeps a sign-in from being taken.
+        #[arg(long, default_value = "F1Kys8ISZVsmC2Scrtr3ulbM3xXs2Apz")]
         client_id: String,
     },
     /// Forgets the sign-in.

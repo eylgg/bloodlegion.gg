@@ -155,7 +155,7 @@ fn profile_string(profile: &Value, key: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// The host of the configured origin (`https://bloodlegion.gg` -> `bloodlegion.gg`),
+/// The host of the configured origin (`https://bloodlegion.com` -> `bloodlegion.com`),
 /// used as the domain for a masked email. Falls back to the raw origin if it can't
 /// be parsed as a URL (a configured origin always can).
 fn origin_host(origin: &str) -> String {

@@ -1,4 +1,4 @@
--- Loads a keybind plan exported from bloodlegion.gg (Profile, Keybinds): the spells on each
+-- Loads a keybind plan exported from bloodlegion.com (Profile, Keybinds): the spells on each
 -- action bar and stance bar, and the key bindings. `/bl import` opens a box to paste it into.
 -- It also saves the guild roster for the Blood Legion client (see the end).
 --
@@ -318,6 +318,6 @@ SlashCmdList.BLOODLEGION = function(message)
 		requestRoster()
 		rosterStatus()
 	else
-		say("/bl import to load a keybind plan from bloodlegion.gg; /bl roster for the saved roster.")
+		say("/bl import to load a keybind plan from bloodlegion.com; /bl roster for the saved roster.")
 	end
 end

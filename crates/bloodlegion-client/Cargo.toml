@@ -3,7 +3,7 @@ name = "bloodlegion-client"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.91.1"
-description = "Sends the guild roster the Blood Legion addon saved in game to bloodlegion.gg"
+description = "Sends the guild roster the Blood Legion addon saved in game to bloodlegion.com"
 license = "MIT OR Apache-2.0"
 
 [dependencies]

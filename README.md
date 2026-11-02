@@ -1,6 +1,6 @@
 # Blood Legion
 
-The website for Blood Legion, at [bloodlegion.gg](https://bloodlegion.gg).
+The website for Blood Legion, at [bloodlegion.com](https://bloodlegion.com).
 
 ## Layout
 
@@ -270,8 +270,9 @@ the client keep them current:
    `C:\Program Files (x86)\World of Warcraft\_forever_`; `--game` for another, `--file` for one
    file). It signs in as an officer through the site's own OAuth2 (a public client with PKCE, back
    to any free loopback port: a registered `http://127.0.0.1/callback` takes any port), asking for
-   the `roster` scope, and keeps the refresh token in the user's config folder. Register it once on
-   the server:
+   the `roster` scope, and keeps the refresh token in the user's config folder. It is registered
+   once on the server, and its id (no secret, for a public client) is the client's default
+   `--client-id`; a local site needs its own:
 
    ```sh
    bloodlegion-server oauth2-clients add --name "Blood Legion Client" --public \
@@ -281,7 +282,7 @@ the client keep them current:
    Then, on the computer that plays:
 
    ```sh
-   cargo run -p bloodlegion-client -- login --client-id <the id it printed>
+   cargo run -p bloodlegion-client -- login
    cargo run -p bloodlegion-client -- watch
    ```
 
