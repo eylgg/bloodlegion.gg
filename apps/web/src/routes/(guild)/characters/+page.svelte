@@ -219,7 +219,7 @@
 	<div>
 		<h1>Characters</h1>
 	</div>
-	{#if data.user.is_superuser && !adding}
+	{#if data.officer && !adding}
 		<Button variant="primary" onclick={() => (adding = true)}>Add a character</Button>
 	{/if}
 </div>

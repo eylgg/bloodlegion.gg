@@ -49,7 +49,7 @@ struct CharacterDetail {
     loot: Vec<LootEntry>,
     /// `None` when the caller may not read it, or there is none.
     note: Option<Note>,
-    /// Whether the caller may edit the character (its player, or an officer).
+    /// Whether the caller may edit the character (an officer).
     can_edit: bool,
     /// Whether the caller may write its notes (its player).
     can_write_note: bool,
@@ -74,7 +74,7 @@ async fn detail(
         raids_attended: crate::raids::raids_attended(&state.pool, id).await?,
         loot: crate::raids::loot_for_character(&state.pool, id).await?,
         note,
-        can_edit: is_player || user.is_officer(),
+        can_edit: user.is_officer(),
         can_write_note: is_player,
         character,
     }))

@@ -11,7 +11,8 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.race, c.sex AS "sex!: Sex", c.is_main AS "is_main!",
+               c.race, c.sex AS "sex!: Sex", c.level AS "level!", c.reached_60_at,
+               c.is_main AS "is_main!",
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -43,7 +44,8 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.race, c.sex AS "sex!: Sex", c.is_main AS "is_main!",
+               c.race, c.sex AS "sex!: Sex", c.level AS "level!", c.reached_60_at,
+               c.is_main AS "is_main!",
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -100,8 +102,13 @@ pub(super) async fn insert(
 ) -> sqlx::Result<i64> {
     sqlx::query_scalar!(
         r#"
-        INSERT INTO characters (user_id, first_name, last_name, class, race, sex, is_main)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO characters (
+            user_id, first_name, last_name, class, race, sex, is_main, level, reached_60_at
+        )
+        VALUES (
+            $1, $2, $3, $4, $5, $6, $7, COALESCE($8::smallint, 1),
+            CASE WHEN $8::smallint = 60 THEN COALESCE($9, now()) END
+        )
         RETURNING id
         "#,
         character.user_id.map(|id| id.0),
@@ -111,6 +118,8 @@ pub(super) async fn insert(
         character.race,
         character.sex as Sex,
         is_main,
+        character.level,
+        character.reached_60_at,
     )
     .fetch_one(&mut *conn)
     .await
@@ -136,7 +145,9 @@ pub(super) async fn update(
         r#"
         UPDATE characters
         SET user_id = $2, first_name = $3, last_name = $4, class = $5, race = $6, sex = $7,
-            is_main = $8
+            is_main = $8, level = COALESCE($9::smallint, level),
+            reached_60_at = CASE WHEN COALESCE($9::smallint, level) = 60
+                                 THEN COALESCE($10, reached_60_at, now()) END
         WHERE id = $1
         "#,
         id,
@@ -147,6 +158,8 @@ pub(super) async fn update(
         character.race,
         character.sex as Sex,
         character.is_main,
+        character.level,
+        character.reached_60_at,
     )
     .execute(&mut *conn)
     .await?;

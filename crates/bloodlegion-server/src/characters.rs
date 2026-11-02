@@ -1,7 +1,7 @@
 //! Members' WoW: Forever characters. A character has a first and a last name and no realm (Forever
 //! has rulesets instead, and the guild plays on one), so its full name is unique across the site.
-//! Members add their own; officers may add anyone's, including a character no account claims (a
-//! pug who won loot). Each member has at most one main.
+//! Officers add and edit them, including a character no account claims (a pug who won loot); a
+//! player writes only their character's notes. Each member has at most one main.
 
 pub mod api;
 mod db;
@@ -27,6 +27,11 @@ pub struct Character {
     /// Its race's slug (`wow::catalog::RACES`), or `None` while nobody has recorded it.
     pub race: Option<String>,
     pub sex: Sex,
+    /// 1 to 60, as an officer last recorded it.
+    pub level: i16,
+    /// When it reached 60 (`None` below it): of two at 60, the earlier got there first.
+    #[serde(with = "iso8601::option")]
+    pub reached_60_at: Option<OffsetDateTime>,
     pub is_main: bool,
     /// The specs it plays, its main (if it has one) first, then in the catalog's order.
     pub specs: sqlx::types::Json<Vec<CharacterSpec>>,
@@ -46,6 +51,13 @@ pub struct CharacterInput {
     #[serde(default)]
     pub race: Option<String>,
     pub sex: Sex,
+    /// 1 to 60; absent keeps the level it has (a new character starts at 1).
+    #[serde(default)]
+    pub level: Option<i16>,
+    /// When it reached 60, from the player's screenshot: absent or `null` keeps the time it has,
+    /// or is now when it has just reached 60. Ignored below 60, where there is none.
+    #[serde(default, with = "iso8601::option")]
+    pub reached_60_at: Option<OffsetDateTime>,
     #[serde(default)]
     pub is_main: bool,
     /// Who plays it: absent for the caller themselves; an officer may name any member, or send
@@ -122,6 +134,13 @@ pub enum CharacterError {
         detail = "That is not a WoW: Forever race."
     )]
     UnknownRace,
+    #[error("invalid level")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Invalid Level",
+        detail = "A level is 1 to 60."
+    )]
+    InvalidLevel,
     #[error("name taken")]
     #[problem(
         status = CONFLICT,
@@ -143,21 +162,14 @@ pub enum CharacterError {
     #[problem(
         status = FORBIDDEN,
         title = "Forbidden",
-        detail = "Only the character's player or an officer can change it."
+        detail = "Only the character's player can write its notes."
     )]
     Forbidden,
-    #[error("only the admin adds characters")]
+    #[error("only officers add, edit, and remove characters")]
     #[problem(
         status = FORBIDDEN,
         title = "Forbidden",
-        detail = "Only the administrator can add characters."
-    )]
-    AdminOnly,
-    #[error("only officers remove characters")]
-    #[problem(
-        status = FORBIDDEN,
-        title = "Forbidden",
-        detail = "Only officers can remove characters."
+        detail = "Only officers can add, edit, or remove characters."
     )]
     OfficersOnly,
     #[error("character has history")]
@@ -206,12 +218,16 @@ struct Valid {
     class: &'static str,
     race: Option<&'static str>,
     sex: Sex,
+    /// `None` keeps the level it has.
+    level: Option<i16>,
+    /// `None` keeps the time it has (or is now, newly at 60).
+    reached_60_at: Option<OffsetDateTime>,
     user_id: Option<UserId>,
     is_main: bool,
 }
 
-/// Validates `input` from `actor`; `current_owner` is the owner of the character being edited
-/// (`None` when creating), which an absent `user_id` keeps.
+/// Validates `input` from `actor` (an officer); `current_owner` is the owner of the character being
+/// edited (`None` when creating), which an absent `user_id` keeps.
 fn validate(
     actor: &User,
     input: &CharacterInput,
@@ -227,21 +243,22 @@ fn validate(
             None => return external(CharacterError::UnknownRace),
         },
     };
+    if input.level.is_some_and(|level| !(1..=60).contains(&level)) {
+        return external(CharacterError::InvalidLevel);
+    }
     let user_id = match (input.user_id, current_owner) {
         (Some(owner), _) => owner,
         (None, Some(current)) => current,
         (None, None) => Some(actor.id),
     };
-    // Only officers give a character to someone else (or to nobody).
-    if user_id != Some(actor.id) && !actor.is_officer() {
-        return external(CharacterError::Forbidden);
-    }
     Ok(Valid {
         first_name: name(&input.first_name)?,
         last_name: name(&input.last_name)?,
         class: class.slug,
         race,
         sex: input.sex,
+        level: input.level,
+        reached_60_at: input.reached_60_at,
         // An unclaimed character is nobody's main.
         is_main: input.is_main && user_id.is_some(),
         user_id,
@@ -274,15 +291,15 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
     db::find(pool, id).await
 }
 
-/// Adds a character (the admin only). A member's first character becomes their main whether or
+/// Adds a character (officers only). A member's first character becomes their main whether or
 /// not they asked; declaring another main moves the title.
 pub async fn create(
     pool: &PgPool,
     actor: &User,
     input: &CharacterInput,
 ) -> Result<Character, CharacterError> {
-    if !actor.is_superuser {
-        return external(CharacterError::AdminOnly);
+    if !actor.is_officer() {
+        return external(CharacterError::OfficersOnly);
     }
     let valid = validate(actor, input, None)?;
     let mut tx = pool.begin().await?;
@@ -302,21 +319,20 @@ pub async fn create(
         .expect("the character was just created"))
 }
 
-/// Replaces a character's details: by its player, or by an officer (who may also hand it to
-/// another member).
+/// Replaces a character's details, including who plays it (officers only).
 pub async fn update(
     pool: &PgPool,
     actor: &User,
     id: i64,
     input: &CharacterInput,
 ) -> Result<Character, CharacterError> {
+    if !actor.is_officer() {
+        return external(CharacterError::OfficersOnly);
+    }
     let mut tx = pool.begin().await?;
     let Some(current_owner) = db::lock_owner(&mut tx, id).await? else {
         return external(CharacterError::NotFound);
     };
-    if current_owner != Some(actor.id) && !actor.is_officer() {
-        return external(CharacterError::Forbidden);
-    }
     let valid = validate(actor, input, Some(current_owner))?;
     if let (true, Some(owner)) = (valid.is_main, valid.user_id) {
         db::clear_main(&mut tx, owner, Some(id)).await?;
@@ -368,7 +384,7 @@ fn valid_specs(
 }
 
 /// Replaces the specs a character plays, with their talents and the main among them (or none):
-/// by its player, or by an officer. A raid it was set to play a removed spec in falls back to its
+/// officers only. A raid it was set to play a removed spec in falls back to its
 /// main.
 pub async fn set_specs(
     pool: &PgPool,
@@ -376,12 +392,12 @@ pub async fn set_specs(
     id: i64,
     input: &SpecsInput,
 ) -> Result<Character, CharacterError> {
+    if !actor.is_officer() {
+        return external(CharacterError::OfficersOnly);
+    }
     let Some(character) = db::find(pool, id).await? else {
         return external(CharacterError::NotFound);
     };
-    if character.user_id != Some(actor.id) && !actor.is_officer() {
-        return external(CharacterError::Forbidden);
-    }
     let Some(class) = crate::wow::catalog::find(&character.class) else {
         return external(CharacterError::UnknownClass);
     };
@@ -556,6 +572,8 @@ pub(crate) mod tests {
             class: class.into(),
             race: None,
             sex: Sex::Female,
+            level: None,
+            reached_60_at: None,
             is_main,
             user_id: None,
         }
@@ -564,6 +582,7 @@ pub(crate) mod tests {
     #[sqlx::test]
     async fn records_a_race(pool: PgPool) {
         let ey = member(&pool, "Ey", Rank::Raider).await;
+        let officer = member(&pool, "Officer", Rank::Officer).await;
         let mut sky = input("Aerin", "Gale", "shaman", false);
         sky.race = Some(" windshaper-skyborne ".into());
         let made = add(&pool, &ey, sky.clone()).await.unwrap();
@@ -572,29 +591,30 @@ pub(crate) mod tests {
 
         // Empty is none recorded.
         sky.race = Some(String::new());
-        let cleared = update(&pool, &ey, made.id, &sky).await.unwrap();
+        let cleared = update(&pool, &officer, made.id, &sky).await.unwrap();
         assert_eq!(cleared.race, None);
 
         // Only Forever's races.
         sky.race = Some("pandaren".into());
         assert!(matches!(
-            update(&pool, &ey, made.id, &sky).await,
+            update(&pool, &officer, made.id, &sky).await,
             Err(Error::External(CharacterError::UnknownRace))
         ));
         sky.race = Some("high-order-skyborne".into());
-        let again = update(&pool, &ey, made.id, &sky).await.unwrap();
+        let again = update(&pool, &officer, made.id, &sky).await.unwrap();
         assert_eq!(again.race.as_deref(), Some("high-order-skyborne"));
     }
 
     #[sqlx::test]
     async fn records_a_sex(pool: PgPool) {
         let ey = member(&pool, "Ey", Rank::Raider).await;
+        let officer = member(&pool, "Officer", Rank::Officer).await;
         let mut sky = input("Aerin", "Gale", "shaman", false);
         let made = add(&pool, &ey, sky.clone()).await.unwrap();
         assert_eq!(made.sex, Sex::Female);
 
         sky.sex = Sex::Male;
-        let changed = update(&pool, &ey, made.id, &sky).await.unwrap();
+        let changed = update(&pool, &officer, made.id, &sky).await.unwrap();
         assert_eq!(changed.sex, Sex::Male);
 
         // Required, and only the two.
@@ -606,6 +626,57 @@ pub(crate) mod tests {
         assert!(json("").is_err());
         assert!(json(r#","sex":"other""#).is_err());
         assert_eq!(json(r#","sex":"male""#).unwrap().sex, Sex::Male);
+    }
+
+    #[sqlx::test]
+    async fn records_a_level(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let officer = member(&pool, "Officer", Rank::Officer).await;
+        let mut sky = input("Aerin", "Gale", "shaman", false);
+        let made = add(&pool, &ey, sky.clone()).await.unwrap();
+        assert_eq!(made.level, 1, "a new character starts at 1");
+
+        // No time below 60, even if one is sent.
+        sky.level = Some(42);
+        sky.reached_60_at = Some(time::macros::datetime!(2026-11-20 03:15 UTC));
+        let leveled = update(&pool, &officer, made.id, &sky).await.unwrap();
+        assert_eq!(leveled.level, 42);
+        assert_eq!(leveled.reached_60_at, None);
+
+        // Reaching 60 without a time is now; absent keeps the level and the time.
+        sky.level = Some(60);
+        sky.reached_60_at = None;
+        let capped = update(&pool, &officer, made.id, &sky).await.unwrap();
+        let now = capped.reached_60_at.expect("reaching 60 records when");
+        sky.level = None;
+        let kept = update(&pool, &officer, made.id, &sky).await.unwrap();
+        assert_eq!((kept.level, kept.reached_60_at), (60, Some(now)));
+
+        // An officer corrects it from the screenshot.
+        let ding = time::macros::datetime!(2026-11-20 03:15 UTC);
+        sky.reached_60_at = Some(ding);
+        let corrected = update(&pool, &officer, made.id, &sky).await.unwrap();
+        assert_eq!(corrected.reached_60_at, Some(ding));
+
+        // Dropping below 60 (a mistake undone) clears it.
+        sky.level = Some(59);
+        let undone = update(&pool, &officer, made.id, &sky).await.unwrap();
+        assert_eq!(undone.reached_60_at, None);
+
+        // Added at 60 with a time.
+        let mut done = input("Brann", "Bronzebeard", "warrior", false);
+        done.level = Some(60);
+        done.reached_60_at = Some(ding);
+        let made = add(&pool, &ey, done).await.unwrap();
+        assert_eq!(made.reached_60_at, Some(ding));
+
+        for bad in [0, 61] {
+            sky.level = Some(bad);
+            assert!(matches!(
+                update(&pool, &officer, made.id, &sky).await,
+                Err(Error::External(CharacterError::InvalidLevel))
+            ));
+        }
     }
 
     #[test]
@@ -649,38 +720,29 @@ pub(crate) mod tests {
             .await
             .unwrap();
 
-        // Someone else's character is out of reach; a member cannot give theirs away.
+        // Members add, edit, and remove no characters, not even their own; officers do all three.
+        let uther = input("Uther", "Lightbringer", "paladin", false);
+        assert!(matches!(
+            create(&pool, &ey, &uther).await,
+            Err(Error::External(CharacterError::OfficersOnly))
+        ));
         assert!(matches!(
             update(
                 &pool,
-                &other,
+                &ey,
                 first.id,
                 &input("Arthas", "Menethil", "paladin", true)
             )
             .await,
-            Err(Error::External(CharacterError::Forbidden))
+            Err(Error::External(CharacterError::OfficersOnly))
         ));
-        let mut give = input("Arthas", "Menethil", "paladin", false);
-        give.user_id = Some(Some(other.id));
-        assert!(matches!(
-            update(&pool, &ey, first.id, &give).await,
-            Err(Error::External(CharacterError::Forbidden))
-        ));
-
-        // Only the admin adds characters, not even an officer; officers remove them, members don't,
-        // even their own.
         let officer = member(&pool, "Officer", Rank::Officer).await;
-        for actor in [&ey, &officer] {
-            assert!(matches!(
-                create(
-                    &pool,
-                    actor,
-                    &input("Uther", "Lightbringer", "paladin", false)
-                )
-                .await,
-                Err(Error::External(CharacterError::AdminOnly))
-            ));
-        }
+        let made = create(&pool, &officer, &uther).await.unwrap();
+        assert_eq!(
+            made.user_id,
+            Some(officer.id),
+            "an officer's own, unless they name another"
+        );
         assert!(matches!(
             delete(&pool, &ey, first.id).await,
             Err(Error::External(CharacterError::OfficersOnly))
@@ -736,10 +798,10 @@ pub(crate) mod tests {
         assert_eq!(given.user_id, Some(raider.id));
         assert!(given.is_main);
 
-        // The member can now edit it; an absent owner keeps it theirs.
+        // An absent owner keeps it theirs.
         let renamed = update(
             &pool,
-            &raider,
+            &officer,
             pug.id,
             &input("Randal", "Pug", "rogue", true),
         )
@@ -759,7 +821,7 @@ pub(crate) mod tests {
     #[sqlx::test]
     async fn characters_play_any_specs_with_an_optional_main(pool: PgPool) {
         let ey = member(&pool, "Ey", Rank::Raider).await;
-        let other = member(&pool, "Other", Rank::Raider).await;
+        let officer = member(&pool, "Officer", Rank::Officer).await;
         let paladin = add(&pool, &ey, input("Arthas", "Menethil", "paladin", false))
             .await
             .unwrap();
@@ -779,7 +841,9 @@ pub(crate) mod tests {
             ],
             main: Some("holy".into()),
         };
-        let saved = set_specs(&pool, &ey, paladin.id, &all_three).await.unwrap();
+        let saved = set_specs(&pool, &officer, paladin.id, &all_three)
+            .await
+            .unwrap();
         let order: Vec<_> = saved
             .specs
             .iter()
@@ -805,10 +869,12 @@ pub(crate) mod tests {
             specs: vec![spec("holy", &[]), spec("retribution", &[])],
             main: None,
         };
-        let saved = set_specs(&pool, &ey, paladin.id, &unsure).await.unwrap();
+        let saved = set_specs(&pool, &officer, paladin.id, &unsure)
+            .await
+            .unwrap();
         assert!(saved.specs.iter().all(|s| !s.is_main));
 
-        let (db, actor, id) = (&pool, &ey, paladin.id);
+        let (db, actor, id) = (&pool, &officer, paladin.id);
         let refused = |input: SpecsInput| async move {
             matches!(
                 set_specs(db, actor, id, &input).await,
@@ -845,15 +911,17 @@ pub(crate) mod tests {
             .await
         );
         assert!(matches!(
-            set_specs(&pool, &other, paladin.id, &all_three).await,
-            Err(Error::External(CharacterError::Forbidden))
+            set_specs(&pool, &ey, paladin.id, &all_three).await,
+            Err(Error::External(CharacterError::OfficersOnly))
         ));
 
         // Renaming keeps the specs; a new class drops them.
-        set_specs(&pool, &ey, paladin.id, &all_three).await.unwrap();
+        set_specs(&pool, &officer, paladin.id, &all_three)
+            .await
+            .unwrap();
         let renamed = update(
             &pool,
-            &ey,
+            &officer,
             paladin.id,
             &input("Arthas", "Light", "paladin", true),
         )
@@ -862,7 +930,7 @@ pub(crate) mod tests {
         assert_eq!(renamed.specs.len(), 3);
         let warrior = update(
             &pool,
-            &ey,
+            &officer,
             paladin.id,
             &input("Arthas", "Light", "warrior", true),
         )

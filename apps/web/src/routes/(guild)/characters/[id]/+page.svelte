@@ -63,6 +63,7 @@
 	<img src={classIcon(character.class)} alt="" width="72" height="72" />
 	<div>
 		<p class="kicker">
+			Level {character.level}
 			{race ? `${race.name} ` : ''}{wowClass?.name ?? character.class}{character.is_main
 				? ' · Main'
 				: character.user_id

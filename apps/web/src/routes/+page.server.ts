@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import type {
 	Announcement,
 	Calendar,
+	GuildCharacter,
 	LoginOptions,
 	LoginProvider,
 	LootEntry,
@@ -20,8 +21,8 @@ const RECENT_LOOT = 8;
  * The front page is two pages. Signed out: the ways to sign in, for its buttons, and the latest
  * Discord announcements; an unreachable backend means none of either, and the page falls back to
  * a plain link to the sign-in page, which then says what is wrong. Signed in: the member's own
- * front page (`home`), inside the guild's pages: the raids (for the next few), the latest loot, and
- * the announcements, with the zone and class catalogs and the calendar the guild's pages load. The
+ * front page (`home`), inside the guild's pages: the race to 60 (from the characters), the raids
+ * (for the next few), the latest loot, and the announcements, with the zone and class catalogs and the calendar the guild's pages load. The
  * public (a new account without a rank yet) get the same page without the raids and the loot.
  */
 export const load: PageServerLoad = async ({ fetch, parent }) => {
@@ -44,12 +45,13 @@ export const load: PageServerLoad = async ({ fetch, parent }) => {
 	}
 	const member = isGuildMember(user);
 	try {
-		const [zones, classes, calendar, raids, loot] = await Promise.all([
+		const [zones, classes, calendar, raids, loot, characters] = await Promise.all([
 			api.get<Zone[]>('/api/raids/zones', { fetch }),
 			api.get<WowClass[]>('/api/wow/classes', { fetch }),
 			api.get<Calendar>('/api/raids/calendar', { fetch }),
 			member ? api.get<Raid[]>('/api/raids', { fetch }) : [],
-			member ? api.get<LootEntry[]>(`/api/loot?limit=${RECENT_LOOT}`, { fetch }) : []
+			member ? api.get<LootEntry[]>(`/api/loot?limit=${RECENT_LOOT}`, { fetch }) : [],
+			member ? api.get<GuildCharacter[]>('/api/characters', { fetch }) : []
 		]);
 		return {
 			providers: [] as LoginProvider[],
@@ -57,7 +59,7 @@ export const load: PageServerLoad = async ({ fetch, parent }) => {
 			// Top level, where the loot table looks for them as on the guild's pages.
 			zones,
 			classes,
-			home: { user, member, calendar, raids, loot }
+			home: { user, member, calendar, raids, loot, characters }
 		};
 	} catch (err) {
 		error(statusFrom(err, 503), 'The guild pages are unavailable right now.');

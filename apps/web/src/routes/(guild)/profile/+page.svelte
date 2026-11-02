@@ -222,8 +222,8 @@
 {#if data.member}<section>
 		<h2>Your characters</h2>
 		<p class="muted">
-			First and last name, as they are in game. Officers record loot and attendance against these{#if !data.user.is_superuser},
-				and the administrator adds them for you{/if}.
+			First and last name, as they are in game. Officers record loot and attendance against these{#if !data.officer},
+				and add and edit them for you{/if}.
 		</p>
 
 		<ul class="characters">
@@ -243,22 +243,22 @@
 							variant="secondary"
 							href="{resolve('/profile/keybinds')}?character={character.id}">Keybinds</Button
 						>
-						{#if !character.is_main}
-							<Button size="small" variant="secondary" onclick={() => makeMain(character)}>
-								Make main
-							</Button>
-						{/if}
-						<Button
-							size="small"
-							variant="secondary"
-							onclick={() => {
-								editing = character;
-								open = true;
-							}}
-						>
-							Edit
-						</Button>
 						{#if data.officer}
+							{#if !character.is_main}
+								<Button size="small" variant="secondary" onclick={() => makeMain(character)}>
+									Make main
+								</Button>
+							{/if}
+							<Button
+								size="small"
+								variant="secondary"
+								onclick={() => {
+									editing = character;
+									open = true;
+								}}
+							>
+								Edit
+							</Button>
 							<ConfirmButton
 								size="small"
 								variant="danger"
@@ -272,9 +272,7 @@
 			{:else}
 				{#if !open}
 					<li class="muted">
-						{data.user.is_superuser
-							? 'No characters yet. Start with your main.'
-							: 'No characters yet.'}
+						{data.officer ? 'No characters yet. Start with your main.' : 'No characters yet.'}
 					</li>
 				{/if}
 			{/each}
@@ -289,7 +287,7 @@
 					oncancel={() => (open = false)}
 				/>
 			{/key}
-		{:else if data.user.is_superuser}
+		{:else if data.officer}
 			<div>
 				<Button
 					variant="primary"

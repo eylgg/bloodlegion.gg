@@ -53,6 +53,16 @@
 	// svelte-ignore state_referenced_locally
 	let sex = $state<Sex>(character?.sex ?? 'female');
 	// svelte-ignore state_referenced_locally
+	let level = $state(character?.level ?? 1);
+	// When it reached 60, as a `datetime-local` value in the reader's own time; '' for now.
+	// svelte-ignore state_referenced_locally
+	let reached60 = $state(character?.reached_60_at ? localInput(character.reached_60_at) : '');
+
+	function localInput(iso: string): string {
+		const date = new Date(iso);
+		return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+	}
+	// svelte-ignore state_referenced_locally
 	let isMain = $state(character?.is_main ?? firstIsMain);
 	// The owner picker's value: a member's id, or '' for nobody.
 	// svelte-ignore state_referenced_locally
@@ -89,6 +99,8 @@
 			class: classSlug,
 			race: raceSlug || null,
 			sex,
+			level,
+			reached_60_at: level === 60 && reached60 ? new Date(reached60).toISOString() : null,
 			is_main: isMain && (!owners || owner !== '')
 		};
 		if (owners) body.user_id = owner === '' ? null : Number(owner);
@@ -143,7 +155,21 @@
 				<option value="male">Male</option>
 			</select>
 		</label>
+		<label class="field">
+			Level
+			<input type="number" bind:value={level} required min="1" max="60" step="1" />
+		</label>
 	</div>
+
+	{#if level === 60}
+		<div class="row">
+			<label class="field">
+				Reached 60
+				<input type="datetime-local" bind:value={reached60} />
+				<span class="muted">From their screenshot; empty for now.</span>
+			</label>
+		</div>
+	{/if}
 
 	<fieldset>
 		<legend>Class</legend>

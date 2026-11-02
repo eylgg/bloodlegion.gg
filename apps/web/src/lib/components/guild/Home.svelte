@@ -3,11 +3,12 @@
 	import Announcements from '$lib/components/Announcements.svelte';
 	import LaunchCountdown, { LAUNCH } from '$lib/components/LaunchCountdown.svelte';
 	import LootTable from '$lib/components/guild/LootTable.svelte';
+	import RaceTo60 from '$lib/components/guild/RaceTo60.svelte';
 	import { formatInZone, formatWeekSpan, raidNames } from '$lib/guild';
-	import type { Announcement, Calendar, LootEntry, Raid, Zone } from '$lib/types';
+	import type { Announcement, Calendar, GuildCharacter, LootEntry, Raid, Zone } from '$lib/types';
 
 	// A member's front page, signed in: the mark with the countdown to launch (then the week), the
-	// next raids, the latest loot, and the Discord announcements. The public get a word on how to
+	// race to 60 (for the launch only), the next raids, the latest loot, and the Discord announcements. The public get a word on how to
 	// join in place of the raids and the loot.
 	let {
 		zones,
@@ -15,6 +16,7 @@
 		calendar,
 		raids,
 		loot,
+		characters,
 		announcements
 	}: {
 		zones: Zone[];
@@ -24,6 +26,8 @@
 		/** Latest first, as `GET /api/raids` lists them. */
 		raids: Raid[];
 		loot: LootEntry[];
+		/** For the race to 60. */
+		characters: GuildCharacter[];
 		announcements: Announcement[];
 	} = $props();
 
@@ -69,6 +73,14 @@
 				</p>
 			</section>
 		{:else}
+			<!-- For the launch only: take it down once the race is won. -->
+			<section>
+				<div class="head">
+					<h2>Race to 60</h2>
+				</div>
+				<RaceTo60 {characters} />
+			</section>
+
 			<section>
 				<div class="head">
 					<h2>Coming up</h2>

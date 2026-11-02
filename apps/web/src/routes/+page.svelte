@@ -83,6 +83,7 @@
 			member={data.home.member}
 			raids={data.home.raids}
 			loot={data.home.loot}
+			characters={data.home.characters}
 			announcements={data.announcements}
 		/>
 	</GuildShell>

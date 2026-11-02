@@ -267,6 +267,10 @@ export type GuildCharacter = {
 	/** Its race's slug, or null while nobody has recorded it. */
 	race: string | null;
 	sex: Sex;
+	/** 1 to 60, as an officer last recorded it. */
+	level: number;
+	/** When it reached 60, or null below it: of two at 60, the earlier got there first. */
+	reached_60_at: string | null;
 	is_main: boolean;
 	/** The specs it plays, its main (if it has one) first. */
 	specs: CharacterSpec[];
@@ -287,6 +291,10 @@ export type GuildCharacterInput = {
 	/** Its race's slug, or null for none recorded. Sent with every save: leaving it out clears it. */
 	race: string | null;
 	sex: Sex;
+	/** 1 to 60. */
+	level: number;
+	/** When it reached 60, from the screenshot: null keeps the time it has (or is now). */
+	reached_60_at?: string | null;
 	is_main: boolean;
 	/** Officers only: omit for yourself, a member's id, or null for an unclaimed character. */
 	user_id?: number | null;

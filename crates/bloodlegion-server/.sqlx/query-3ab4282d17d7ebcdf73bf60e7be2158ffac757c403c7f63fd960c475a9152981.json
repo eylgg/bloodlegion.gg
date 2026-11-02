@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.race, c.sex AS \"sex!: Sex\", c.is_main AS \"is_main!\",\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE c.id = $1\n        ",
+  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.race, c.sex AS \"sex!: Sex\", c.level AS \"level!\", c.reached_60_at,\n               c.is_main AS \"is_main!\",\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE c.id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -93,6 +93,28 @@
       },
       {
         "ordinal": 8,
+        "name": "level!",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "level"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "reached_60_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "reached_60_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
         "name": "is_main!",
         "type_info": "Bool",
         "origin": {
@@ -103,13 +125,13 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "specs!: Json<Vec<CharacterSpec>>",
         "type_info": "Jsonb",
         "origin": "Expression"
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "created_at!",
         "type_info": "Timestamptz",
         "origin": {
@@ -120,7 +142,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "updated_at!",
         "type_info": "Timestamptz",
         "origin": {
@@ -137,19 +159,21 @@
       ]
     },
     "nullable": [
-      true,
-      true,
       false,
       true,
       true,
+      false,
+      false,
+      false,
       true,
+      false,
+      false,
       true,
-      true,
-      true,
+      false,
       null,
-      true,
-      true
+      false,
+      false
     ]
   },
-  "hash": "fcfe37b0e1c4b5c6c121f4deeeebe48f35fbd4dc9d11546209fbca74ccf065fc"
+  "hash": "3ab4282d17d7ebcdf73bf60e7be2158ffac757c403c7f63fd960c475a9152981"
 }
