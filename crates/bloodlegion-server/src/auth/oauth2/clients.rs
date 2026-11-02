@@ -130,36 +130,36 @@ pub struct CreatePayload {
     /// under its original id. Blank or absent generates a random one; a supplied
     /// value must match the generated 32-char base64url shape (the DB check).
     #[serde(default)]
-    id: Option<String>,
-    name: String,
-    redirect_uris: Vec<String>,
+    pub id: Option<String>,
+    pub name: String,
+    pub redirect_uris: Vec<String>,
     /// "confidential" (has a secret) or "public" (secret-less, PKCE only).
     #[serde(default = "default_client_type")]
-    client_type: String,
+    pub client_type: String,
     /// Whether a confidential client must use PKCE. Defaults to true (strict
     /// OAuth 2.1); set false for a legacy OAuth 2.0 client. Ignored for public
     /// clients, which always require PKCE.
     #[serde(default = "default_pkce_required")]
-    is_pkce_required: bool,
+    pub is_pkce_required: bool,
     /// When true, OIDC userinfo presents `<username>@<origin host>` (unverified) to
     /// this client instead of the user's account email.
     #[serde(default)]
-    is_email_masked: bool,
+    pub is_email_masked: bool,
     /// An optional admin-supplied secret for a confidential client. Blank or
     /// absent generates a random one (revealed once); rejected for public
     /// clients. Either way only its hash is stored.
     #[serde(default)]
-    secret: Option<String>,
+    pub secret: Option<String>,
     /// Optional space-delimited scope set to pre-authorize: a request whose
     /// scopes are all covered here skips the consent screen (a first-party client
     /// the operator controls). Blank/absent = always prompt.
     #[serde(default)]
-    auto_consent_scope: Option<String>,
+    pub auto_consent_scope: Option<String>,
     /// Optional provider slug to federate this client to: only users with a live
     /// credential there may authorize, and their identity is sourced from that
     /// provider. Blank/absent = unrestricted.
     #[serde(default)]
-    identity_provider_slug: Option<String>,
+    pub identity_provider_slug: Option<String>,
 }
 
 /// Bounds for an admin-supplied confidential-client secret. The generated
@@ -172,12 +172,12 @@ const MAX_SECRET_LEN: usize = 255;
 
 #[derive(Debug, serde::Serialize)]
 pub struct CreatedClient {
-    id: String,
+    pub id: String,
     /// The one-time-revealed secret, present only when the server generated it
     /// (a confidential client with no supplied secret). Absent for public
     /// clients and when the admin supplied their own.
     #[serde(skip_serializing_if = "Option::is_none")]
-    secret: Option<String>,
+    pub secret: Option<String>,
     name: String,
     client_type: String,
     is_pkce_required: bool,
@@ -277,6 +277,11 @@ pub async fn create_client(
     _admin: Admin,
     Json(payload): Json<CreatePayload>,
 ) -> Result<Json<CreatedClient>, ClientError> {
+    Ok(Json(create(&pool, payload).await?))
+}
+
+/// Registers a client: the admin API's, and the CLI's `oauth2-clients add`.
+pub async fn create(pool: &PgPool, payload: CreatePayload) -> Result<CreatedClient, ClientError> {
     let (name, redirect_uris) = validate(&payload.name, &payload.redirect_uris)?;
 
     let id = resolve_client_id(payload.id.as_deref())?;
@@ -287,10 +292,10 @@ pub async fn create_client(
     )?;
     let auto_consent_scope = resolve_auto_consent_scope(payload.auto_consent_scope.as_deref())?;
     let identity_provider =
-        resolve_identity_provider(&pool, payload.identity_provider_slug.as_deref()).await?;
+        resolve_identity_provider(pool, payload.identity_provider_slug.as_deref()).await?;
 
     let created_at = db::insert_client(
-        &pool,
+        pool,
         &id,
         hash.as_ref(),
         &name,
@@ -304,7 +309,7 @@ pub async fn create_client(
     .await
     .map_err(classify_insert)?;
 
-    Ok(Json(CreatedClient {
+    Ok(CreatedClient {
         id,
         secret,
         name,
@@ -315,7 +320,7 @@ pub async fn create_client(
         identity_provider_slug: identity_provider.map(|(_, slug)| slug),
         redirect_uris,
         created_at,
-    }))
+    })
 }
 
 /// Validates the optional identity-provider slug the admin API sends and resolves

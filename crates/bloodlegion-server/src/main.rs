@@ -87,6 +87,31 @@ enum Command {
         #[command(subcommand)]
         command: ProvidersCommand,
     },
+    /// Manage the apps that sign people in with their Blood Legion account.
+    Oauth2Clients {
+        #[command(subcommand)]
+        command: ClientsCommand,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum ClientsCommand {
+    /// Register an app. For the Blood Legion client: `--name "Blood Legion client" --public
+    /// --redirect-uri http://127.0.0.1/callback --auto-consent "openid roster"` (a loopback
+    /// redirect URI takes any port).
+    Add {
+        #[arg(long)]
+        name: String,
+        /// Where the app may send people back to after they sign in; repeat for several.
+        #[arg(long = "redirect-uri", required = true)]
+        redirect_uris: Vec<String>,
+        /// A public client (an app on someone's own computer): no secret, PKCE only.
+        #[arg(long)]
+        public: bool,
+        /// Space-delimited scopes to grant without the consent screen.
+        #[arg(long)]
+        auto_consent: Option<String>,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -361,6 +386,14 @@ fn main() -> Result<()> {
             PasswordsCommand::Status => cli::passwords_status(),
             PasswordsCommand::Enable => cli::passwords_set_enabled(true),
             PasswordsCommand::Disable => cli::passwords_set_enabled(false),
+        },
+        Some(Command::Oauth2Clients { command }) => match command {
+            ClientsCommand::Add {
+                name,
+                redirect_uris,
+                public,
+                auto_consent,
+            } => cli::clients_add(name, redirect_uris, public, auto_consent),
         },
         Some(Command::Oauth2Providers { command }) => match command {
             ProvidersCommand::List => cli::providers_list(),

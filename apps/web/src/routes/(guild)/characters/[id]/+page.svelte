@@ -34,7 +34,7 @@
 		error = '';
 		try {
 			await api.del(`/api/characters/${character.id}`);
-			await goto(resolve('/characters'));
+			await goto(resolve('/roster'));
 		} catch (err) {
 			error = errorMessage(err, 'Removing failed. Please try again.');
 		}

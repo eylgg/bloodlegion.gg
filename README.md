@@ -8,11 +8,14 @@ The website for Blood Legion, at [bloodlegion.gg](https://bloodlegion.gg).
   image. It serves the pages and forwards `/api`, `/auth`, and `/.well-known` to the backend.
 - `apps/addon`: the in-game addon, `BloodLegion`. `/bl import` loads a keybind plan exported
   from the site (Profile, Keybinds): the spells on each bar and stance bar, and the key bindings.
+  It also saves the guild roster for the client (`/bl roster` shows what it has).
   Copy `apps/addon/BloodLegion` into the game's `Interface/AddOns`.
 - `crates/bloodlegion-server`: the backend (Rust, axum, Postgres), shipped as the `bloodlegion-server` image.
   Accounts and sessions, username/password login, OAuth2 / OpenID Connect login sources such as
   Battle.net, and an OpenID Connect provider so other guild tools can sign people in with their
   Blood Legion account. The same binary is the admin CLI.
+- `crates/bloodlegion-client`: the companion app on the computer that plays. It sends the roster
+  the addon saved to the site, for the race to 60 (see [The race to 60](#the-race-to-60)).
 - `crates/bloodlegion-macros`: the `Problem` derive the backend's error responses use.
 - `crates/xtask`: the local dev stack and image builds (`cargo xtask ...`).
 
@@ -189,11 +192,11 @@ the changes.
   has a class and, once recorded, a race: Classic's eight and Forever's Skyborne, Windshaper
   Skyborne for the Horde and High Order Skyborne for the Alliance (`wow::catalog::RACES`, served at
   `/api/wow/races`; any race may be any class), and a sex, which picks the race's portrait
-  (`static/wow/races`, from Forever's character creation). Only the administrator adds them, to a
-  member or to no account (a pug who won loot, which only the administrator is sent, and officers
-  where they record raids and loot: `GET /api/characters?unclaimed=true`); a member edits their own
-  and picks one main, and officers edit or remove anyone's. A character's notes are written by its
-  player and read by officers (`/notes`).
+  (`static/wow/races`, from Forever's character creation), and a level (1 to 60, and when it reached
+  60). Only officers add, edit, and remove them, for a member or for no account (a pug who won loot,
+  which only the administrator is sent, and officers where they record raids and loot:
+  `GET /api/characters?unclaimed=true`). A character's notes are written by its player and read by
+  officers (`/notes`).
 - **Raids** are one night in a zone, with the characters who came and the loot they won. The zones,
   their sizes, and their bosses are a file in the repository
   (`crates/bloodlegion-server/data/raids.json`): Barrow Deeps (10), Hyjal Summit (20), and Onyxia's
@@ -249,6 +252,44 @@ the changes.
   ready for the real items; see [Blizzard's data](#blizzards-data).
 
 - **Questions**: officers ask yes-or-no questions; members answer and may change their minds.
+
+### The race to 60
+
+For the launch only: the front page lists the two highest characters of each class, and anyone
+tied with the second, highest first; of those at 60, whoever got there first. Officers set levels
+and the time a character reached 60 (from the player's screenshot) on its page, or the addon and
+the client keep them current:
+
+1. **The addon** reads the guild roster on login, on `/reload`, and whenever the game refreshes the
+   guild list, and saves each member's level and the first time it saw them at 60 in
+   `WTF/Account/<ACCOUNT>/SavedVariables/BloodLegion.lua`. It saves only Blood Legion's roster (the
+   guild's name: WoW gives addons no guild id), and turns on the guild list's offline members so it
+   sees everyone. The game writes the file on `/reload` and logout.
+2. **The client** (`bloodlegion-client`) sends it to the site (`POST /api/characters/roster`)
+   whenever the game rewrites it, for every account in the game folder (by default
+   `C:\Program Files (x86)\World of Warcraft\_forever_`; `--game` for another, `--file` for one
+   file). It signs in as an officer through the site's own OAuth2 (a public client with PKCE, back
+   to any free loopback port: a registered `http://127.0.0.1/callback` takes any port), asking for
+   the `roster` scope, and keeps the refresh token in the user's config folder. Register it once on
+   the server:
+
+   ```sh
+   bloodlegion-server oauth2-clients add --name "Blood Legion Client" --public \
+       --redirect-uri http://127.0.0.1/callback --auto-consent "openid roster"
+   ```
+
+   Then, on the computer that plays:
+
+   ```sh
+   cargo run -p bloodlegion-client -- login --client-id <the id it printed>
+   cargo run -p bloodlegion-client -- watch
+   ```
+
+3. **The site** matches roster names to characters (`first last`, any `-Realm` dropped, or the two
+   names run together, since Forever's roster format is not known yet: `characters::roster`), only
+   ever raises a level, and keeps the earliest time anyone saw a character reach 60. It takes only
+   Blood Legion's roster, and the client lists the members no character is named after, for an
+   officer to add.
 
 ## The Discord server
 

@@ -1,6 +1,7 @@
 use sqlx::{PgConnection, PgPool};
 
 use sqlx::types::Json;
+use time::OffsetDateTime;
 
 use super::{Character, CharacterSpec, Note, NoteListing, Sex, Valid, order_specs};
 use crate::users::UserId;
@@ -164,6 +165,32 @@ pub(super) async fn update(
     .execute(&mut *conn)
     .await?;
     Ok(())
+}
+
+/// Raises the level of the character named `name` (lowercase: `first last`, or the two run
+/// together) to `level` if it is lower, and at 60 keeps the earlier of when it reached it and
+/// `reached_60_at` (or now). Whether there is such a character.
+pub async fn raise_level(
+    conn: &mut PgConnection,
+    name: &str,
+    level: i16,
+    reached_60_at: Option<OffsetDateTime>,
+) -> sqlx::Result<bool> {
+    let updated = sqlx::query!(
+        r#"
+        UPDATE characters
+        SET level = GREATEST(level, $2),
+            reached_60_at = CASE WHEN GREATEST(level, $2) = 60
+                                 THEN LEAST(reached_60_at, COALESCE($3, now())) END
+        WHERE name_normalized = $1 OR replace(name_normalized, ' ', '') = $1
+        "#,
+        name,
+        level,
+        reached_60_at,
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(updated.rows_affected() > 0)
 }
 
 /// Replaces the character's specs with `specs`.

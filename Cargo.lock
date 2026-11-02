@@ -332,6 +332,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "bloodlegion-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64ct",
+ "clap",
+ "rand 0.10.3",
+ "reqwest 0.13.5",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "time",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "bloodlegion-macros"
 version = "0.1.0"
 dependencies = [

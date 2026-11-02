@@ -1,12 +1,13 @@
 use axum::extract::{Path, Query};
 use axum::http::StatusCode;
-use axum::routing::{get, put};
+use axum::routing::{get, post, put};
 use axum::{Json, Router};
 
-use crate::extract::{GuildMember, Officer, SameOrigin};
+use crate::extract::{GuildMember, Officer, RosterClient, SameOrigin};
 use crate::raids::LootEntry;
 use crate::{Error, Result, State};
 
+use super::roster::{RosterInput, RosterResult};
 use super::{Character, CharacterError, CharacterInput, Note, NoteListing, SpecsInput};
 
 /// Which characters `GET /api/characters` lists.
@@ -139,10 +140,21 @@ async fn notes(state: State, _officer: Officer) -> Result<Json<Vec<NoteListing>>
     Ok(Json(super::raiding_notes(&state.pool).await?))
 }
 
+/// `POST /api/characters/roster`: the Blood Legion client sends the guild roster the addon saw in game,
+/// which raises the levels of the characters it names. Officers only, by access token.
+async fn roster(
+    state: State,
+    _client: RosterClient,
+    Json(input): Json<RosterInput>,
+) -> Result<Json<RosterResult>, CharacterError> {
+    Ok(Json(super::roster::apply(&state.pool, &input).await?))
+}
+
 pub fn router() -> Router<State> {
     Router::new()
         .route("/", get(list).post(create))
         .route("/notes", get(notes))
+        .route("/roster", post(roster))
         .route("/{id}", get(detail).put(update).delete(delete))
         .route("/{id}/note", put(set_note))
         .route("/{id}/specs", put(set_specs))

@@ -1,81 +1,276 @@
 <script lang="ts">
 	import { api, errorMessage } from '$lib/api';
-	import { RANKS, RANK_GROUP, RANK_LABEL, RAIDING_RANKS } from '$lib/guild';
 	import { classIcon, raceIcon } from '$lib/wow/icons';
 	import Alert from '$lib/components/Alert.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
-	import type { GuildCharacter, Member, Rank } from '$lib/types';
+	import CharacterSpecs from '$lib/components/guild/CharacterSpecs.svelte';
+	import { RANKS, RANK_GROUP, RANK_LABEL } from '$lib/guild';
+	import type { GuildCharacter, Rank } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	// svelte-ignore state_referenced_locally
-	let members = $state<Member[]>(data.members);
+	let characters = $state<GuildCharacter[]>(data.characters);
+	// svelte-ignore state_referenced_locally
+	let members = $state(data.members);
 	let error = $state('');
+	let query = $state('');
+	let classFilter = $state('');
+	let adding = $state(false);
 
-	const byRank = $derived(
-		RANKS.map((rank) => ({ rank, members: members.filter((m) => m.guild_rank === rank) })).filter(
-			(group) => group.members.length > 0
-		)
-	);
+	// Which characters the chart and the table count: by default the raiding roster's mains. An
+	// unclaimed character (a pug) has no rank, so it is never among them.
+	let mains = $state(true);
+	let alts = $state(false);
+	let ranks = $state<Record<Rank, boolean>>({
+		leader: true,
+		officer: true,
+		raider: true,
+		trial: false,
+		member: false,
+		public: false
+	});
 
-	// Mains of the raiding roster by class: the guild's shape at a glance.
-	const spread = $derived(
-		data.classes.map((wowClass) => ({
-			wowClass,
-			count: members.filter(
-				(m) =>
-					RAIDING_RANKS.includes(m.guild_rank) &&
-					m.characters.some((c) => c.is_main && c.class === wowClass.slug)
-			).length
-		}))
-	);
+	// A rank is the account's: changing it in one row changes every row of that player's.
+	const ranksById = $derived(new Map(members.map((m) => [m.id, m.guild_rank])));
 
-	// A member's main's class color, for the edge of their card; grey without a main.
-	const classColor = (cls: string | undefined) =>
-		data.classes.find((c) => c.slug === cls)?.color ?? 'var(--grey-solid)';
+	/** Its player's rank, or null for an unclaimed character. */
+	const rankOf = (c: GuildCharacter): Rank | null =>
+		c.user_id === null ? null : (ranksById.get(c.user_id) ?? null);
 
-	const findRace = (slug: string | null) => data.races.find((r) => r.slug === slug);
+	// The public are the sign-ups waiting for a rank: only officers filter by them.
+	const rankFilters = $derived(RANKS.filter((rank) => rank !== 'public' || data.officer));
 
 	// Mirrors the backend's `may_set_rank`, so the picker only appears where it can work.
-	function canSetRank(member: Member): boolean {
+	function canSetRank(id: number, rank: Rank): boolean {
 		if (data.user.is_superuser) return true;
-		if (!data.officer || member.id === data.user.id) return false;
+		if (!data.officer || id === data.user.id) return false;
 		const officerRank = (r: Rank) => r === 'leader' || r === 'officer';
-		return data.user.guild_rank === 'leader' || !officerRank(member.guild_rank);
+		return data.user.guild_rank === 'leader' || !officerRank(rank);
 	}
 
-	function rankChoices(): Rank[] {
-		if (data.user.is_superuser || data.user.guild_rank === 'leader') return RANKS;
-		return RANKS.filter((r) => r !== 'leader' && r !== 'officer');
-	}
+	const rankChoices = $derived(
+		data.user.is_superuser || data.user.guild_rank === 'leader'
+			? RANKS
+			: RANKS.filter((r) => r !== 'leader' && r !== 'officer')
+	);
 
-	async function setRank(member: Member, rank: Rank) {
+	async function setRank(id: number, rank: Rank) {
 		error = '';
 		try {
-			await api.put(`/api/guild/members/${member.id}/rank`, { rank });
-			members = members.map((m) => (m.id === member.id ? { ...m, guild_rank: rank } : m));
+			await api.put(`/api/guild/members/${id}/rank`, { rank });
+			members = members.map((m) => (m.id === id ? { ...m, guild_rank: rank } : m));
 		} catch (err) {
 			error = errorMessage(err, 'Changing the rank failed. Please try again.');
 		}
 	}
+
+	const counted = $derived(
+		characters.filter((c) => {
+			const rank = rankOf(c);
+			return (c.is_main ? mains : alts) && rank !== null && ranks[rank];
+		})
+	);
+
+	// How many of each class, in the catalog's order; a bar picks its class for the table.
+	const spread = $derived(
+		data.classes.map((wowClass) => ({
+			wowClass,
+			count: counted.filter((c) => c.class === wowClass.slug).length
+		}))
+	);
+	const most = $derived(Math.max(1, ...spread.map((s) => s.count)));
+
+	// Like the guild list in game: a column to sort by, clicked again to turn it around.
+	type Column = 'name' | 'race' | 'class' | 'spec' | 'player' | 'rank' | 'main';
+	const COLUMNS: { key: Column; label: string }[] = [
+		{ key: 'name', label: 'Name' },
+		{ key: 'race', label: 'Race' },
+		{ key: 'class', label: 'Class' },
+		{ key: 'spec', label: 'Specs' },
+		{ key: 'player', label: 'Player' },
+		{ key: 'rank', label: 'Rank' },
+		{ key: 'main', label: 'Main' }
+	];
+	let sort = $state<{ column: Column; descending: boolean }>({ column: 'name', descending: false });
+
+	function sortBy(column: Column) {
+		sort =
+			sort.column === column
+				? { column, descending: !sort.descending }
+				: { column, descending: false };
+	}
+
+	const fullName = (c: GuildCharacter) => `${c.first_name} ${c.last_name}`;
+	const findClass = (slug: string) => data.classes.find((c) => c.slug === slug);
+	const findRace = (slug: string | null) => data.races.find((r) => r.slug === slug);
+	const mainSpec = (c: GuildCharacter) => {
+		const spec = c.specs.find((s) => s.is_main) ?? c.specs[0];
+		return spec && findClass(c.class)?.specs.find((s) => s.slug === spec.spec)?.name;
+	};
+
+	// What each column sorts on; an empty value (no race, no player) goes last either way.
+	const sortKey: Record<Column, (c: GuildCharacter) => string | undefined> = {
+		name: fullName,
+		race: (c) => findRace(c.race)?.name,
+		class: (c) => findClass(c.class)?.name ?? c.class,
+		spec: mainSpec,
+		player: (c) => c.username ?? undefined,
+		// Highest first, as the ranks go.
+		rank: (c) => {
+			const rank = rankOf(c);
+			return rank === null ? undefined : String(RANKS.indexOf(rank));
+		},
+		// Mains first.
+		main: (c) => (c.is_main ? '0' : '1')
+	};
+
+	// The search and the class (picked here or by a bar) narrow both tables.
+	const matches = (c: GuildCharacter) =>
+		(!classFilter || c.class === classFilter) &&
+		`${fullName(c)} ${c.username ?? ''}`.toLowerCase().includes(query.trim().toLowerCase());
+
+	function sorted(list: GuildCharacter[]): GuildCharacter[] {
+		const key = sortKey[sort.column];
+		const direction = sort.descending ? -1 : 1;
+		return list.toSorted((a, b) => {
+			const [x, y] = [key(a), key(b)];
+			if (x !== y) {
+				if (x === undefined) return 1;
+				if (y === undefined) return -1;
+				const order = x.localeCompare(y);
+				if (order !== 0) return order * direction;
+			}
+			return fullName(a).localeCompare(fullName(b));
+		});
+	}
+
+	const claimed = $derived(characters.filter((c) => c.user_id !== null).length);
+	const shown = $derived(sorted(counted.filter(matches)));
+	// Characters no account claims (pugs), apart from the guild's and for the admin's eyes only.
+	const unclaimed = $derived(
+		data.user.is_superuser ? sorted(characters.filter((c) => c.user_id === null && matches(c))) : []
+	);
+	const anyUnclaimed = $derived(
+		data.user.is_superuser && characters.some((c) => c.user_id === null)
+	);
+	// Accounts with no characters yet (mostly new sign-ups), for the administrator to rank.
+	const withoutCharacters = $derived(
+		data.user.is_superuser
+			? members
+					.filter((m) => !characters.some((c) => c.user_id === m.id))
+					.toSorted((a, b) => a.username.localeCompare(b.username))
+			: []
+	);
+
+	function added(character: GuildCharacter) {
+		characters = [...characters, character];
+		adding = false;
+	}
 </script>
 
-<!-- A character as the roster shows it: its race's icon (when recorded), then its class icon and name. -->
-{#snippet character(c: GuildCharacter)}
-	{@const race = findRace(c.race)}
-	<span class="character">
-		{#if race}
-			<img
-				src={raceIcon(race.slug, c.sex)}
-				alt={race.name}
-				title={race.name}
-				width="18"
-				height="18"
-			/>
-		{/if}
-		<CharacterLink id={c.id} firstName={c.first_name} lastName={c.last_name} cls={c.class} />
-	</span>
+<!-- The guild list: every column sorts, and the one sort holds for both tables. -->
+{#snippet table(rows: GuildCharacter[])}
+	<div class="scroll">
+		<table>
+			<thead>
+				<tr>
+					{#each COLUMNS as column (column.key)}
+						<th
+							aria-sort={sort.column === column.key
+								? sort.descending
+									? 'descending'
+									: 'ascending'
+								: undefined}
+						>
+							<button type="button" onclick={() => sortBy(column.key)}>
+								{column.label}
+								<span class="arrow" aria-hidden="true">
+									{sort.column === column.key ? (sort.descending ? '▼' : '▲') : ''}
+								</span>
+							</button>
+						</th>
+					{/each}
+				</tr>
+			</thead>
+			<tbody>
+				{#each rows as character (character.id)}
+					{@const race = findRace(character.race)}
+					{@const wowClass = findClass(character.class)}
+					{@const rank = rankOf(character)}
+					<tr>
+						<td>
+							<CharacterLink
+								id={character.id}
+								firstName={character.first_name}
+								lastName={character.last_name}
+								cls={character.class}
+								icon={false}
+							/>
+						</td>
+						<td>
+							{#if race}
+								<span class="with-icon">
+									<img src={raceIcon(race.slug, character.sex)} alt="" width="20" height="20" />
+									{race.name}
+								</span>
+							{:else}
+								<span class="muted">—</span>
+							{/if}
+						</td>
+						<td>
+							<span class="with-icon" style:color={wowClass?.color}>
+								<img src={classIcon(character.class)} alt="" width="20" height="20" />
+								{wowClass?.name ?? character.class}
+							</span>
+						</td>
+						<td>
+							<CharacterSpecs cls={character.class} specs={character.specs} size={20} />
+						</td>
+						<td>
+							{#if character.username}
+								{character.username}
+							{:else}
+								<span class="muted">—</span>
+							{/if}
+						</td>
+						<td>
+							{#if rank && character.user_id}
+								{@render rankCell(character.user_id, character.username ?? '', rank)}
+							{:else}
+								<span class="muted">—</span>
+							{/if}
+						</td>
+						<td>{character.is_main ? 'Main' : 'Alt'}</td>
+					</tr>
+				{:else}
+					<tr><td colspan={COLUMNS.length} class="muted">No characters match.</td></tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+{/snippet}
+
+<!-- An account's rank: a picker where this officer may change it, else its name. -->
+{#snippet rankCell(id: number, username: string, rank: Rank)}
+	{#if canSetRank(id, rank)}
+		<select
+			class="rank"
+			aria-label="Rank of {username}"
+			title="{username}'s rank, for all their characters"
+			value={rank}
+			onchange={(event) => setRank(id, event.currentTarget.value as Rank)}
+		>
+			{#each rankChoices as choice (choice)}
+				<option value={choice}>{RANK_LABEL[choice]}</option>
+			{/each}
+		</select>
+	{:else}
+		{RANK_LABEL[rank]}
+	{/if}
 {/snippet}
 
 <svelte:head>
@@ -86,68 +281,180 @@
 	<div>
 		<h1>Roster</h1>
 	</div>
+	{#if data.officer && !adding}
+		<Button variant="primary" onclick={() => (adding = true)}>Add a character</Button>
+	{/if}
 </div>
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
 
-<ul class="spread" aria-label="Raiding mains by class">
-	{#each spread as { wowClass, count } (wowClass.slug)}
-		<li
-			class:empty={count === 0}
-			style:--class-color={wowClass.color}
-			title="{wowClass.name}: {count}"
-		>
-			<img src={classIcon(wowClass.slug)} alt={wowClass.name} width="28" height="28" />
-			<span>{count}</span>
-		</li>
-	{/each}
-</ul>
+{#if adding}
+	<CharacterForm owners={data.owners} onsaved={added} oncancel={() => (adding = false)} />
+{/if}
 
-{#each byRank as group (group.rank)}
-	<section>
-		<h2>
-			{group.members.length === 1 ? RANK_LABEL[group.rank] : RANK_GROUP[group.rank]}
-			<span class="count">{group.members.length}</span>
-		</h2>
-		<ul class="members">
-			{#each group.members as member (member.id)}
-				{@const main = member.characters.find((c) => c.is_main)}
-				{@const alts = member.characters.filter((c) => !c.is_main)}
-				<li style:--class-color={classColor(main?.class)}>
-					<div class="head">
-						<span class="username">{member.username}</span>
-						{#if canSetRank(member)}
-							<select
-								aria-label="Rank of {member.username}"
-								value={member.guild_rank}
-								onchange={(event) => setRank(member, event.currentTarget.value as Rank)}
-							>
-								{#each rankChoices() as rank (rank)}
-									<option value={rank}>{RANK_LABEL[rank]}</option>
-								{/each}
-							</select>
-						{/if}
-					</div>
-					{#if main}
-						<div class="main">{@render character(main)}</div>
-					{:else}
-						<p class="none">No characters yet</p>
-					{/if}
-					{#if alts.length > 0}
-						<div class="alts">
-							{#each alts as alt (alt.id)}{@render character(alt)}{/each}
-						</div>
-					{/if}
-				</li>
+<section class="panel" aria-label="Characters by class">
+	<div class="toggles">
+		<div class="filter" role="group" aria-labelledby="filter-characters">
+			<span class="label" id="filter-characters">Characters</span>
+			<div class="group">
+				<button type="button" aria-pressed={mains} onclick={() => (mains = !mains)}>Mains</button>
+				<button type="button" aria-pressed={alts} onclick={() => (alts = !alts)}>Alts</button>
+			</div>
+		</div>
+		<div class="filter" role="group" aria-labelledby="filter-ranks">
+			<span class="label" id="filter-ranks">Guild rank</span>
+			<div class="group">
+				{#each rankFilters as rank (rank)}
+					<button
+						type="button"
+						aria-pressed={ranks[rank]}
+						onclick={() => (ranks[rank] = !ranks[rank])}>{RANK_GROUP[rank]}</button
+					>
+				{/each}
+			</div>
+		</div>
+	</div>
+
+	<ul class="bars">
+		{#each spread as { wowClass, count } (wowClass.slug)}
+			<li style:--class-color={wowClass.color}>
+				<button
+					type="button"
+					aria-pressed={classFilter === wowClass.slug}
+					class:faded={classFilter !== '' && classFilter !== wowClass.slug}
+					title="{wowClass.name}: {count}"
+					onclick={() => (classFilter = classFilter === wowClass.slug ? '' : wowClass.slug)}
+				>
+					<span class="count">{count}</span>
+					<span class="track">
+						<span class="bar" style:height="{(count / most) * 100}%"></span>
+					</span>
+					<img src={classIcon(wowClass.slug)} alt={wowClass.name} width="28" height="28" />
+				</button>
+			</li>
+		{/each}
+	</ul>
+</section>
+
+<div class="row">
+	<label class="field">
+		Search
+		<input type="search" bind:value={query} placeholder="Name or player" />
+	</label>
+	<label class="field">
+		Class
+		<select bind:value={classFilter}>
+			<option value="">Every class</option>
+			{#each data.classes as wowClass (wowClass.slug)}
+				<option value={wowClass.slug}>{wowClass.name}</option>
 			{/each}
-		</ul>
+		</select>
+	</label>
+</div>
+
+<p class="muted">{shown.length} of {claimed}</p>
+
+{@render table(shown)}
+
+{#if anyUnclaimed}
+	<section>
+		<h2>Unclaimed <span class="count">{unclaimed.length}</span></h2>
+		{@render table(unclaimed)}
 	</section>
-{:else}
-	<p class="muted">Nobody on the roster yet.</p>
-{/each}
+{/if}
+
+{#if withoutCharacters.length > 0}
+	<section>
+		<h2>No characters yet <span class="count">{withoutCharacters.length}</span></h2>
+		<div class="scroll">
+			<table>
+				<thead>
+					<tr><th class="plain">Player</th><th class="plain">Rank</th></tr>
+				</thead>
+				<tbody>
+					{#each withoutCharacters as member (member.id)}
+						<tr>
+							<td>{member.username}</td>
+							<td>{@render rankCell(member.id, member.username, member.guild_rank)}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	</section>
+{/if}
 
 <style>
-	.spread {
+	/* Two filters, each under its own name, with a rule between them: beside each other on a
+	   wide screen, one above the other on a phone. */
+	.toggles {
+		display: flex;
+		gap: var(--space-6);
+	}
+
+	.filter {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.filter + .filter {
+		padding-left: var(--space-6);
+		border-left: 1px solid var(--grey-surface);
+	}
+
+	@media (max-width: 40rem) {
+		.toggles {
+			flex-direction: column;
+			gap: var(--space-4);
+		}
+
+		.filter + .filter {
+			padding-top: var(--space-4);
+			padding-left: 0;
+			border-top: 1px solid var(--grey-surface);
+			border-left: 0;
+		}
+	}
+
+	.label {
+		color: var(--grey-text);
+		font-size: var(--text-xs);
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	.group {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1);
+	}
+
+	.group button {
+		padding: var(--space-1) var(--space-3);
+		color: var(--grey-text);
+		font: inherit;
+		font-size: var(--text-sm);
+		font-weight: 500;
+		background: none;
+		border: 1px solid var(--grey-soft);
+		border-radius: 999px;
+		cursor: pointer;
+	}
+
+	.group button:hover {
+		color: var(--foreground);
+	}
+
+	.group button[aria-pressed='true'] {
+		color: var(--foreground);
+		background-color: var(--red-bg);
+		border-color: var(--red-solid);
+	}
+
+	/* A column a class: its count, its bar up from a shared baseline, its icon under it. */
+	.bars {
 		display: grid;
 		grid-template-columns: repeat(9, minmax(0, 1fr));
 		gap: var(--space-2);
@@ -156,34 +463,125 @@
 		list-style: none;
 	}
 
-	.spread li {
+	.bars button {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
-		justify-content: center;
-		gap: var(--space-2);
-		padding: var(--space-2);
-		color: var(--class-color);
+		gap: var(--space-1);
+		width: 100%;
+		padding: var(--space-1) 0;
+		color: var(--foreground);
+		font: inherit;
+		background: none;
+		border: 0;
+		border-radius: var(--radius-md);
+		cursor: pointer;
+	}
+
+	.bars button:hover {
+		background-color: var(--grey-surface);
+	}
+
+	.bars button.faded {
+		opacity: 0.35;
+	}
+
+	.count {
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
-		background-color: var(--grey-bg);
-		border: 1px solid var(--grey-surface);
-		border-bottom: 2px solid var(--class-color);
-		border-radius: var(--radius-md);
 	}
 
-	.spread li.empty {
-		opacity: 0.4;
+	.track {
+		display: flex;
+		align-items: flex-end;
+		width: min(100%, 2.5rem);
+		height: 8rem;
+		border-bottom: 1px solid var(--grey-soft);
 	}
 
-	.spread img {
-		display: block;
-		border-radius: var(--radius-sm);
+	.bar {
+		width: 100%;
+		background-color: var(--class-color);
+		border-radius: 4px 4px 0 0;
+		transition: height 200ms ease-out;
 	}
 
-	@media (max-width: 40rem) {
-		.spread {
-			grid-template-columns: repeat(5, minmax(0, 1fr));
+	@media (prefers-reduced-motion: reduce) {
+		.bar {
+			transition: none;
 		}
+	}
+
+	/* On a phone the table scrolls sideways rather than squeezing its columns. */
+	.scroll {
+		overflow-x: auto;
+	}
+
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: var(--text-md);
+		white-space: nowrap;
+	}
+
+	th {
+		padding: 0;
+		text-align: left;
+		border-bottom: 1px solid var(--grey-surface);
+	}
+
+	/* The whole heading is the button, so it sorts wherever it is clicked. */
+	th button {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+		width: 100%;
+		padding: var(--space-2) var(--space-3);
+		color: var(--grey-text);
+		font: inherit;
+		font-size: var(--text-xs);
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		background: none;
+		border: 0;
+		cursor: pointer;
+	}
+
+	th button:hover,
+	th[aria-sort] button {
+		color: var(--foreground);
+	}
+
+	/* A heading that does not sort, set like the ones that do. */
+	th.plain {
+		padding: var(--space-2) var(--space-3);
+		color: var(--grey-text);
+		font-size: var(--text-xs);
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	/* Compact in its cell, not the full width forms give a select. */
+	select.rank {
+		width: auto;
+		padding-block: 0;
+		font-size: var(--text-sm);
+	}
+
+	.arrow {
+		font-size: 0.6rem;
+	}
+
+	td {
+		padding: var(--space-2) var(--space-3);
+		border-bottom: 1px solid var(--grey-surface);
+		vertical-align: middle;
+	}
+
+	tbody tr:hover td {
+		background-color: var(--grey-bg);
 	}
 
 	.count {
@@ -191,80 +589,14 @@
 		font-weight: 400;
 	}
 
-	.members {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-		gap: var(--space-2);
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.members li {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		padding: var(--space-3) var(--space-4);
-		background-color: var(--grey-bg);
-		border: 1px solid var(--grey-surface);
-		border-left: 3px solid var(--class-color);
-		border-radius: var(--radius-lg);
-	}
-
-	/* The person first: their name, with the rank picker beside it for officers. */
-	.head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-2);
-		min-height: 1.75rem;
-	}
-
-	.username {
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		color: var(--foreground);
-		font-size: var(--text-lg);
-		font-weight: 700;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	/* Compact beside the name, not the full width forms give a select. */
-	.head select {
-		flex: none;
-		width: auto;
-		font-size: var(--text-sm);
-	}
-
-	/* A race icon, then the class icon and name: the icons alike. */
-	.character {
+	.with-icon {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-1);
+		gap: var(--space-2);
 	}
 
-	.character img {
+	img {
 		display: block;
 		border-radius: var(--radius-sm);
-	}
-
-	.none {
-		margin: 0;
-		color: var(--grey-text);
-		font-size: var(--text-sm);
-		font-style: italic;
-	}
-
-	/* One a line, smaller than the main: that is what marks them as alts. */
-	.alts {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: var(--space-1);
-		padding-top: var(--space-2);
-		font-size: var(--text-sm);
-		border-top: 1px solid var(--grey-surface);
 	}
 </style>

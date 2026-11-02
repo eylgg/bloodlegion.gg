@@ -20,26 +20,39 @@ pub enum UserinfoError {
     Unauthorized,
 }
 
-pub async fn handler(state: State, headers: HeaderMap) -> Result<Json<Value>, UserinfoError> {
+/// The claims of the request's `Authorization: Bearer` access token, or `None` when there is no
+/// such header or the token is not one this site issued and still valid.
+pub async fn verify_bearer(
+    state: &State,
+    headers: &HeaderMap,
+) -> anyhow::Result<Option<jwt::AccessTokenPayload>> {
     let bearer = headers.get_all(header::AUTHORIZATION);
-    let bearer = Authorization::<Bearer>::decode(&mut bearer.iter())
-        .map_err(|_| crate::Error::External(UserinfoError::Unauthorized))?;
+    let Ok(bearer) = Authorization::<Bearer>::decode(&mut bearer.iter()) else {
+        return Ok(None);
+    };
 
     // Verify against the published key named by the token's `kid`, so tokens
     // signed by a recently-retired key still validate during a rotation.
     let token = bearer.token();
-    let kid = jwt::decode_header(token)
-        .ok()
-        .and_then(|header| header.kid)
-        .ok_or(crate::Error::External(UserinfoError::Unauthorized))?;
-    let (n, e) = jwk::find_published_jwk(&state.pool, &kid)
+    let Some(kid) = jwt::decode_header(token).ok().and_then(|header| header.kid) else {
+        return Ok(None);
+    };
+    let Some((n, e)) = jwk::find_published_jwk(&state.pool, &kid)
         .await
         .context("looking up the token's signing key")?
+    else {
+        return Ok(None);
+    };
+    let Ok(verifying_key) = jwt::rsa_verifying_key(&n, &e) else {
+        return Ok(None);
+    };
+    Ok(jwt::validate_access_token(&verifying_key, token, &state.origin).ok())
+}
+
+pub async fn handler(state: State, headers: HeaderMap) -> Result<Json<Value>, UserinfoError> {
+    let claims = verify_bearer(&state, &headers)
+        .await?
         .ok_or(crate::Error::External(UserinfoError::Unauthorized))?;
-    let verifying_key = jwt::rsa_verifying_key(&n, &e)
-        .map_err(|_| crate::Error::External(UserinfoError::Unauthorized))?;
-    let claims = jwt::validate_access_token(&verifying_key, token, &state.origin)
-        .map_err(|_| crate::Error::External(UserinfoError::Unauthorized))?;
 
     let scopes: Vec<&str> = claims.scope.split(' ').filter(|s| !s.is_empty()).collect();
     if !scopes.contains(&super::OPENID) {

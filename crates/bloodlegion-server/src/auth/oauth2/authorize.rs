@@ -259,10 +259,33 @@ fn resolve_redirect_uri(
         },
         Some(uri) => registered
             .iter()
-            .find(|registered| *registered == uri)
-            .cloned()
+            .find(|registered| *registered == uri || same_loopback(registered, uri))
+            .map(|_| uri.clone())
             .ok_or(crate::Error::External(AuthorizeError::InvalidRedirectUri)),
     }
+}
+
+/// Whether `requested` is the registered loopback redirect URI on another port. An app on
+/// someone's own computer listens on whatever port is free, so a registered
+/// `http://127.0.0.1/callback` (or `[::1]`) takes any port (RFC 8252, section 7.3). Not
+/// `localhost`, which a hosts file can point anywhere.
+fn same_loopback(registered: &str, requested: &str) -> bool {
+    let (Ok(registered), Ok(requested)) = (Url::parse(registered), Url::parse(requested)) else {
+        return false;
+    };
+    let loopback = matches!(
+        registered.host(),
+        Some(url::Host::Ipv4(ip)) if ip.is_loopback()
+    ) || matches!(registered.host(), Some(url::Host::Ipv6(ip)) if ip.is_loopback());
+    loopback
+        && registered.scheme() == "http"
+        && requested.scheme() == "http"
+        && registered.host() == requested.host()
+        && registered.path() == requested.path()
+        && registered.query() == requested.query()
+        && requested.username().is_empty()
+        && requested.password().is_none()
+        && requested.fragment().is_none()
 }
 
 async fn validate(
@@ -625,5 +648,35 @@ mod tests {
             resolve_redirect_uri(&Some("https://evil.test/cb".to_string()), &registered),
             Err(crate::Error::External(AuthorizeError::InvalidRedirectUri))
         ));
+    }
+
+    #[test]
+    fn resolve_redirect_uri_takes_any_port_on_a_loopback_address() {
+        let registered = registered(&["http://127.0.0.1/callback", "http://[::1]/callback"]);
+        let resolve = |uri: &str| resolve_redirect_uri(&Some(uri.to_string()), &registered);
+        // The port the app listens on comes back as asked.
+        assert_eq!(
+            resolve("http://127.0.0.1:53682/callback").unwrap(),
+            "http://127.0.0.1:53682/callback"
+        );
+        assert_eq!(
+            resolve("http://[::1]:4000/callback").unwrap(),
+            "http://[::1]:4000/callback"
+        );
+        assert!(resolve("http://127.0.0.1/callback").is_ok());
+        // Only the port varies: not the host, the path, or the scheme.
+        for other in [
+            "http://localhost:53682/callback",
+            "http://127.0.0.2:53682/callback",
+            "http://127.0.0.1:53682/other",
+            "https://127.0.0.1:53682/callback",
+            "http://127.0.0.1:53682/callback?next=1",
+            "http://user@127.0.0.1:53682/callback",
+        ] {
+            assert!(resolve(other).is_err(), "{other}");
+        }
+        // A registered https URI keeps its exact match.
+        let https = super::tests::registered(&["https://app.test/cb"]);
+        assert!(resolve_redirect_uri(&Some("https://app.test:444/cb".into()), &https).is_err());
     }
 }

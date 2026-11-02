@@ -7,10 +7,13 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates/bloodlegion-server/Cargo.toml ./crates/bloodlegion-server/Cargo.toml
 COPY crates/bloodlegion-macros/Cargo.toml ./crates/bloodlegion-macros/Cargo.toml
 COPY crates/xtask/Cargo.toml ./crates/xtask/Cargo.toml
+COPY crates/bloodlegion-client/Cargo.toml ./crates/bloodlegion-client/Cargo.toml
 RUN mkdir -p crates/bloodlegion-server/src crates/bloodlegion-macros/src crates/xtask/src \
+        crates/bloodlegion-client/src \
     && echo 'fn main() {}' > crates/bloodlegion-server/src/main.rs \
     && echo '' > crates/bloodlegion-macros/src/lib.rs \
     && echo 'fn main() {}' > crates/xtask/src/main.rs \
+    && echo 'fn main() {}' > crates/bloodlegion-client/src/main.rs \
     && cargo fetch --locked --target "$(rustc --print host-tuple)"
 COPY crates/bloodlegion-server ./crates/bloodlegion-server
 COPY crates/bloodlegion-macros ./crates/bloodlegion-macros

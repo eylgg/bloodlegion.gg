@@ -17,6 +17,7 @@ use crate::State;
 
 /// The validated `scope` value type, reachable as `crate::auth::oauth2::Scope`.
 pub use scope::Scope;
+pub use userinfo::verify_bearer;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ScopeDefinition {
@@ -27,6 +28,8 @@ pub struct ScopeDefinition {
 pub const OPENID: &str = "openid";
 pub const PROFILE: &str = "profile";
 pub const EMAIL: &str = "email";
+/// Uploading the guild roster the addon saw in game (`characters::roster`): officers only.
+pub const ROSTER: &str = "roster";
 
 pub const SUPPORTED_SCOPES: &[ScopeDefinition] = &[
     ScopeDefinition {
@@ -40,6 +43,10 @@ pub const SUPPORTED_SCOPES: &[ScopeDefinition] = &[
     ScopeDefinition {
         name: EMAIL,
         description: "Access your primary email address and email verification status.",
+    },
+    ScopeDefinition {
+        name: ROSTER,
+        description: "Upload the guild roster from the game: names and levels (officers only).",
     },
 ];
 

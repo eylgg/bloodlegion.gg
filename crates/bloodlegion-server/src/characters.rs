@@ -5,6 +5,7 @@
 
 pub mod api;
 mod db;
+pub mod roster;
 
 use sqlx::PgPool;
 use time::{OffsetDateTime, serde::iso8601};
@@ -187,6 +188,20 @@ pub enum CharacterError {
         detail = "Notes are at most 10,000 characters."
     )]
     NoteTooLong,
+    #[error("wrong guild")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Wrong Guild",
+        detail = "That roster is not Blood Legion's: log in on a character in the guild."
+    )]
+    WrongGuild,
+    #[error("roster too long")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Roster Too Long",
+        detail = "A roster names at most 1,000 members."
+    )]
+    RosterTooLong,
     #[error("invalid spec")]
     #[problem(
         status = UNPROCESSABLE_ENTITY,

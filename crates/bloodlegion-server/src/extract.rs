@@ -221,6 +221,46 @@ impl FromRequestParts<State> for GuildMember {
     }
 }
 
+/// An officer signed in by an OAuth2 access token (`Authorization: Bearer`) granted the `roster`
+/// scope: the Blood Legion client, which sends the guild roster the addon saw. Not the session cookie, so a
+/// browser page cannot be tricked into an upload. Rejects with `401` without a valid token of that
+/// scope (or for a disabled account), `403` when the account is not an officer.
+pub struct RosterClient(pub User);
+
+impl Deref for RosterClient {
+    type Target = User;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl FromRequestParts<State> for RosterClient {
+    type Rejection = Error<AuthRejection>;
+
+    async fn from_request_parts(parts: &mut Parts, state: &State) -> Result<Self, Self::Rejection> {
+        let unauthorized = || Error::External(AuthRejection::Unauthorized);
+        let claims = crate::auth::oauth2::verify_bearer(state, &parts.headers)
+            .await?
+            .filter(|claims| {
+                claims
+                    .scope
+                    .split(' ')
+                    .any(|scope| scope == crate::auth::oauth2::ROSTER)
+            })
+            .ok_or_else(unauthorized)?;
+        let id = claims.sub.parse().map_err(|_| unauthorized())?;
+        let user = crate::users::find_user_by_id(&state.pool, crate::users::UserId(id))
+            .await
+            .context("looking up the access token's user")?
+            .filter(|user| !user.disabled)
+            .ok_or_else(unauthorized)?;
+        user.is_officer()
+            .then_some(RosterClient(user))
+            .ok_or(Error::External(AuthRejection::Forbidden))
+    }
+}
+
 /// Extracts the signed-in user and requires them to be an officer: a guild leader or officer, or
 /// a superuser (see [`User::is_officer`]). Rejects like [`Admin`]: `401` without a session, `403`
 /// for anyone else.

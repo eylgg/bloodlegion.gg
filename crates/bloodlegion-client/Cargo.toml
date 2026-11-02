@@ -1,0 +1,20 @@
+[package]
+name = "bloodlegion-client"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91.1"
+description = "Sends the guild roster the Blood Legion addon saved in game to bloodlegion.gg"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+anyhow = "1.0.103"
+base64ct = { version = "1.8.3", features = ["alloc"] }
+clap = { version = "4.6.2", features = ["derive"] }
+rand = "0.10.1"
+reqwest = { version = "0.13.4", features = ["json", "form"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+sha2 = "0.11.0"
+time = { version = "0.3.47", features = ["formatting"] }
+tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "net", "io-util", "time"] }
+url = { version = "2.5.8", features = ["serde"] }

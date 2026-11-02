@@ -430,6 +430,43 @@ pub async fn providers_add(payload: CreateProviderPayload) -> Result<()> {
     Ok(())
 }
 
+/// `oauth2-clients add`: registers an app the way the admin API does, and prints its client id
+/// (and a confidential client's generated secret, which is shown only now).
+#[tokio::main(flavor = "current_thread")]
+pub async fn clients_add(
+    name: String,
+    redirect_uris: Vec<String>,
+    public: bool,
+    auto_consent_scope: Option<String>,
+) -> Result<()> {
+    let pool = State::load_pool().await?;
+    let payload = crate::auth::oauth2::clients::CreatePayload {
+        id: None,
+        name,
+        redirect_uris,
+        client_type: if public { "public" } else { "confidential" }.to_string(),
+        is_pkce_required: true,
+        is_email_masked: false,
+        secret: None,
+        auto_consent_scope,
+        identity_provider_slug: None,
+    };
+    let client = match crate::auth::oauth2::clients::create(&pool, payload).await {
+        Ok(client) => client,
+        Err(crate::Error::External(problem)) => {
+            return Err(anyhow::anyhow!("{}", crate::Problem::detail(&problem)).into());
+        }
+        Err(crate::Error::Internal(error)) => return Err(error.into()),
+    };
+    eprintln!("registered the client; its id:");
+    println!("{}", client.id);
+    if let Some(secret) = client.secret {
+        eprintln!("its secret, shown only now:");
+        println!("{secret}");
+    }
+    Ok(())
+}
+
 /// `oauth2-providers remove`.
 #[tokio::main(flavor = "current_thread")]
 pub async fn providers_remove(slug: String) -> Result<()> {

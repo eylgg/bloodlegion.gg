@@ -23,7 +23,6 @@
 					{ href: resolve('/loot'), label: 'Loot' },
 					{ href: resolve('/bosses'), label: 'Bosses' },
 					{ href: resolve('/items'), label: 'Items' },
-					{ href: resolve('/characters'), label: 'Characters' },
 					{ href: resolve('/questions'), label: 'Questions' },
 					...(officer ? [{ href: resolve('/notes'), label: 'Notes' }] : [])
 				]
@@ -34,8 +33,11 @@
 			: [])
 	]);
 
-	const isActive = (href: string) =>
+	const under = (href: string) =>
 		page.url.pathname === href || page.url.pathname.startsWith(href + '/');
+	// A character's page is the roster's.
+	const isActive = (href: string) =>
+		under(href) || (href === resolve('/roster') && under(resolve('/characters')));
 
 	// On a phone the links scroll sideways: fade the edge and show an arrow on whichever side has
 	// more, so it is plain there is more to see.
