@@ -73,7 +73,9 @@ impl Files {
 }
 
 #[derive(Parser)]
-#[command(about = "Blood Legion's companion app: sends the addon's guild roster to bloodlegion.com")]
+#[command(
+    about = "Blood Legion's companion app: sends the addon's guild roster to bloodlegion.com"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
