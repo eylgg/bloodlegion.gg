@@ -159,21 +159,44 @@ export function formatWeekSpan(week: { starts_at: string; ends_at: string }): st
  */
 export const RAID_LENGTH_HOURS = 3;
 
+const weekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: 'long', timeZone: 'UTC' });
+const clockFormat = new Intl.DateTimeFormat(undefined, {
+	hour: 'numeric',
+	minute: '2-digit',
+	timeZone: 'UTC'
+});
+
 /**
- * Each raid's name: its zone, numbered when the zone has more than one raid in a raid week
- * ("Onyxia's Lair 2"), in order of start. Raids are not named otherwise.
+ * Each raid's name: its zone and the day it starts on the guild's clock ("Onyxia's Lair
+ * Tuesday"), with the time when the zone has another raid that day in the same raid week
+ * ("Molten Core Tuesday 8:00 PM"), and numbered in order of scheduling when that is the same too
+ * (a second group at the same time).
  */
 export function raidNames(
 	zones: Zone[],
-	raids: { id: number; zone: string; starts_at: string; week: { number: number } | null }[]
+	raids: {
+		id: number;
+		zone: string;
+		starts_local: string;
+		starts_at: string;
+		week: { number: number } | null;
+	}[]
 ): Map<number, string> {
 	const names = new Map<number, string>();
-	const key = (r: (typeof raids)[number]) => `${r.zone}:${r.week?.number ?? 'before'}`;
+	const week = (r: (typeof raids)[number]) => `${r.zone}:${r.week?.number ?? 'before'}`;
+	// `starts_local` is the guild's wall clock (`2026-12-09T20:00`): read as UTC, it formats as is.
+	const local = (r: (typeof raids)[number]) => new Date(`${r.starts_local.slice(0, 16)}Z`);
+	const day = (r: (typeof raids)[number]) => `${week(r)}:${r.starts_local.slice(0, 10)}`;
+	const time = (r: (typeof raids)[number]) => `${week(r)}:${r.starts_local.slice(0, 16)}`;
 	const sorted = [...raids].sort((a, b) => a.starts_at.localeCompare(b.starts_at) || a.id - b.id);
 	for (const raid of sorted) {
-		const same = sorted.filter((r) => key(r) === key(raid));
-		const name = zoneName(zones, raid.zone);
-		names.set(raid.id, same.length > 1 ? `${name} ${same.indexOf(raid) + 1}` : name);
+		let name = `${zoneName(zones, raid.zone)} ${weekdayFormat.format(local(raid))}`;
+		if (sorted.filter((r) => day(r) === day(raid)).length > 1) {
+			name += ` ${clockFormat.format(local(raid))}`;
+			const same = sorted.filter((r) => time(r) === time(raid));
+			if (same.length > 1) name += ` ${same.indexOf(raid) + 1}`;
+		}
+		names.set(raid.id, name);
 	}
 	return names;
 }

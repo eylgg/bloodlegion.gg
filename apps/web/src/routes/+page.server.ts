@@ -7,6 +7,7 @@ import type {
 	LoginOptions,
 	LoginProvider,
 	LootEntry,
+	Member,
 	Raid,
 	WowClass,
 	Zone
@@ -45,13 +46,14 @@ export const load: PageServerLoad = async ({ fetch, parent }) => {
 	}
 	const member = isGuildMember(user);
 	try {
-		const [zones, classes, calendar, raids, loot, characters] = await Promise.all([
+		const [zones, classes, calendar, raids, loot, characters, members] = await Promise.all([
 			api.get<Zone[]>('/api/raids/zones', { fetch }),
 			api.get<WowClass[]>('/api/wow/classes', { fetch }),
 			api.get<Calendar>('/api/raids/calendar', { fetch }),
 			member ? api.get<Raid[]>('/api/raids', { fetch }) : [],
 			member ? api.get<LootEntry[]>(`/api/loot?limit=${RECENT_LOOT}`, { fetch }) : [],
-			member ? api.get<GuildCharacter[]>('/api/characters', { fetch }) : []
+			member ? api.get<GuildCharacter[]>('/api/characters', { fetch }) : [],
+			member ? api.get<Member[]>('/api/guild/members', { fetch }) : []
 		]);
 		return {
 			providers: [] as LoginProvider[],
@@ -59,7 +61,16 @@ export const load: PageServerLoad = async ({ fetch, parent }) => {
 			// Top level, where the loot table looks for them as on the guild's pages.
 			zones,
 			classes,
-			home: { user, member, calendar, raids, loot, characters }
+			home: {
+				user,
+				member,
+				calendar,
+				raids,
+				loot,
+				characters,
+				// Only the ranks, which decide who counts in the race to 60.
+				ranks: members.map(({ id, guild_rank }) => ({ id, guild_rank }))
+			}
 		};
 	} catch (err) {
 		error(statusFrom(err, 503), 'The guild pages are unavailable right now.');

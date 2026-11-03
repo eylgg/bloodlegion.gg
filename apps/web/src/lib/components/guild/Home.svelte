@@ -5,7 +5,15 @@
 	import LootTable from '$lib/components/guild/LootTable.svelte';
 	import RaceTo60 from '$lib/components/guild/RaceTo60.svelte';
 	import { formatInZone, formatWeekSpan, raidNames } from '$lib/guild';
-	import type { Announcement, Calendar, GuildCharacter, LootEntry, Raid, Zone } from '$lib/types';
+	import type {
+		Announcement,
+		Calendar,
+		GuildCharacter,
+		LootEntry,
+		Raid,
+		Rank,
+		Zone
+	} from '$lib/types';
 
 	// A member's front page, signed in: the mark with the countdown to launch (then the week), the
 	// race to 60 (for the launch only), the next raids, the latest loot, and the Discord announcements. The public get a word on how to
@@ -17,6 +25,7 @@
 		raids,
 		loot,
 		characters,
+		ranks,
 		announcements
 	}: {
 		zones: Zone[];
@@ -28,6 +37,8 @@
 		loot: LootEntry[];
 		/** For the race to 60. */
 		characters: GuildCharacter[];
+		/** Each player's rank, for who counts in the race. */
+		ranks: { id: number; guild_rank: Rank }[];
 		announcements: Announcement[];
 	} = $props();
 
@@ -78,7 +89,7 @@
 				<div class="head">
 					<h2>Race to 60</h2>
 				</div>
-				<RaceTo60 {characters} />
+				<RaceTo60 {characters} {ranks} />
 			</section>
 
 			<section>

@@ -196,28 +196,6 @@ pub const EFFECTS: &[Effect] = &[
     ),
     exclusive(
         effect(
-            "blessing-of-salvation",
-            "Blessing of Salvation",
-            Buff,
-            Raid,
-            "Threat",
-            &[class("paladin")],
-        ),
-        "blessing",
-    ),
-    exclusive(
-        effect(
-            "blessing-of-light",
-            "Blessing of Light",
-            Buff,
-            Raid,
-            "Healing",
-            &[class("paladin")],
-        ),
-        "blessing",
-    ),
-    exclusive(
-        effect(
             "blessing-of-sanctuary",
             "Blessing of Sanctuary",
             Buff,
@@ -247,27 +225,21 @@ pub const EFFECTS: &[Effect] = &[
         "Attack power",
         &[talent("hunter", "trueshot-aura")],
     ),
+    // Leader of the Pack and Moonkin Aura are the same 3% critical strike in Forever and don't
+    // stack: one buff, brought by either.
     noted(
         effect(
-            "leader-of-the-pack",
-            "Leader of the Pack",
+            "crit-aura",
+            "3% crit",
             Buff,
             Raid,
             "Critical strike",
-            &[talent("druid", "leader-of-the-pack")],
+            &[
+                talent("druid", "leader-of-the-pack"),
+                talent("druid", "moonkin-form"),
+            ],
         ),
-        "Melee and ranged critical strike only.",
-    ),
-    noted(
-        effect(
-            "moonkin-aura",
-            "Moonkin Aura",
-            Buff,
-            Raid,
-            "Critical strike",
-            &[talent("druid", "moonkin-form")],
-        ),
-        "Spell critical strike only.",
+        "Leader of the Pack or Moonkin Aura; the two don't stack.",
     ),
     // A shaman keeps one totem of each element down.
     exclusive(

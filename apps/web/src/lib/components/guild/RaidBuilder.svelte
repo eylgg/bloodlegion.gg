@@ -7,6 +7,7 @@
 		coverage,
 		member,
 		playedSpec,
+		provides,
 		roles,
 		type Coverage
 	} from '$lib/wow/composition';
@@ -18,7 +19,7 @@
 
 	/**
 	 * A raid's groups of five, each with the group-only buffs it has, and what the whole raid
-	 * covers: buffs, debuffs, utility, and roles. Officers move people by dragging, or by clicking
+	 * covers: raid-wide buffs, debuffs, utility, and roles. Officers move people by dragging, or by clicking
 	 * one then where they go; moving onto someone swaps the two. People come from outside (the
 	 * roster, another raid) through `onincoming`, and leave by × or by being dragged back.
 	 */
@@ -119,22 +120,25 @@
 	const members = $derived(shown.map(member));
 	const covered = $derived(coverage(effects, members));
 	const roleCounts = $derived(roles(classes, members));
-	const shared = $derived(contention(effects, members));
-	const byKind = (kind: Effect['kind']) => covered.filter((c) => c.effect.kind === kind);
-	/** The group-only buffs someone in `group` brings it. */
+	// The summary is the raid-wide effects; a group-only one shows in the groups that have it.
+	const raidWide = $derived(covered.filter((c) => c.effect.scope === 'raid'));
+	const shared = $derived(
+		contention(
+			effects.filter((e) => e.scope === 'raid'),
+			members
+		)
+	);
+	const byKind = (kind: Effect['kind']) => raidWide.filter((c) => c.effect.kind === kind);
+	/** The group-only effects someone in `group` brings it. */
 	const partyBuffs = (group: number) =>
-		covered.filter(
-			(c) =>
-				c.effect.scope === 'party' &&
-				c.effect.kind === 'buff' &&
-				c.providers.some((m) => m.group === group)
-		);
+		covered
+			.filter((c) => c.effect.scope === 'party')
+			.map((c) => ({ ...c, providers: c.providers.filter((m) => m.group === group) }))
+			.filter((c) => c.providers.length > 0);
 
 	const SHARED_LABEL: Record<string, (casters: number, wanted: number) => string> = {
 		blessing: (n, w) =>
 			`Blessings: ${n} ${n === 1 ? 'paladin' : 'paladins'}, so ${Math.min(n, w)} of the ${w} blessings below on each class.`,
-		aura: (n) =>
-			`Auras: each of the ${n} ${n === 1 ? 'paladin' : 'paladins'} keeps one aura up for their group.`,
 		curse: (n, w) =>
 			`Curses: ${n} ${n === 1 ? 'warlock' : 'warlocks'}, so ${Math.min(n, w)} of the ${w} curses below on the target.`,
 		armor: () => "Sunder Armor and Expose Armor don't stack.",
@@ -144,14 +148,26 @@
 			`Earth totems: ${n} ${n === 1 ? 'shaman' : 'shamans'}, so ${Math.min(n, w)} of the ${w} earth totems below.`
 	};
 
-	/** covered: everyone has it; partial: a group-only buff some groups miss; missing: nobody. */
-	function status(c: Coverage): 'covered' | 'partial' | 'missing' {
-		if (c.providers.length === 0) return 'missing';
-		return c.groups.missing.length > 0 ? 'partial' : 'covered';
-	}
+	const status = (c: Coverage) => (c.providers.length === 0 ? 'missing' : 'covered');
 
-	const providerNames = (c: Coverage) =>
-		c.providers.map((m) => `${m.attendee.first_name} ${m.attendee.last_name}`).join(', ');
+	/**
+	 * Who brings it, and with what when it has several sources (the 3% crit: "Lira Moonwell
+	 * (Moonkin Form)").
+	 */
+	function providerNames(c: Coverage): string {
+		const talents = new Set(c.effect.providers.map((p) => p.talent));
+		return c.providers
+			.map((m) => {
+				const name = `${m.attendee.first_name} ${m.attendee.last_name}`;
+				const by = c.effect.providers.find((p) => provides(p, m));
+				if (talents.size < 2 || !by?.talent) return name;
+				const talent = classes
+					.find((cls) => cls.slug === by.class)
+					?.talents.find((t) => t.slug === by.talent);
+				return `${name} (${talent?.name ?? by.talent})`;
+			})
+			.join(', ');
+	}
 
 	/* --- moving people --- */
 
@@ -356,12 +372,17 @@
 							</li>
 						{/each}
 					</ol>
-					<p class="party" title="Group-only buffs this group has">
+					<p class="party">
 						{#if buffs.length === 0}
 							<span class="muted">No group buffs</span>
 						{:else}
 							{#each buffs as c (c.effect.slug)}
-								<span class="buff" class:improved={c.improved}>{c.effect.name}</span>
+								<span
+									class="buff"
+									class:improved={c.improved}
+									title={[providerNames(c), c.effect.note].filter(Boolean).join('. ')}
+									>{c.effect.name}</span
+								>
 							{/each}
 						{/if}
 					</p>
@@ -383,21 +404,15 @@
 		{#if shown.length === 0}
 			<p class="muted small">Put people in groups to see what the raid brings.</p>
 		{:else if compact}
-			{@const gaps = covered.filter((c) => status(c) !== 'covered')}
+			{@const gaps = raidWide.filter((c) => status(c) === 'missing')}
 			<p class="small gaps">
 				{#if gaps.length === 0}
 					Everything covered.
 				{:else}
 					<span class="muted">Missing:</span>
 					{#each gaps as c, i (c.effect.slug)}
-						<span
-							class={status(c)}
-							title={c.groups.missing.length
-								? `Missing in group ${c.groups.missing.join(', ')}`
-								: 'Nobody brings this'}
-							>{c.effect.name}{c.groups.missing.length
-								? ` (${c.groups.missing.join(', ')})`
-								: ''}</span
+						<span class="missing" title={c.effect.note ?? 'Nobody brings this'}
+							>{c.effect.name}</span
 						>{i < gaps.length - 1 ? ', ' : ''}
 					{/each}
 				{/if}
@@ -423,17 +438,8 @@
 								<span class="name">
 									{c.effect.name}
 									{#if c.improved}<span class="tag">improved</span>{/if}
-									{#if c.effect.scope === 'party'}<span class="tag">group</span>{/if}
 								</span>
-								<span class="detail">
-									{#if c.providers.length === 0}
-										none
-									{:else if c.groups.missing.length > 0}
-										missing in {c.groups.missing.join(', ')}
-									{:else}
-										{c.providers.length}
-									{/if}
-								</span>
+								<span class="detail">{c.providers.length || 'none'}</span>
 							</li>
 						{/each}
 					</ul>
@@ -693,10 +699,6 @@
 		background-color: var(--green-text);
 	}
 
-	.partial .dot {
-		background-color: #ffd100;
-	}
-
 	.missing .dot {
 		background-color: var(--grey-soft);
 	}
@@ -718,11 +720,6 @@
 		color: var(--grey-text);
 		font-size: var(--text-xs);
 		font-variant-numeric: tabular-nums;
-	}
-
-	.partial .detail,
-	.gaps .partial {
-		color: #ffd100;
 	}
 
 	.gaps .missing {

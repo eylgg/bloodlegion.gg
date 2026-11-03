@@ -84,6 +84,7 @@
 			raids={data.home.raids}
 			loot={data.home.loot}
 			characters={data.home.characters}
+			ranks={data.home.ranks}
 			announcements={data.announcements}
 		/>
 	</GuildShell>
