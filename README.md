@@ -305,7 +305,11 @@ besides, at the top of the channel list in no category, where only the leader an
 top to bottom: #raider-announcements, for the leader, officers, raiders, and trials;
 #member-announcements, for every role; and #public-announcements, which everyone reads and whose
 posts show on the front page under the poster's site account (kept in step as they are edited or
-deleted; a post by someone whose Discord account is not linked to the site is not shown).
+deleted; a post by someone whose Discord account is not linked to the site is not shown). It also
+checks #wowhead-news, made by hand and found by its name, wherever it is: everyone reads it and
+nobody posts in it. Wowhead's news still arrives, because following their channel posts through a
+webhook, which no permission entry stops. The leader and officers can still post anywhere, as
+Administrators.
 
 It changes nothing in Discord on its own; on its own it only reads the server and mirrors
 #public-announcements. Every change is a button a superuser presses on the Discord page, and none

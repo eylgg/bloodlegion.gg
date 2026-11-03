@@ -173,7 +173,7 @@ const clockFormat = new Intl.DateTimeFormat(undefined, {
  * Each raid's name: its zone and the day it starts on the guild's clock ("Onyxia's Lair
  * Tuesday"), with the time when the zone has another raid that day in the same raid week
  * ("Molten Core Tuesday 8:00 PM"), and numbered in order of scheduling when that is the same too
- * (a second group at the same time). The planner, short of room, says the day short ("Tue").
+ * (two raids should never start at once, but should they). The planner, short of room, says the day short ("Tue").
  */
 export function raidNames(
 	zones: Zone[],

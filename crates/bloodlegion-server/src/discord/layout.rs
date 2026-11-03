@@ -3,7 +3,8 @@
 //! its level and the ones above it. Three channels besides, at the top of the list in no category,
 //! where only the leader and officers post:
 //! #public-announcements, which everyone reads (and the site shows), #member-announcements, and
-//! #raider-announcements, for the raiding roster.
+//! #raider-announcements, for the raiding roster. And #wowhead-news, made by hand, which everyone
+//! reads and nobody posts in: Wowhead's news reaches it by a follow.
 //!
 //! The bot hands out roles only when a superuser asks (`fix`); the role check (`check`) lists who
 //! lacks theirs. Pure: the permission entries are worked out here, checked by `check`, and set by
@@ -178,6 +179,12 @@ pub const ANNOUNCEMENTS: [&Announcements; 3] = [
     &PUBLIC_ANNOUNCEMENTS,
 ];
 
+/// #wowhead-news, which someone made by hand to follow Wowhead's news channel, so the bot knows it
+/// by its name rather than keeping it. A follow posts through a webhook, which no permission entry
+/// stops, so everyone reads it and nobody posts in it (the leader and officers still can: they are
+/// Administrators, whom no entry stops either).
+pub const WOWHEAD_NEWS: &str = "wowhead-news";
+
 /// Where everything the bot keeps is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Layout {
@@ -243,6 +250,17 @@ pub fn has_own_entry(actual: &[PermissionOverwrite], bot: UserId) -> bool {
         .any(|entry| entry.kind == PermissionOverwriteType::Member(bot))
 }
 
+const READ: Permissions = Permissions::VIEW_CHANNEL.union(Permissions::READ_MESSAGE_HISTORY);
+const POST: Permissions = Permissions::SEND_MESSAGES
+    .union(Permissions::SEND_MESSAGES_IN_THREADS)
+    .union(Permissions::CREATE_PUBLIC_THREADS)
+    .union(Permissions::CREATE_PRIVATE_THREADS);
+
+/// #wowhead-news's permission entry: everyone reads it, and nobody posts (see [`WOWHEAD_NEWS`]).
+pub fn news_overwrites(everyone: RoleId) -> Vec<PermissionOverwrite> {
+    vec![role(everyone, READ, POST)]
+}
+
 /// An announcements channel's permission entries: its readers (by `audience`) read it, and only the
 /// leader and officers post (or start threads). Its own, not a category's: it is in none.
 pub fn announcements_overwrites(
@@ -250,11 +268,7 @@ pub fn announcements_overwrites(
     roles: &Roles,
     everyone: RoleId,
 ) -> Vec<PermissionOverwrite> {
-    let read = Permissions::VIEW_CHANNEL | Permissions::READ_MESSAGE_HISTORY;
-    let post = Permissions::SEND_MESSAGES
-        | Permissions::SEND_MESSAGES_IN_THREADS
-        | Permissions::CREATE_PUBLIC_THREADS
-        | Permissions::CREATE_PRIVATE_THREADS;
+    let (read, post) = (READ, POST);
     let mut overwrites = match audience {
         Audience::Everyone => vec![role(everyone, read, post)],
         Audience::AtLeast(level) => {
@@ -412,6 +426,11 @@ mod tests {
                 .allow
                 .contains(Permissions::VIEW_CHANNEL)
         );
+
+        let news = news_overwrites(EVERYONE);
+        assert_eq!(news.len(), 1);
+        assert!(news[0].allow.contains(Permissions::VIEW_CHANNEL));
+        assert!(news[0].deny.contains(Permissions::SEND_MESSAGES));
 
         for overwrites in [&public, &member, &raider] {
             for poster in [LEADER, OFFICER] {

@@ -37,8 +37,8 @@ use serenity::all::{
 use super::check::{Channel, ServerMember, server_members, top_level_text};
 use super::db;
 use super::layout::{
-    ANNOUNCEMENTS, Access, CATEGORIES, Roles, announcements_overwrites, category_overwrites,
-    differing, has_own_entry,
+    ANNOUNCEMENTS, Access, CATEGORIES, Roles, WOWHEAD_NEWS, announcements_overwrites,
+    category_overwrites, differing, has_own_entry, news_overwrites,
 };
 use super::sync;
 use super::sync::REASON;
@@ -916,9 +916,9 @@ pub async fn rename_role(state: &State, access: Access) -> Result<(), FixError> 
     Ok(())
 }
 
-/// Sets the bot's permission entries on its categories and announcements channels where they are
-/// missing or set otherwise, and removes any entry it once kept there for itself (its role's
-/// Administrator permission lets it see them now). Refused while the server lacks one of the bot's
+/// Sets the bot's permission entries on its categories and announcements channels, and on
+/// #wowhead-news, where they are missing or set otherwise, and removes any entry it once kept there
+/// for itself (its role's Administrator permission lets it see them now). Refused while the server lacks one of the bot's
 /// roles, and, while such an entry is left, unless the bot has Administrator: removing it would
 /// otherwise hide the closed channels from the bot.
 pub async fn fix_permissions(state: &State) -> Result<(), FixError> {
@@ -957,6 +957,13 @@ pub async fn fix_permissions(state: &State) -> Result<(), FixError> {
         {
             ours.push((channel, entries));
         }
+    }
+    // #wowhead-news, by its name: the bot did not make it.
+    if let Some(news) = channels.values().find(|channel| {
+        matches!(channel.kind, ChannelType::Text | ChannelType::News)
+            && channel.name == WOWHEAD_NEWS
+    }) {
+        ours.push((news, news_overwrites(everyone)));
     }
     let leftovers = ours
         .iter()

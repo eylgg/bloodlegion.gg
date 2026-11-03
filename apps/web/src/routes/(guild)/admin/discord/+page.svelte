@@ -745,7 +745,9 @@
 			</div>
 			<p class="muted">
 				The bot's own permission entries on its categories and announcements channels: who may see
-				each, and who may post announcements. Entries added by hand are left alone, and these are
+				each, and who may post announcements. #wowhead-news, found by its name, is read by everyone
+				and posted in by nobody: Wowhead's news still arrives, since a follow posts through a
+				webhook, which permissions don't stop. Entries added by hand are left alone, and these are
 				set only with the button. None is for the bot itself: one it once kept there is removed (its
 				role's Administrator permission lets it see the channels).
 			</p>

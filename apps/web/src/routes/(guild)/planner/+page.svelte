@@ -199,23 +199,16 @@
 						{formatInZone(raid.raid.starts_at, raid.raid.time_zone)} · {raid.attendees
 							.length}/{size(raid.raid.zone)}
 					</span>
-					<span class="add-group">
-						{#if raid.attendees.length === 0 && raid.raid.loot_count === 0}
+					{#if raid.attendees.length === 0 && raid.raid.loot_count === 0}
+						<span class="actions">
 							<Button
 								size="small"
 								variant="danger"
 								title="Delete this empty raid"
 								onclick={() => deleteRaid(raid.raid.id)}>Delete</Button
 							>
-						{/if}
-						<Button
-							size="small"
-							variant="secondary"
-							disabled={adding}
-							title="Another {nameOf(raid.raid.id)} at the same time"
-							onclick={() => addRaid(raid.raid.zone, raid.raid.starts_local)}>Add a group</Button
-						>
-					</span>
+						</span>
+					{/if}
 				</header>
 				{#if movingTo === raid.raid.id}<AskBar ask={moving} confirmLabel="Move" />{/if}
 				<RaidBuilder
@@ -309,7 +302,7 @@
 		font-size: var(--text-lg);
 	}
 
-	.add-group {
+	.actions {
 		display: flex;
 		gap: var(--space-2);
 		margin-left: auto;

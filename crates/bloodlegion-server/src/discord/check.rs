@@ -18,8 +18,8 @@ use time::OffsetDateTime;
 use super::db::{self, LinkedAccount, Status};
 use super::fix::{self, List, Slot};
 use super::layout::{
-    ANNOUNCEMENTS, Access, CATEGORIES, Roles, announcements_overwrites, category_overwrites,
-    differing, has_own_entry,
+    ANNOUNCEMENTS, Access, CATEGORIES, Roles, WOWHEAD_NEWS, announcements_overwrites,
+    category_overwrites, differing, has_own_entry, news_overwrites,
 };
 use crate::guild::Rank;
 use crate::{Result, State};
@@ -258,7 +258,8 @@ pub struct Report {
     /// Channels in the bot's categories not synced with them.
     pub unsynced: Vec<Unsynced>,
     /// The bot's permission entries on its categories and announcements channels (those the server
-    /// has), categories first; `None` until the server has all the bot's roles, which they name.
+    /// has), categories first, then #wowhead-news's; `None` until the server has all the bot's
+    /// roles, which they name.
     pub permissions: Option<Vec<PermissionsStatus>>,
     pub members: Vec<MemberStatus>,
     pub unlinked: Vec<Unlinked>,
@@ -504,6 +505,8 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
                 .iter()
                 .filter(move |c| c.parent == Some(category.id))
                 .filter(|c| !announcement_ids.contains(&c.id))
+                // Its own entries, not the category's, wherever it is.
+                .filter(|c| news_channel(&server.channels).is_none_or(|news| news.id != c.id))
                 .filter(move |c| !same_overwrites(&c.overwrites, &category.overwrites))
                 .map(move |c| Unsynced {
                     id: c.id.to_string(),
@@ -607,7 +610,16 @@ fn permissions(
         let entries = announcements_overwrites(wanted.audience, &roles, server.everyone);
         Some(status(found, entries))
     });
-    Some(categories.chain(announcements).collect())
+    let news =
+        news_channel(&server.channels).map(|found| status(found, news_overwrites(server.everyone)));
+    Some(categories.chain(announcements).chain(news).collect())
+}
+
+/// #wowhead-news, found by its name: someone made it by hand (see [`WOWHEAD_NEWS`]).
+pub(super) fn news_channel(channels: &[Channel]) -> Option<&Channel> {
+    channels
+        .iter()
+        .find(|channel| channel.text && channel.name == WOWHEAD_NEWS)
 }
 
 /// The text channels at the top of the list (in no category), where the announcements channels
@@ -1434,6 +1446,40 @@ mod tests {
         assert_eq!(names(&everyone.unlinked_others), ["pal"]);
         assert_eq!(names(&everyone.no_roles), ["quiet"]);
         assert_eq!(names(&everyone.bots), ["Blood Legion bot"]);
+    }
+
+    #[test]
+    fn checks_wowhead_news_by_its_name() {
+        let mut snapshot = server(vec![]);
+        // In Public (104), with the category's entries: not the news channel's, but not reported
+        // as unsynced either, since it keeps its own.
+        snapshot.channels[3].overwrites = category_overwrites(
+            CATEGORIES[3].audience,
+            &Roles([1, 2, 3, 4, 5].map(RoleId::new)),
+            RoleId::new(100),
+        );
+        let mut news = text(205, WOWHEAD_NEWS, 104);
+        news.overwrites = snapshot.channels[3].overwrites.clone();
+        snapshot.channels.push(news);
+        let report = check(&[], &snapshot);
+        assert!(report.unsynced.iter().all(|c| c.name != WOWHEAD_NEWS));
+        let status = |report: &Report| {
+            report
+                .permissions
+                .as_ref()
+                .unwrap()
+                .iter()
+                .find(|p| p.name == WOWHEAD_NEWS)
+                .map(|p| p.differing.clone())
+        };
+        assert_eq!(status(&report), Some(vec!["@everyone".to_string()]));
+
+        snapshot.channels.last_mut().unwrap().overwrites = news_overwrites(RoleId::new(100));
+        assert_eq!(status(&check(&[], &snapshot)), Some(vec![]));
+
+        // A server without it has nothing to check.
+        snapshot.channels.pop();
+        assert_eq!(status(&check(&[], &snapshot)), None);
     }
 
     #[test]

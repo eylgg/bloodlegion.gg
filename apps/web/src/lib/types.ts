@@ -124,7 +124,8 @@ export type DiscordReport = {
 	/** Whether those at the top of the list stand in that order. */
 	announcements_in_order: boolean;
 	/**
-	 * The bot's permission entries on its categories and announcements channels, categories first:
+	 * The bot's permission entries on its categories and announcements channels, categories first,
+	 * then #wowhead-news's:
 	 * whose are missing or set otherwise (`differing`: `@everyone`, a role's name, or "the bot").
 	 * `null` until the server has all the bot's roles.
 	 */
