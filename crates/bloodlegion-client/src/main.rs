@@ -296,9 +296,9 @@ fn open_browser(url: &str) {
     let opened = if cfg!(target_os = "macos") {
         std::process::Command::new("open").arg(url).status()
     } else if cfg!(windows) {
-        // `start`'s first quoted argument is the window title.
-        std::process::Command::new("cmd")
-            .args(["/C", "start", ""])
+        // Not `cmd /C start`: cmd reads the link's `&`s as the ends of commands.
+        std::process::Command::new("rundll32")
+            .arg("url.dll,FileProtocolHandler")
             .arg(url)
             .status()
     } else {
