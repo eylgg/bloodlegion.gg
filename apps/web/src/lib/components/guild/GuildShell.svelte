@@ -35,9 +35,11 @@
 
 	const under = (href: string) =>
 		page.url.pathname === href || page.url.pathname.startsWith(href + '/');
-	// A character's page is the roster's.
+	// A character's page and a player's (`/@name`) are the roster's.
 	const isActive = (href: string) =>
-		under(href) || (href === resolve('/roster') && under(resolve('/characters')));
+		under(href) ||
+		(href === resolve('/roster') &&
+			(under(resolve('/characters')) || page.url.pathname.startsWith('/@')));
 
 	// On a phone the links scroll sideways: fade the edge and show an arrow on whichever side has
 	// more, so it is plain there is more to see.

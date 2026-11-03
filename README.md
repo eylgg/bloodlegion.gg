@@ -185,8 +185,9 @@ the changes.
 
 - **Ranks**: leader, officer, raider, trial, member, public. Anyone can sign in, so new accounts are
   public until an officer gives them a rank (the Discord bot keeps no role for the public).
-  Officers set ranks from the roster; only the leader makes or unmakes officers, and nobody sets
-  their own.
+  Officers set ranks on a player's page (`/@username`, linked from the roster: the player's rank
+  and characters, for members); only the leader makes or unmakes officers, and only a superuser
+  (or the CLI) makes or unmakes the leader or sets their own.
 - **Characters** have a first and a last name (2 to 24 letters each) and no realm: Forever has
   rulesets instead, and the guild plays on one (PvP), so a full name is unique across the site. Each
   has a class and, once recorded, a race: Classic's eight and Forever's Skyborne, Windshaper

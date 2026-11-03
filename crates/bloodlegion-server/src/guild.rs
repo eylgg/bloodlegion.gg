@@ -76,7 +76,7 @@ pub enum GuildError {
     #[problem(
         status = FORBIDDEN,
         title = "Forbidden",
-        detail = "Only the guild leader can make or unmake officers, and nobody sets their own rank."
+        detail = "Only the guild leader can make or unmake officers, nobody makes or unmakes the leader, and nobody sets their own rank."
     )]
     RankChangeRefused,
     #[error("unknown time zone")]
@@ -156,12 +156,12 @@ pub async fn members(pool: &PgPool) -> sqlx::Result<Vec<Member>> {
 }
 
 /// Whether `actor` may move `target` from `from` to `to`: officers set ranks, but only the leader
-/// (or a superuser) makes or unmakes officers and leaders, and only a superuser sets their own.
+/// makes or unmakes officers, and only a superuser makes or unmakes a leader or sets their own.
 fn may_set_rank(actor: &User, target: UserId, from: Rank, to: Rank) -> bool {
     if actor.is_superuser {
         return true;
     }
-    if !actor.is_officer() || actor.id == target {
+    if !actor.is_officer() || actor.id == target || from == Rank::Leader || to == Rank::Leader {
         return false;
     }
     actor.guild_rank == Rank::Leader || !(from.is_officer() || to.is_officer())
@@ -289,6 +289,7 @@ pub(crate) mod tests {
     #[sqlx::test]
     async fn officers_set_ranks_and_only_the_leader_makes_officers(pool: PgPool) {
         let leader = member(&pool, "Leader", Rank::Leader).await;
+        let second = member(&pool, "Second", Rank::Leader).await;
         let officer = member(&pool, "Officer", Rank::Officer).await;
         let raider = member(&pool, "Raider", Rank::Raider).await;
         let refused = |result: Result<(), GuildError>| {
@@ -313,6 +314,13 @@ pub(crate) mod tests {
         set_rank(&pool, &leader, raider.id, Rank::Officer)
             .await
             .unwrap();
+        // Nobody but a superuser makes or unmakes a leader, the leader included.
+        assert!(refused(
+            set_rank(&pool, &leader, officer.id, Rank::Leader).await
+        ));
+        assert!(refused(
+            set_rank(&pool, &leader, second.id, Rank::Officer).await
+        ));
 
         let ranks: Vec<_> = members(&pool)
             .await
@@ -324,6 +332,7 @@ pub(crate) mod tests {
             ranks,
             vec![
                 ("Leader".to_string(), Rank::Leader),
+                ("Second".to_string(), Rank::Leader),
                 ("Officer".to_string(), Rank::Officer),
                 ("Raider".to_string(), Rank::Officer),
             ]

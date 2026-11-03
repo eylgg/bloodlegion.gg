@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { api, errorMessage } from '$lib/api';
+	import { resolve } from '$app/paths';
 	import { classIcon, raceIcon } from '$lib/wow/icons';
-	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
@@ -14,9 +13,6 @@
 
 	// svelte-ignore state_referenced_locally
 	let characters = $state<GuildCharacter[]>(data.characters);
-	// svelte-ignore state_referenced_locally
-	let members = $state(data.members);
-	let error = $state('');
 	let query = $state('');
 	let classFilter = $state('');
 	let adding = $state(false);
@@ -34,8 +30,8 @@
 		public: false
 	});
 
-	// A rank is the account's: changing it in one row changes every row of that player's.
-	const ranksById = $derived(new Map(members.map((m) => [m.id, m.guild_rank])));
+	// A rank is the player's (the account's), changed on their page.
+	const ranksById = $derived(new Map(data.members.map((m) => [m.id, m.guild_rank])));
 
 	/** Its player's rank, or null for an unclaimed character. */
 	const rankOf = (c: GuildCharacter): Rank | null =>
@@ -43,30 +39,6 @@
 
 	// The public are the sign-ups waiting for a rank: only officers filter by them.
 	const rankFilters = $derived(RANKS.filter((rank) => rank !== 'public' || data.officer));
-
-	// Mirrors the backend's `may_set_rank`, so the picker only appears where it can work.
-	function canSetRank(id: number, rank: Rank): boolean {
-		if (data.user.is_superuser) return true;
-		if (!data.officer || id === data.user.id) return false;
-		const officerRank = (r: Rank) => r === 'leader' || r === 'officer';
-		return data.user.guild_rank === 'leader' || !officerRank(rank);
-	}
-
-	const rankChoices = $derived(
-		data.user.is_superuser || data.user.guild_rank === 'leader'
-			? RANKS
-			: RANKS.filter((r) => r !== 'leader' && r !== 'officer')
-	);
-
-	async function setRank(id: number, rank: Rank) {
-		error = '';
-		try {
-			await api.put(`/api/guild/members/${id}/rank`, { rank });
-			members = members.map((m) => (m.id === id ? { ...m, guild_rank: rank } : m));
-		} catch (err) {
-			error = errorMessage(err, 'Changing the rank failed. Please try again.');
-		}
-	}
 
 	const counted = $derived(
 		characters.filter((c) => {
@@ -160,7 +132,7 @@
 	// Accounts with no characters yet (mostly new sign-ups), for the administrator to rank.
 	const withoutCharacters = $derived(
 		data.user.is_superuser
-			? members
+			? data.members
 					.filter((m) => !characters.some((c) => c.user_id === m.id))
 					.toSorted((a, b) => a.username.localeCompare(b.username))
 			: []
@@ -232,14 +204,16 @@
 						</td>
 						<td>
 							{#if character.username}
-								{character.username}
+								<a href={resolve('/(guild)/@[username]', { username: character.username })}
+									>{character.username}</a
+								>
 							{:else}
 								<span class="muted">—</span>
 							{/if}
 						</td>
 						<td>
-							{#if rank && character.user_id}
-								{@render rankCell(character.user_id, character.username ?? '', rank)}
+							{#if rank}
+								{RANK_LABEL[rank]}
 							{:else}
 								<span class="muted">—</span>
 							{/if}
@@ -254,25 +228,6 @@
 	</div>
 {/snippet}
 
-<!-- An account's rank: a picker where this officer may change it, else its name. -->
-{#snippet rankCell(id: number, username: string, rank: Rank)}
-	{#if canSetRank(id, rank)}
-		<select
-			class="rank"
-			aria-label="Rank of {username}"
-			title="{username}'s rank, for all their characters"
-			value={rank}
-			onchange={(event) => setRank(id, event.currentTarget.value as Rank)}
-		>
-			{#each rankChoices as choice (choice)}
-				<option value={choice}>{RANK_LABEL[choice]}</option>
-			{/each}
-		</select>
-	{:else}
-		{RANK_LABEL[rank]}
-	{/if}
-{/snippet}
-
 <svelte:head>
 	<title>Roster | Blood Legion</title>
 </svelte:head>
@@ -285,8 +240,6 @@
 		<Button variant="primary" onclick={() => (adding = true)}>Add a character</Button>
 	{/if}
 </div>
-
-{#if error}<Alert variant="error">{error}</Alert>{/if}
 
 {#if adding}
 	<CharacterForm owners={data.owners} onsaved={added} oncancel={() => (adding = false)} />
@@ -374,8 +327,12 @@
 				<tbody>
 					{#each withoutCharacters as member (member.id)}
 						<tr>
-							<td>{member.username}</td>
-							<td>{@render rankCell(member.id, member.username, member.guild_rank)}</td>
+							<td>
+								<a href={resolve('/(guild)/@[username]', { username: member.username })}
+									>{member.username}</a
+								>
+							</td>
+							<td>{RANK_LABEL[member.guild_rank]}</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -561,13 +518,6 @@
 		font-weight: 600;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-	}
-
-	/* Compact in its cell, not the full width forms give a select. */
-	select.rank {
-		width: auto;
-		padding-block: 0;
-		font-size: var(--text-sm);
 	}
 
 	.arrow {

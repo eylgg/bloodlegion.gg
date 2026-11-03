@@ -38,6 +38,23 @@ export function isOfficer(user: User): boolean {
 	return user.is_superuser || user.guild_rank === 'leader' || user.guild_rank === 'officer';
 }
 
+/**
+ * Mirrors `may_set_rank` on the backend, for whether `user` gets a rank picker for an account at
+ * `rank`: officers set ranks, only the leader makes or unmakes officers, and only a superuser makes
+ * or unmakes a leader or sets their own.
+ */
+export function canSetRank(user: User, id: number, rank: Rank): boolean {
+	if (user.is_superuser) return true;
+	if (!isOfficer(user) || id === user.id || rank === 'leader') return false;
+	return user.guild_rank === 'leader' || rank !== 'officer';
+}
+
+/** The ranks `user` may give, by the same rules. */
+export function rankChoices(user: User): Rank[] {
+	if (user.is_superuser) return RANKS;
+	return RANKS.filter((r) => r !== 'leader' && (user.guild_rank === 'leader' || r !== 'officer'));
+}
+
 /** Highest first, as the backend accepts them. */
 export const QUALITIES: Quality[] = ['legendary', 'epic', 'rare', 'uncommon', 'common', 'poor'];
 

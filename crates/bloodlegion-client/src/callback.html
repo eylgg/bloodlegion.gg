@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{heading} | Blood Legion</title>
+<style>
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 1rem;
+    box-sizing: border-box;
+    color: oklch(0.93 0 0);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    text-align: center;
+    background-color: oklch(0.145 0.004 300);
+  }
+
+  main {
+    max-width: 28rem;
+  }
+
+  svg {
+    display: block;
+    width: min(60vw, 16rem);
+    height: auto;
+    margin: -1.5rem auto 0;
+    animation: reveal 600ms ease-out both;
+  }
+
+  h1 {
+    margin: 0 0 0.5rem;
+    font-size: 1.75rem;
+  }
+
+  /* Green when it worked, red when it did not; what to do next under it, in plain white. */
+  .ok h1 {
+    color: oklch(0.8 0.12 150);
+  }
+
+  .failed h1 {
+    color: oklch(0.8 0.12 30);
+  }
+
+  p {
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    svg {
+      animation: none;
+    }
+  }
+</style>
+</head>
+<body>
+<main class="{outcome}">
+{logo}
+<h1>{heading}</h1>
+<p>{message}</p>
+</main>
+</body>
+</html>

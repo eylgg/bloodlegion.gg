@@ -109,7 +109,20 @@ enum Command {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    match Cli::parse().command {
+    let command = Cli::parse().command;
+    // Ctrl+C ends it quietly: on Windows the default kills it with an error code that `cargo run`
+    // reports as a failure.
+    tokio::select! {
+        result = run(command) => result,
+        _ = tokio::signal::ctrl_c() => {
+            println!("Stopped.");
+            Ok(())
+        }
+    }
+}
+
+async fn run(command: Command) -> anyhow::Result<()> {
+    match command {
         Command::Login { site, client_id } => login(site, client_id).await,
         Command::Logout => {
             match std::fs::remove_file(login_path()?) {
@@ -309,6 +322,10 @@ fn open_browser(url: &str) {
     }
 }
 
+/// The page the browser lands on after signing in: the site's logo and how it went.
+const CALLBACK_PAGE: &str = include_str!("callback.html");
+const LOGO: &str = include_str!("../../../apps/web/static/logo.svg");
+
 /// Waits for the browser to come back to `/callback`, and returns the authorization code.
 async fn callback(listener: &TcpListener, state: &str) -> anyhow::Result<String> {
     loop {
@@ -349,11 +366,23 @@ async fn callback(listener: &TcpListener, state: &str) -> anyhow::Result<String>
         } else {
             param("code").context("the site sent no authorization code")
         };
-        let message = match &result {
-            Ok(_) => "Signed in. You can close this tab and go back to the Blood Legion client.",
-            Err(_) => "Signing in failed. See the Blood Legion client for why.",
+        let (outcome, heading, message) = match &result {
+            Ok(_) => (
+                "ok",
+                "Signed in",
+                "You can close this tab and go back to the Blood Legion Client.",
+            ),
+            Err(_) => (
+                "failed",
+                "Signing in failed",
+                "See the Blood Legion Client for why, then try again.",
+            ),
         };
-        let page = format!("<!doctype html><title>Blood Legion client</title><p>{message}</p>");
+        let page = CALLBACK_PAGE
+            .replace("{logo}", LOGO)
+            .replace("{outcome}", outcome)
+            .replace("{heading}", heading)
+            .replace("{message}", message);
         let response = format!(
             "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\n\
              Connection: close\r\n\r\n{page}",
