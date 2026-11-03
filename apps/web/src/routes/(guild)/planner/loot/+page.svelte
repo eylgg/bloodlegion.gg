@@ -20,7 +20,7 @@
 	let selected = $state<number | null>(null);
 	let error = $state('');
 
-	const names = $derived(raidNames(data.zones, data.weekRaids));
+	const names = $derived(raidNames(data.zones, data.weekRaids, 'short'));
 	const nameOf = (raidId: number) => names.get(raidId) ?? '';
 	const selectedName = $derived.by(() => {
 		const character = data.characters.find((c) => c.id === selected);

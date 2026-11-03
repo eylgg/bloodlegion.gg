@@ -45,7 +45,7 @@
 		editable: boolean;
 		/** Takes someone off the raid. */
 		onremove?: (attendee: Attendee) => void;
-		/** A condensed coverage summary, for raids side by side. */
+		/** Narrower groups, for raids stacked beside the roster. */
 		compact?: boolean;
 		/** A character picked outside this raid (the roster), to put down here. */
 		incoming?: number | null;
@@ -403,20 +403,6 @@
 		</div>
 		{#if shown.length === 0}
 			<p class="muted small">Put people in groups to see what the raid brings.</p>
-		{:else if compact}
-			{@const gaps = raidWide.filter((c) => status(c) === 'missing')}
-			<p class="small gaps">
-				{#if gaps.length === 0}
-					Everything covered.
-				{:else}
-					<span class="muted">Missing:</span>
-					{#each gaps as c, i (c.effect.slug)}
-						<span class="missing" title={c.effect.note ?? 'Nobody brings this'}
-							>{c.effect.name}</span
-						>{i < gaps.length - 1 ? ', ' : ''}
-					{/each}
-				{/if}
-			</p>
 		{:else}
 			{#each shared.filter((s) => s.casters > 0 || s.key === 'armor') as s (s.key)}
 				{#if SHARED_LABEL[s.key] && s.wanted > 0}
@@ -461,11 +447,6 @@
 		.builder {
 			grid-template-columns: 1fr;
 		}
-	}
-
-	/* Side by side with other raids: the summary goes under the groups, and less is said. */
-	.builder.compact {
-		grid-template-columns: 1fr;
 	}
 
 	.layout {
@@ -655,20 +636,10 @@
 		gap: var(--space-3);
 	}
 
-	.compact .coverage {
-		position: static;
-	}
-
 	.roles {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
 		gap: var(--space-2);
-	}
-
-	.compact .roles {
-		grid-template-columns: repeat(4, auto);
-		justify-content: start;
-		gap: var(--space-4);
 	}
 
 	.roles > span {
@@ -720,9 +691,5 @@
 		color: var(--grey-text);
 		font-size: var(--text-xs);
 		font-variant-numeric: tabular-nums;
-	}
-
-	.gaps .missing {
-		color: var(--grey-text);
 	}
 </style>

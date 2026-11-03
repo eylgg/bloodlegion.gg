@@ -30,7 +30,8 @@
 	const names = $derived(
 		raidNames(
 			data.zones,
-			raids.map((r) => r.raid)
+			raids.map((r) => r.raid),
+			'short'
 		)
 	);
 	const nameOf = (raidId: number) => names.get(raidId) ?? '';

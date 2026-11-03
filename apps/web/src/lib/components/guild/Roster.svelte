@@ -107,7 +107,7 @@
 		</button>
 		{#each here as place (place.raidId)}
 			<span class="badge" title="In {place.name}, group {place.group}">
-				{place.name} · {place.group}
+				{place.name}
 			</span>
 		{/each}
 	</li>

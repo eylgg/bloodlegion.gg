@@ -159,7 +159,10 @@ export function formatWeekSpan(week: { starts_at: string; ends_at: string }): st
  */
 export const RAID_LENGTH_HOURS = 3;
 
-const weekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: 'long', timeZone: 'UTC' });
+const weekdayFormats = {
+	long: new Intl.DateTimeFormat(undefined, { weekday: 'long', timeZone: 'UTC' }),
+	short: new Intl.DateTimeFormat(undefined, { weekday: 'short', timeZone: 'UTC' })
+};
 const clockFormat = new Intl.DateTimeFormat(undefined, {
 	hour: 'numeric',
 	minute: '2-digit',
@@ -170,7 +173,7 @@ const clockFormat = new Intl.DateTimeFormat(undefined, {
  * Each raid's name: its zone and the day it starts on the guild's clock ("Onyxia's Lair
  * Tuesday"), with the time when the zone has another raid that day in the same raid week
  * ("Molten Core Tuesday 8:00 PM"), and numbered in order of scheduling when that is the same too
- * (a second group at the same time).
+ * (a second group at the same time). The planner, short of room, says the day short ("Tue").
  */
 export function raidNames(
 	zones: Zone[],
@@ -180,7 +183,8 @@ export function raidNames(
 		starts_local: string;
 		starts_at: string;
 		week: { number: number } | null;
-	}[]
+	}[],
+	weekday: 'long' | 'short' = 'long'
 ): Map<number, string> {
 	const names = new Map<number, string>();
 	const week = (r: (typeof raids)[number]) => `${r.zone}:${r.week?.number ?? 'before'}`;
@@ -190,7 +194,7 @@ export function raidNames(
 	const time = (r: (typeof raids)[number]) => `${week(r)}:${r.starts_local.slice(0, 16)}`;
 	const sorted = [...raids].sort((a, b) => a.starts_at.localeCompare(b.starts_at) || a.id - b.id);
 	for (const raid of sorted) {
-		let name = `${zoneName(zones, raid.zone)} ${weekdayFormat.format(local(raid))}`;
+		let name = `${zoneName(zones, raid.zone)} ${weekdayFormats[weekday].format(local(raid))}`;
 		if (sorted.filter((r) => day(r) === day(raid)).length > 1) {
 			name += ` ${clockFormat.format(local(raid))}`;
 			const same = sorted.filter((r) => time(r) === time(raid));
