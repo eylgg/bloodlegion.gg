@@ -17,7 +17,7 @@
 	let classFilter = $state('');
 	let adding = $state(false);
 
-	// Which characters the chart and the table count: by default the raiding roster's mains. An
+	// Which characters the chart and the table count: by default every ranked member's main. An
 	// unclaimed character (a pug) has no rank, so it is never among them.
 	let mains = $state(true);
 	let alts = $state(false);
@@ -25,8 +25,8 @@
 		leader: true,
 		officer: true,
 		raider: true,
-		trial: false,
-		member: false,
+		trial: true,
+		member: true,
 		public: false
 	});
 
@@ -278,11 +278,11 @@
 					title="{wowClass.name}: {count}"
 					onclick={() => (classFilter = classFilter === wowClass.slug ? '' : wowClass.slug)}
 				>
-					<span class="count">{count}</span>
 					<span class="track">
 						<span class="bar" style:height="{(count / most) * 100}%"></span>
 					</span>
 					<img src={classIcon(wowClass.slug)} alt={wowClass.name} width="28" height="28" />
+					<span class="count">{count}</span>
 				</button>
 			</li>
 		{/each}
@@ -410,7 +410,7 @@
 		border-color: var(--red-solid);
 	}
 
-	/* A column a class: its count, its bar up from a shared baseline, its icon under it. */
+	/* A column a class: its bar up from a shared baseline, its icon under it, and its count under that. */
 	.bars {
 		display: grid;
 		grid-template-columns: repeat(9, minmax(0, 1fr));
@@ -448,10 +448,11 @@
 		font-variant-numeric: tabular-nums;
 	}
 
+	/* As wide as the class icon under it (28px). */
 	.track {
 		display: flex;
 		align-items: flex-end;
-		width: min(100%, 2.5rem);
+		width: 28px;
 		height: 8rem;
 		border-bottom: 1px solid var(--grey-soft);
 	}
