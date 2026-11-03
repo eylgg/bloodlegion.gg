@@ -6,10 +6,10 @@ The website for Blood Legion, at [bloodlegion.com](https://bloodlegion.com).
 
 - `apps/web`: the SvelteKit site, built with the Node adapter and shipped as the `bloodlegion-web`
   image. It serves the pages and forwards `/api`, `/auth`, and `/.well-known` to the backend.
-- `apps/addon`: the in-game addon, `BloodLegion`. `/bl import` loads a keybind plan exported
-  from the site (Profile, Keybinds): the spells on each bar and stance bar, and the key bindings.
-  It also saves the guild roster for the client (`/bl roster` shows what it has).
-  Copy `apps/addon/BloodLegion` into the game's `Interface/AddOns`.
+- `apps/addon`: the in-game addon, `BloodLegion`, for WoW: Forever only (interface 16001, in
+  `BloodLegion_Forever.toc` and `BloodLegion_Camelot.toc`, Forever's internal name; the two are
+  kept the same). It saves the guild roster for the client (`/bl` shows what it has). Copy or link
+  `apps/addon/BloodLegion` into the game's `_forever_/Interface/AddOns`.
 - `crates/bloodlegion-server`: the backend (Rust, axum, Postgres), shipped as the `bloodlegion-server` image.
   Accounts and sessions, username/password login, OAuth2 / OpenID Connect login sources such as
   Battle.net, and an OpenID Connect provider so other guild tools can sign people in with their
@@ -371,27 +371,23 @@ minute if it goes away.
 ## Blizzard's data
 
 Everything the site shows of the game is vendored, so nothing reads Blizzard at run time and the
-site works offline: the item snapshot above (`crates/bloodlegion-server/data/game-items`), the
-keybind planner's spells (`apps/web/src/lib/wow/spells.json` and `apps/web/static/wow/spells`), and
-the class and talent tree icons (`apps/web/static/wow/classes` and `specs`). One command refreshes
+site works offline: the item snapshot above (`crates/bloodlegion-server/data/game-items`) and
+the class and talent tree icons (`apps/web/static/wow/classes` and `specs`). The spell icons
+(`apps/web/static/wow/spells`) are kept for later use; nothing shows or syncs them now. One command refreshes
 it all, then the diff is reviewed and committed:
 
 ```sh
 BATTLENET_CLIENT_ID=... BATTLENET_CLIENT_SECRET=... cargo xtask blizzard sync
-cargo xtask blizzard sync --only classes   # just some: items, spells, classes (classes needs no credentials)
+cargo xtask blizzard sync --only classes   # just some: items, classes (classes needs no credentials)
 ```
 
 The credentials are the `battlenet` sign-in client's. Battle.net's Game Data API is read in WoW:
 Forever's namespace (`static-forever-us`), which it does not serve yet: until it does, the sync
-says so and leaves the items and spells as they are. Icons come from Blizzard's render service. A call that fails for a moment (a timeout, a 5xx, a 429) is retried.
+says so and leaves the items as they are. Icons come from Blizzard's render service. A call that fails for a moment (a timeout, a 5xx, a 429) is retried.
 
 - **Items**: every epic and legendary item, with its tooltip and icon name, fetched again (a few
   minutes); only icons not already vendored are downloaded, and icons no item uses any more are
   removed. An item that still fails keeps its last snapshot entry.
-- **Spells**: which spells each class has, their levels, trees, ranks, and tooltip lines are edited
-  by hand in `spells.json`, since the API serves none of them. The sync updates each spell's name,
-  description (unless the API leaves a formula unworked), and icon where the API has them, and
-  keeps the rest.
 - **Classes**: each class's and talent tree's icon, by the game's icon name.
 
 ## Images

@@ -30,8 +30,8 @@ enum Cmd {
         #[command(subcommand)]
         command: DevCmd,
     },
-    /// Blizzard's data the repository vendors: the item snapshot the server embeds, the
-    /// keybind planner's spells, and the class and talent tree icons.
+    /// Blizzard's data the repository vendors: the item snapshot the server embeds, and the
+    /// class and talent tree icons.
     Blizzard {
         #[command(subcommand)]
         command: BlizzardCmd,

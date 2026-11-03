@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { api, errorMessage } from '$lib/api';
 	import { RANK_LABEL, formatDate } from '$lib/guild';
@@ -238,11 +237,6 @@
 					<CharacterSpecs cls={character.class} specs={character.specs} />
 					{#if character.is_main}<span class="main-badge">Main</span>{/if}
 					<div class="actions">
-						<Button
-							size="small"
-							variant="secondary"
-							href="{resolve('/profile/keybinds')}?character={character.id}">Keybinds</Button
-						>
 						{#if data.officer}
 							{#if !character.is_main}
 								<Button size="small" variant="secondary" onclick={() => makeMain(character)}>

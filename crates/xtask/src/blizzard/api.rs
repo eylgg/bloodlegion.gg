@@ -10,7 +10,7 @@ use serde::Deserialize;
 /// Where the sync reads from: the US API, in English.
 pub const API_HOST: &str = "https://us.api.blizzard.com";
 /// WoW: Forever's static data. The API does not serve it yet; until it does, the sync leaves the
-/// items and spells as they are (see [`Client::serves_namespace`]).
+/// items as they are (see [`Client::serves_namespace`]).
 pub const NAMESPACE: &str = "static-forever-us";
 pub const LOCALE: &str = "en_US";
 
@@ -182,14 +182,6 @@ struct ItemPage {
     #[serde(flatten)]
     fields: ItemFields<String>,
     preview_item: serde_json::Value,
-}
-
-/// A spell's page: its name and description, in English.
-#[derive(Debug, Deserialize)]
-pub struct Spell {
-    pub name: String,
-    #[serde(default)]
-    pub description: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -370,42 +362,9 @@ impl Client {
         }))
     }
 
-    /// The spell's page, or `None` when the API does not know the id (a 404).
-    pub async fn spell(&self, id: i32) -> anyhow::Result<Option<Spell>> {
-        retry(|| self.spell_once(id)).await
-    }
-
-    async fn spell_once(&self, id: i32) -> anyhow::Result<Option<Spell>> {
-        let mut url = self.url(&format!("/data/wow/spell/{id}"))?;
-        url.query_pairs_mut().append_pair("locale", LOCALE);
-        let response = self
-            .http
-            .get(url)
-            .bearer_auth(&self.token)
-            .send()
-            .await
-            .context("fetching a spell")?;
-        if response.status() == reqwest::StatusCode::NOT_FOUND {
-            return Ok(None);
-        }
-        Ok(Some(
-            response
-                .error_for_status()
-                .context("fetching a spell")?
-                .json()
-                .await
-                .context("reading a spell")?,
-        ))
-    }
-
     /// The item's icon, when it has one.
     pub async fn icon(&self, id: i32) -> anyhow::Result<Option<Icon>> {
         retry(|| self.media_icon("item", id)).await
-    }
-
-    /// The spell's icon, when the API has one.
-    pub async fn spell_icon(&self, id: i32) -> anyhow::Result<Option<Icon>> {
-        retry(|| self.media_icon("spell", id)).await
     }
 
     async fn media_icon(&self, kind: &str, id: i32) -> anyhow::Result<Option<Icon>> {

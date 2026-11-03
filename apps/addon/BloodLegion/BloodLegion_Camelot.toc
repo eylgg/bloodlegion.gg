@@ -1,0 +1,10 @@
+# Forever only: its client loads BloodLegion_Forever.toc or BloodLegion_Camelot.toc (Camelot is
+# its internal name), and no other WoW loads either. Keep the two the same.
+## Interface: 16001
+## Title: Blood Legion
+## Notes: Saves the guild roster for the Blood Legion Client (/bl shows it)
+## Author: Blood Legion
+## Version: 0.3.0
+## SavedVariables: BloodLegionDB
+
+BloodLegion.lua

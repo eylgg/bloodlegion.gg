@@ -1,8 +1,0 @@
-## Interface: 11507
-## Title: Blood Legion
-## Notes: Loads keybind plans from bloodlegion.com (/bl import) and saves the guild roster for its client
-## Author: Blood Legion
-## Version: 0.2.0
-## SavedVariables: BloodLegionDB
-
-BloodLegion.lua
