@@ -2,6 +2,7 @@
 # its internal name), and no other WoW loads either. Keep the two the same.
 ## Interface: 16001
 ## Title: Blood Legion
+## IconTexture: Interface\AddOns\BloodLegion\Claws
 ## Notes: Saves the guild roster for the Blood Legion Client (/bl shows it)
 ## Author: Blood Legion
 ## Version: 0.3.0

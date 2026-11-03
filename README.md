@@ -8,8 +8,9 @@ The website for Blood Legion, at [bloodlegion.com](https://bloodlegion.com).
   image. It serves the pages and forwards `/api`, `/auth`, and `/.well-known` to the backend.
 - `apps/addon`: the in-game addon, `BloodLegion`, for WoW: Forever only (interface 16001, in
   `BloodLegion_Forever.toc` and `BloodLegion_Camelot.toc`, Forever's internal name; the two are
-  kept the same). It saves the guild roster for the client (`/bl` shows what it has). Copy or link
-  `apps/addon/BloodLegion` into the game's `_forever_/Interface/AddOns`.
+  kept the same). It saves the guild roster for the client (`/bl` shows what it has). Its icon,
+  `Claws.tga`, is the site's `claws-512.png` at 128×128. Copy or link `apps/addon/BloodLegion` into
+  the game's `_forever_/Interface/AddOns`.
 - `crates/bloodlegion-server`: the backend (Rust, axum, Postgres), shipped as the `bloodlegion-server` image.
   Accounts and sessions, username/password login, OAuth2 / OpenID Connect login sources such as
   Battle.net, and an OpenID Connect provider so other guild tools can sign people in with their

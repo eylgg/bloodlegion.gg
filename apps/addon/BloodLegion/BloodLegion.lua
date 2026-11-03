@@ -8,7 +8,8 @@
 -- Only Blood Legion's roster: WoW gives addons a guild's name, not an id, and the site checks it
 -- too (`characters::roster::GUILD_NAME`).
 
-local PREFIX = "|cffc41e3aBlood Legion|r: "
+-- The claws (`Claws.tga`, from the site's `claws-512.png`) before the name, at the text's height.
+local PREFIX = "|TInterface\\AddOns\\BloodLegion\\Claws:0|t |cffc41e3aBlood Legion|r: "
 
 local function say(message)
 	DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. message)
