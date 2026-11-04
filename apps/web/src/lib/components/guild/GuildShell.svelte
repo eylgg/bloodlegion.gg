@@ -19,27 +19,28 @@
 			? [
 					{ href: resolve('/roster'), label: 'Roster' },
 					{ href: resolve('/raids'), label: 'Raids' },
-					...(officer ? [{ href: resolve('/planner'), label: 'Planner' }] : []),
 					{ href: resolve('/loot'), label: 'Loot' },
 					{ href: resolve('/bosses'), label: 'Bosses' },
 					{ href: resolve('/items'), label: 'Items' },
-					{ href: resolve('/questions'), label: 'Questions' },
-					...(officer ? [{ href: resolve('/notes'), label: 'Notes' }] : [])
+					{ href: resolve('/questions'), label: 'Questions' }
 				]
 			: []),
-		// Superusers only, and in red, so it reads as the admin's corner rather than a guild page.
+		// The officers' and the superusers' own pages, after everyone's and in red, so they read as
+		// a corner of their own rather than guild pages.
+		...(member && officer
+			? [{ href: resolve('/planner'), label: 'Planner', restricted: true }]
+			: []),
 		...(user.is_superuser
-			? [{ href: resolve('/admin'), label: 'Administration', admin: true }]
+			? [{ href: resolve('/admin'), label: 'Administration', restricted: true }]
 			: [])
 	]);
 
 	const under = (href: string) =>
 		page.url.pathname === href || page.url.pathname.startsWith(href + '/');
-	// A character's page and a player's (`/@name`) are the roster's.
+	// A character's page (`/roster/first-last`) is under the roster, and a player's (`/@name`) is
+	// the roster's too.
 	const isActive = (href: string) =>
-		under(href) ||
-		(href === resolve('/roster') &&
-			(under(resolve('/characters')) || page.url.pathname.startsWith('/@')));
+		under(href) || (href === resolve('/roster') && page.url.pathname.startsWith('/@'));
 
 	// On a phone the links scroll sideways: fade the edge and show an arrow on whichever side has
 	// more, so it is plain there is more to see.
@@ -106,7 +107,7 @@
 				{#each links as link (link.href)}
 					<a
 						href={link.href}
-						class:admin={'admin' in link}
+						class:restricted={'restricted' in link}
 						aria-current={isActive(link.href) ? 'page' : undefined}>{link.label}</a
 					>
 				{/each}
@@ -261,16 +262,16 @@
 		background-color: var(--grey-surface);
 	}
 
-	nav a.admin {
+	nav a.restricted {
 		color: var(--red-text);
 	}
 
-	nav a.admin:hover {
+	nav a.restricted:hover {
 		color: var(--red-text);
 		background-color: var(--red-bg);
 	}
 
-	nav a.admin[aria-current='page'] {
+	nav a.restricted[aria-current='page'] {
 		color: var(--red-text);
 		background-color: var(--red-surface);
 	}

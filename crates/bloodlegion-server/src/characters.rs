@@ -313,6 +313,18 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
     db::find(pool, id).await
 }
 
+/// The character a page's name stands for: `first-last`, as the site links it (names are letters
+/// only, so the hyphen is never part of one), whatever its capitalization.
+pub async fn find_by_slug(pool: &PgPool, slug: &str) -> sqlx::Result<Option<Character>> {
+    let Some((first, last)) = slug.split_once('-') else {
+        return Ok(None);
+    };
+    match db::find_id_by_name(pool, &format!("{first} {last}")).await? {
+        Some(id) => db::find(pool, id).await,
+        None => Ok(None),
+    }
+}
+
 /// Adds a character (officers only). A member's first character becomes their main whether or
 /// not they asked; declaring another main moves the title.
 pub async fn create(
@@ -598,6 +610,21 @@ pub(crate) mod tests {
             reached_60_at: None,
             is_main,
             user_id: None,
+        }
+    }
+
+    #[sqlx::test]
+    async fn finds_a_character_by_its_page_name(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let garr = add(&pool, &ey, input("Garr", "Bonecrush", "warrior", true))
+            .await
+            .unwrap();
+        for slug in ["garr-bonecrush", "Garr-Bonecrush", "GARR-BONECRUSH"] {
+            let found = find_by_slug(&pool, slug).await.unwrap();
+            assert_eq!(found.map(|c| c.id), Some(garr.id), "{slug}");
+        }
+        for slug in ["garr", "garr-bone", "garrbonecrush", "garr-bonecrush-x", ""] {
+            assert!(find_by_slug(&pool, slug).await.unwrap().is_none(), "{slug}");
         }
     }
 

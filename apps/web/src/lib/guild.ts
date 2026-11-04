@@ -1,4 +1,19 @@
+import { resolve } from '$app/paths';
 import type { Quality, Rank, User, Zone } from '$lib/types';
+
+/**
+ * A character's page: `/roster/garr-bonecrush`, its name lowercase. Names are unique and letters
+ * only, so the hyphen is never part of one.
+ */
+export const characterSlug = (firstName: string, lastName: string) =>
+	`${firstName}-${lastName}`.toLowerCase();
+
+export const characterPath = (firstName: string, lastName: string) =>
+	resolve('/(guild)/roster/[name]', { name: characterSlug(firstName, lastName) });
+
+/** A player's page: `/@eyl`, the username lowercase, as it is unique. */
+export const playerPath = (username: string) =>
+	resolve('/(guild)/@[username]', { username: username.toLowerCase() });
 
 /** Highest first, as the backend orders them. */
 export const RANKS: Rank[] = ['leader', 'officer', 'raider', 'trial', 'member', 'public'];

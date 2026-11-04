@@ -73,7 +73,6 @@
 					<td class="level">{character.level}</td>
 					<td>
 						<CharacterLink
-							id={character.id}
 							firstName={character.first_name}
 							lastName={character.last_name}
 							cls={character.class}

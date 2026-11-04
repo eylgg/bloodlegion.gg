@@ -81,7 +81,6 @@
 							<td>
 								{#if entry.character_id !== null && entry.class}
 									<CharacterLink
-										id={entry.character_id}
 										firstName={entry.first_name ?? ''}
 										lastName={entry.last_name ?? ''}
 										cls={entry.class}

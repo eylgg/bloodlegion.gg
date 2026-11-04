@@ -104,7 +104,6 @@
 								<tr>
 									<td>
 										<CharacterLink
-											id={change.character_id}
 											firstName={change.first_name}
 											lastName={change.last_name}
 											cls={change.class}

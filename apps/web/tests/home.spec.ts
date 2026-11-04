@@ -37,7 +37,15 @@ test('a failed sign-in shows a readable message, never text from the link', asyn
 });
 
 test('the guild pages are for members: a visitor is sent to sign in first', async ({ page }) => {
-	for (const path of ['/roster', '/raids', '/raids/1', '/loot', '/profile', '/characters/1']) {
+	for (const path of [
+		'/roster',
+		'/raids',
+		'/raids/1',
+		'/loot',
+		'/profile',
+		'/roster/garr-bonecrush',
+		'/@eyl'
+	]) {
 		await page.goto(path);
 		await expect(page).toHaveURL(`/?next=${encodeURIComponent(path)}`);
 	}

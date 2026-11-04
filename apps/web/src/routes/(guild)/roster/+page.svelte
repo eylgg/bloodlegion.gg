@@ -1,11 +1,10 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { classIcon, raceIcon } from '$lib/wow/icons';
 	import Button from '$lib/components/Button.svelte';
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import CharacterSpecs from '$lib/components/guild/CharacterSpecs.svelte';
-	import { RANKS, RANK_GROUP, RANK_LABEL } from '$lib/guild';
+	import { RANKS, RANK_GROUP, RANK_LABEL, playerPath } from '$lib/guild';
 	import type { GuildCharacter, Rank } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -179,7 +178,6 @@
 					<tr>
 						<td>
 							<CharacterLink
-								id={character.id}
 								firstName={character.first_name}
 								lastName={character.last_name}
 								cls={character.class}
@@ -208,9 +206,7 @@
 						</td>
 						<td>
 							{#if character.username}
-								<a href={resolve('/(guild)/@[username]', { username: character.username })}
-									>{character.username}</a
-								>
+								<a href={playerPath(character.username)}>{character.username}</a>
 							{:else}
 								<span class="muted">—</span>
 							{/if}
@@ -332,9 +328,7 @@
 					{#each withoutCharacters as member (member.id)}
 						<tr>
 							<td>
-								<a href={resolve('/(guild)/@[username]', { username: member.username })}
-									>{member.username}</a
-								>
+								<a href={playerPath(member.username)}>{member.username}</a>
 							</td>
 							<td>{RANK_LABEL[member.guild_rank]}</td>
 						</tr>

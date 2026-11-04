@@ -23,12 +23,7 @@
 	{#each data.notes as note (note.character_id)}
 		<li class="panel">
 			<div class="head">
-				<CharacterLink
-					id={note.character_id}
-					firstName={note.first_name}
-					lastName={note.last_name}
-					cls={note.class}
-				/>
+				<CharacterLink firstName={note.first_name} lastName={note.last_name} cls={note.class} />
 				<span class="muted small">{note.username} · {formatDateTime(note.updated_at)}</span>
 			</div>
 			<p>{note.body}</p>

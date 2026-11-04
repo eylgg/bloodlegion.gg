@@ -5,12 +5,13 @@
 
 	let { children }: LayoutProps = $props();
 
-	// The week carries over between the two plans.
+	// The week carries over between the plans; the notes, for no week, keep it for the way back.
 	const week = $derived(page.url.searchParams.get('week'));
 	const tabs = $derived(
 		[
 			{ href: resolve('/planner'), label: 'Raids' },
-			{ href: resolve('/planner/loot'), label: 'Loot' }
+			{ href: resolve('/planner/loot'), label: 'Loot' },
+			{ href: resolve('/planner/notes'), label: 'Notes' }
 		].map((tab) => ({
 			...tab,
 			current: page.url.pathname === tab.href,

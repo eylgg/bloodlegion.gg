@@ -1,17 +1,16 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { characterPath } from '$lib/guild';
 	import { classIcon } from '$lib/wow/icons';
 	import type { WowClass } from '$lib/types';
 
 	// The guild layout loads the class catalog for every page under it.
 	let {
-		id,
 		firstName,
 		lastName,
 		cls,
 		icon = true
-	}: { id: number; firstName: string; lastName: string; cls: string; icon?: boolean } = $props();
+	}: { firstName: string; lastName: string; cls: string; icon?: boolean } = $props();
 
 	const color = $derived(
 		(page.data.classes as WowClass[] | undefined)?.find((c) => c.slug === cls)?.color
@@ -20,7 +19,7 @@
 
 <a
 	class="character"
-	href={resolve('/(guild)/characters/[id]', { id: String(id) })}
+	href={characterPath(firstName, lastName)}
 	style:--class-color={color ?? 'var(--foreground)'}
 >
 	{#if icon}<img src={classIcon(cls)} alt="" width="18" height="18" />{/if}

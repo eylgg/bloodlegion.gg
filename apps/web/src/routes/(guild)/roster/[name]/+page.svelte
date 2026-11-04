@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import { api, errorMessage } from '$lib/api';
-	import { formatDateTime } from '$lib/guild';
+	import { characterPath, formatDateTime } from '$lib/guild';
 	import { classIcon } from '$lib/wow/icons';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
@@ -103,6 +104,9 @@
 		onsaved={(saved) => {
 			character = saved;
 			editing = false;
+			// A new name is a new address.
+			const path = characterPath(saved.first_name, saved.last_name);
+			if (path !== page.url.pathname) goto(path, { replaceState: true, noScroll: true });
 		}}
 		oncancel={() => (editing = false)}
 	/>

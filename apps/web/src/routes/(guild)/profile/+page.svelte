@@ -229,7 +229,6 @@
 			{#each characters as character (character.id)}
 				<li>
 					<CharacterLink
-						id={character.id}
 						firstName={character.first_name}
 						lastName={character.last_name}
 						cls={character.class}

@@ -186,11 +186,15 @@ the changes.
 
 - **Ranks**: leader, officer, raider, trial, member, public. Anyone can sign in, so new accounts are
   public until an officer gives them a rank (the Discord bot keeps no role for the public).
-  Officers set ranks on a player's page (`/@username`, linked from the roster: the player's rank
-  and characters, for members); only the leader makes or unmakes officers, and only a superuser
+  Officers set ranks on a player's page (`/@username`, the username lowercase, which any other
+  capitalization redirects to for good; linked from the roster: the player's rank and characters,
+  for members); only the leader makes or unmakes officers, and only a superuser
   (or the CLI) makes or unmakes the leader or sets their own.
 - **Characters** have a first and a last name (2 to 24 letters each) and no realm: Forever has
-  rulesets instead, and the guild plays on one (PvP), so a full name is unique across the site. Each
+  rulesets instead, and the guild plays on one (PvP), so a full name is unique across the site, the
+  database too, whatever its capitalization. A character's page is its name, lowercase:
+  `/roster/garr-bonecrush` (names are letters only, so the hyphen is never part of one; another
+  capitalization redirects there for good). Each
   has a class and, once recorded, a race: Classic's eight and Forever's Skyborne, Windshaper
   Skyborne for the Horde and High Order Skyborne for the Alliance (`wow::catalog::RACES`, served at
   `/api/wow/races`; any race may be any class), and a sex, which picks the race's portrait
@@ -198,7 +202,7 @@ the changes.
   60). Only officers add, edit, and remove them, for a member or for no account (a pug who won loot,
   which only the administrator is sent, and officers where they record raids and loot:
   `GET /api/characters?unclaimed=true`). A character's notes are written by its player and read by
-  officers (`/notes`).
+  officers (the planner's Notes tab, `/planner/notes`).
 - **Raids** are one night in a zone, with the characters who came and the loot they won. The zones,
   their sizes, and their bosses are a file in the repository
   (`crates/bloodlegion-server/data/raids.json`): Barrow Deeps (10), Hyjal Summit (20), and Onyxia's

@@ -39,6 +39,16 @@ fn ordered(mut character: Character) -> Character {
     character
 }
 
+/// The id of the character named `name` (`first last`), whatever its capitalization.
+pub async fn find_id_by_name(pool: &PgPool, name: &str) -> sqlx::Result<Option<i64>> {
+    sqlx::query_scalar!(
+        "SELECT id FROM characters WHERE name_normalized = lower($1)",
+        name,
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
     sqlx::query_as!(
         Character,

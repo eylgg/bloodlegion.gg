@@ -62,23 +62,45 @@ async fn detail(
     user: GuildMember,
     Path(id): Path<i64>,
 ) -> Result<Json<CharacterDetail>, CharacterError> {
-    let Some(character) = super::find(&state.pool, id).await? else {
+    let character = super::find(&state.pool, id).await?;
+    Ok(Json(detail_of(&state, &user, character).await?))
+}
+
+/// `GET /api/characters/named/{first-last}`: the same, by the name the site links a character's
+/// page by (`/roster/garr-bonecrush`).
+async fn detail_by_name(
+    state: State,
+    user: GuildMember,
+    Path(slug): Path<String>,
+) -> Result<Json<CharacterDetail>, CharacterError> {
+    let character = super::find_by_slug(&state.pool, &slug).await?;
+    Ok(Json(detail_of(&state, &user, character).await?))
+}
+
+/// A character's page, as `user` may see it.
+async fn detail_of(
+    state: &State,
+    user: &GuildMember,
+    character: Option<Character>,
+) -> Result<CharacterDetail, CharacterError> {
+    let Some(character) = character else {
         return Err(Error::External(CharacterError::NotFound));
     };
-    let note = if super::may_read_note(&user, &character) {
+    let id = character.id;
+    let note = if super::may_read_note(user, &character) {
         super::note(&state.pool, id).await?
     } else {
         None
     };
     let is_player = character.user_id == Some(user.id);
-    Ok(Json(CharacterDetail {
+    Ok(CharacterDetail {
         raids_attended: crate::raids::raids_attended(&state.pool, id).await?,
         loot: crate::raids::loot_for_character(&state.pool, id).await?,
         note,
         can_edit: user.is_officer(),
         can_write_note: is_player,
         character,
-    }))
+    })
 }
 
 /// `PUT /api/characters/{id}`.
@@ -157,6 +179,7 @@ pub fn router() -> Router<State> {
         .route("/", get(list).post(create))
         .route("/notes", get(notes))
         .route("/roster", post(roster))
+        .route("/named/{name}", get(detail_by_name))
         .route("/{id}", get(detail).put(update).delete(delete))
         .route("/{id}/note", put(set_note))
         .route("/{id}/specs", put(set_specs))
