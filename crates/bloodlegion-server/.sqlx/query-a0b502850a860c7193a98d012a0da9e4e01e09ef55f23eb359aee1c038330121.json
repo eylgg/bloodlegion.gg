@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE roster_uploads SET undone_at = now(), undone_by = $2\n        WHERE id = $1 AND undone_at IS NULL\n        RETURNING (SELECT count(*) FROM roster_changes WHERE upload_id = $1) AS \"changes!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "changes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a0b502850a860c7193a98d012a0da9e4e01e09ef55f23eb359aee1c038330121"
+}

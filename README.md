@@ -294,6 +294,11 @@ the client keep them current:
    Blood Legion's roster, and the client lists the members no character is named after, for an
    officer to add.
 
+4. **Each upload is recorded**: who sent it, when, and every character it changed, with the
+   level and time at 60 before and after. Superusers see them under Administration → Roster uploads
+   (`/admin/rosters`) and can undo one with bad data. Undoing puts back the characters still as
+   that upload left them; any changed since, by a later upload or an officer, keep their level.
+
 ## The Discord server
 
 The guild's Discord server is kept by a bot, the same Discord application members link (step 4

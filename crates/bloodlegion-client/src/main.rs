@@ -436,6 +436,9 @@ struct Member {
 #[derive(Debug, serde::Deserialize)]
 struct RosterResult {
     matched: usize,
+    /// How many levels it changed; an older site does not say.
+    #[serde(default)]
+    changed: usize,
     unmatched: Vec<Unmatched>,
 }
 
@@ -507,10 +510,11 @@ async fn upload(file: &Path) -> anyhow::Result<()> {
     .await
     .context("reading the site's answer")?;
     println!(
-        "{}: uploaded {} members, {} matched characters on the site.",
+        "{}: uploaded {} members, {} matched characters on the site, {} changed.",
         file.display(),
         roster.members.len(),
-        result.matched
+        result.matched,
+        result.changed
     );
     if !result.unmatched.is_empty() {
         println!("Not on the site yet (add them as characters to track them):");

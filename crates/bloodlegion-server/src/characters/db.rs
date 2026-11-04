@@ -167,30 +167,199 @@ pub(super) async fn update(
     Ok(())
 }
 
+/// A character's level and time at 60, before and after a roster raised them.
+pub struct LevelChange {
+    pub character_id: i64,
+    pub old_level: i16,
+    pub old_reached_60_at: Option<OffsetDateTime>,
+    pub new_level: i16,
+    pub new_reached_60_at: Option<OffsetDateTime>,
+}
+
 /// Raises the level of the character named `name` (lowercase: `first last`, or the two run
 /// together) to `level` if it is lower, and at 60 keeps the earlier of when it reached it and
-/// `reached_60_at` (or now). Whether there is such a character.
+/// `reached_60_at` (or now). Each character of that name, as it was and is now: none when there is
+/// no such character, and the same before and after when nothing changed.
 pub async fn raise_level(
     conn: &mut PgConnection,
     name: &str,
     level: i16,
     reached_60_at: Option<OffsetDateTime>,
-) -> sqlx::Result<bool> {
-    let updated = sqlx::query!(
+) -> sqlx::Result<Vec<LevelChange>> {
+    sqlx::query_as!(
+        LevelChange,
         r#"
-        UPDATE characters
-        SET level = GREATEST(level, $2),
-            reached_60_at = CASE WHEN GREATEST(level, $2) = 60
-                                 THEN LEAST(reached_60_at, COALESCE($3, now())) END
-        WHERE name_normalized = $1 OR replace(name_normalized, ' ', '') = $1
+        WITH old AS (
+            SELECT id, level, reached_60_at
+            FROM characters
+            WHERE name_normalized = $1 OR replace(name_normalized, ' ', '') = $1
+            FOR UPDATE
+        ), new AS (
+            UPDATE characters c
+            SET level = GREATEST(c.level, $2),
+                reached_60_at = CASE WHEN GREATEST(c.level, $2) = 60
+                                     THEN LEAST(c.reached_60_at, COALESCE($3, now())) END
+            FROM old
+            WHERE c.id = old.id
+            RETURNING c.id, c.level, c.reached_60_at
+        )
+        SELECT old.id AS "character_id!", old.level AS "old_level!",
+               old.reached_60_at AS old_reached_60_at,
+               new.level AS "new_level!", new.reached_60_at AS new_reached_60_at
+        FROM old
+        JOIN new ON new.id = old.id
         "#,
         name,
         level,
         reached_60_at,
     )
-    .execute(&mut *conn)
+    .fetch_all(&mut *conn)
+    .await
+}
+
+/// Records an upload and the characters it changed; its id.
+pub async fn record_upload(
+    conn: &mut PgConnection,
+    user_id: UserId,
+    members: i32,
+    matched: i32,
+    unmatched: serde_json::Value,
+    changes: &[LevelChange],
+) -> sqlx::Result<i64> {
+    let id = sqlx::query_scalar!(
+        r#"
+        INSERT INTO roster_uploads (user_id, members, matched, unmatched)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id
+        "#,
+        user_id as UserId,
+        members,
+        matched,
+        unmatched,
+    )
+    .fetch_one(&mut *conn)
     .await?;
-    Ok(updated.rows_affected() > 0)
+    for change in changes {
+        sqlx::query!(
+            r#"
+            INSERT INTO roster_changes (upload_id, character_id, old_level, old_reached_60_at,
+                                        new_level, new_reached_60_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            "#,
+            id,
+            change.character_id,
+            change.old_level,
+            change.old_reached_60_at,
+            change.new_level,
+            change.new_reached_60_at,
+        )
+        .execute(&mut *conn)
+        .await?;
+    }
+    Ok(id)
+}
+
+pub struct UploadRow {
+    pub id: i64,
+    pub username: Option<String>,
+    pub created_at: OffsetDateTime,
+    pub members: i32,
+    pub matched: i32,
+    pub unmatched: serde_json::Value,
+    pub undone_at: Option<OffsetDateTime>,
+    pub undone_by: Option<String>,
+}
+
+/// The latest `limit` uploads, latest first.
+pub async fn uploads(pool: &PgPool, limit: i64) -> sqlx::Result<Vec<UploadRow>> {
+    sqlx::query_as!(
+        UploadRow,
+        r#"
+        SELECT r.id, u.username AS "username?", r.created_at, r.members, r.matched, r.unmatched,
+               r.undone_at, b.username AS "undone_by?"
+        FROM roster_uploads r
+        LEFT JOIN users u ON u.id = r.user_id
+        LEFT JOIN users b ON b.id = r.undone_by
+        ORDER BY r.created_at DESC, r.id DESC
+        LIMIT $1
+        "#,
+        limit,
+    )
+    .fetch_all(pool)
+    .await
+}
+
+pub struct ChangeRow {
+    pub upload_id: i64,
+    pub character_id: i64,
+    pub first_name: String,
+    pub last_name: String,
+    pub class: String,
+    pub old_level: i16,
+    pub old_reached_60_at: Option<OffsetDateTime>,
+    pub new_level: i16,
+    pub new_reached_60_at: Option<OffsetDateTime>,
+    /// Whether the character is still as the upload left it, so undoing it would put it back.
+    pub current: bool,
+}
+
+/// The changes of the uploads `ids`, by character name.
+pub async fn changes(pool: &PgPool, ids: &[i64]) -> sqlx::Result<Vec<ChangeRow>> {
+    sqlx::query_as!(
+        ChangeRow,
+        r#"
+        SELECT rc.upload_id, rc.character_id, c.first_name, c.last_name, c.class,
+               rc.old_level, rc.old_reached_60_at, rc.new_level, rc.new_reached_60_at,
+               (c.level = rc.new_level
+                AND c.reached_60_at IS NOT DISTINCT FROM rc.new_reached_60_at) AS "current!"
+        FROM roster_changes rc
+        JOIN characters c ON c.id = rc.character_id
+        WHERE rc.upload_id = ANY($1)
+        ORDER BY c.name_normalized
+        "#,
+        ids,
+    )
+    .fetch_all(pool)
+    .await
+}
+
+/// Undoes upload `id` as `by`: puts back the old level and time at 60 of each character it changed
+/// that is still as it left it. How many it put back and how many it left (changed since); `None`
+/// when there is no such upload, or it was undone already.
+pub async fn undo_upload(
+    conn: &mut PgConnection,
+    id: i64,
+    by: UserId,
+) -> sqlx::Result<Option<(u64, u64)>> {
+    let open = sqlx::query_scalar!(
+        r#"
+        UPDATE roster_uploads SET undone_at = now(), undone_by = $2
+        WHERE id = $1 AND undone_at IS NULL
+        RETURNING (SELECT count(*) FROM roster_changes WHERE upload_id = $1) AS "changes!"
+        "#,
+        id,
+        by as UserId,
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    let Some(changes) = open else {
+        return Ok(None);
+    };
+    let reverted = sqlx::query!(
+        r#"
+        UPDATE characters c
+        SET level = rc.old_level, reached_60_at = rc.old_reached_60_at
+        FROM roster_changes rc
+        WHERE rc.upload_id = $1 AND c.id = rc.character_id
+          AND c.level = rc.new_level
+          AND c.reached_60_at IS NOT DISTINCT FROM rc.new_reached_60_at
+        "#,
+        id,
+    )
+    .execute(&mut *conn)
+    .await?
+    .rows_affected();
+    Ok(Some((reverted, changes as u64 - reverted)))
 }
 
 /// Replaces the character's specs with `specs`.

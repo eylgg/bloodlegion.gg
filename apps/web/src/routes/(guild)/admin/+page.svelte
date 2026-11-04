@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { api, errorMessage } from '$lib/api';
 	import { formatInZone, zoneCity } from '$lib/guild';
 	import Button from '$lib/components/Button.svelte';
@@ -90,8 +91,26 @@
 
 <DiscordSettings settings={data.discord} />
 
+<section class="panel">
+	<div class="head">
+		<h2>Roster uploads</h2>
+		<Button href={resolve('/admin/rosters')} variant="secondary" size="small">View</Button>
+	</div>
+	<p class="muted">
+		Every roster the officers' Blood Legion clients sent from the addon: who sent it, the levels it
+		changed, and an undo for one with bad data.
+	</p>
+</section>
+
 <style>
 	.panel {
 		max-width: 44rem;
+	}
+
+	.head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-3);
 	}
 </style>

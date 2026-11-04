@@ -202,6 +202,13 @@ pub enum CharacterError {
         detail = "A roster names at most 1,000 members."
     )]
     RosterTooLong,
+    #[error("upload not found")]
+    #[problem(
+        status = NOT_FOUND,
+        title = "Upload Not Found",
+        detail = "No such roster upload, or it was undone already."
+    )]
+    UploadNotFound,
     #[error("invalid spec")]
     #[problem(
         status = UNPROCESSABLE_ENTITY,

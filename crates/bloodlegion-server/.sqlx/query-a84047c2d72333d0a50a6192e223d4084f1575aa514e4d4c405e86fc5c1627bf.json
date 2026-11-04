@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT r.id, u.username AS \"username?\", r.created_at, r.members, r.matched, r.unmatched,\n               r.undone_at, b.username AS \"undone_by?\"\n        FROM roster_uploads r\n        LEFT JOIN users u ON u.id = r.user_id\n        LEFT JOIN users b ON b.id = r.undone_by\n        ORDER BY r.created_at DESC, r.id DESC\n        LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "roster_uploads",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "roster_uploads",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "members",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "roster_uploads",
+            "name": "members"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "matched",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "roster_uploads",
+            "name": "matched"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "unmatched",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "roster_uploads",
+            "name": "unmatched"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "undone_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "roster_uploads",
+            "name": "undone_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "undone_by?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "a84047c2d72333d0a50a6192e223d4084f1575aa514e4d4c405e86fc5c1627bf"
+}

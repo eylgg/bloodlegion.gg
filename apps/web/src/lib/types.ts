@@ -38,6 +38,36 @@ export type DiscordSettings = {
 	has_bot_token: boolean;
 };
 
+/** A roster the Blood Legion client sent, from `GET /api/admin/rosters`, latest first. */
+export type RosterUpload = {
+	id: number;
+	/** Who sent it; null once their account is gone. */
+	username: string | null;
+	created_at: string;
+	/** How many members it named, and how many of those matched a character. */
+	members: number;
+	matched: number;
+	unmatched: { name: string; level: number; class: string | null }[];
+	/** The characters it changed, by name. */
+	changes: RosterChange[];
+	undone_at: string | null;
+	undone_by: string | null;
+};
+
+/** A character a roster upload changed. */
+export type RosterChange = {
+	character_id: number;
+	first_name: string;
+	last_name: string;
+	class: string;
+	old_level: number;
+	old_reached_60_at: string | null;
+	new_level: number;
+	new_reached_60_at: string | null;
+	/** Still as the upload left it, so undoing it puts it back. */
+	current: boolean;
+};
+
 /** How the Discord bot and server stand, for a superuser (the backend's `discord::check`). */
 export type DiscordOverview = {
 	/** Whether both the bot's token and the server are set. */

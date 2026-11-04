@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE characters c\n        SET level = rc.old_level, reached_60_at = rc.old_reached_60_at\n        FROM roster_changes rc\n        WHERE rc.upload_id = $1 AND c.id = rc.character_id\n          AND c.level = rc.new_level\n          AND c.reached_60_at IS NOT DISTINCT FROM rc.new_reached_60_at\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "70fdae0697b7f429e112eb9be504fd6ca05b86b6d2f84c793dceeb0980191ab7"
+}

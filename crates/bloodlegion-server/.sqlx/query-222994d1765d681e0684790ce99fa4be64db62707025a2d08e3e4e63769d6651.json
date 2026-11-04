@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO roster_changes (upload_id, character_id, old_level, old_reached_60_at,\n                                        new_level, new_reached_60_at)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int2",
+        "Timestamptz",
+        "Int2",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "222994d1765d681e0684790ce99fa4be64db62707025a2d08e3e4e63769d6651"
+}

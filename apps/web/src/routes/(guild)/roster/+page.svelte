@@ -57,9 +57,10 @@
 	const most = $derived(Math.max(1, ...spread.map((s) => s.count)));
 
 	// Like the guild list in game: a column to sort by, clicked again to turn it around.
-	type Column = 'name' | 'race' | 'class' | 'spec' | 'player' | 'rank' | 'main';
+	type Column = 'name' | 'level' | 'race' | 'class' | 'spec' | 'player' | 'rank' | 'main';
 	const COLUMNS: { key: Column; label: string }[] = [
 		{ key: 'name', label: 'Name' },
+		{ key: 'level', label: 'Level' },
 		{ key: 'race', label: 'Race' },
 		{ key: 'class', label: 'Class' },
 		{ key: 'spec', label: 'Specs' },
@@ -87,6 +88,8 @@
 	// What each column sorts on; an empty value (no race, no player) goes last either way.
 	const sortKey: Record<Column, (c: GuildCharacter) => string | undefined> = {
 		name: fullName,
+		// Highest first; at 60, whoever got there first.
+		level: (c) => `${String(60 - c.level).padStart(2, '0')} ${c.reached_60_at ?? ''}`,
 		race: (c) => findRace(c.race)?.name,
 		class: (c) => findClass(c.class)?.name ?? c.class,
 		spec: mainSpec,
@@ -183,6 +186,7 @@
 								icon={false}
 							/>
 						</td>
+						<td class="level">{character.level}</td>
 						<td>
 							{#if race}
 								<span class="with-icon">
@@ -507,6 +511,10 @@
 	}
 
 	th button:hover,
+	.level {
+		font-variant-numeric: tabular-nums;
+	}
+
 	th[aria-sort] button {
 		color: var(--foreground);
 	}

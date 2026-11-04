@@ -144,10 +144,12 @@ async fn notes(state: State, _officer: Officer) -> Result<Json<Vec<NoteListing>>
 /// which raises the levels of the characters it names. Officers only, by access token.
 async fn roster(
     state: State,
-    _client: RosterClient,
+    client: RosterClient,
     Json(input): Json<RosterInput>,
 ) -> Result<Json<RosterResult>, CharacterError> {
-    Ok(Json(super::roster::apply(&state.pool, &input).await?))
+    Ok(Json(
+        super::roster::apply(&state.pool, client.id, &input).await?,
+    ))
 }
 
 pub fn router() -> Router<State> {
