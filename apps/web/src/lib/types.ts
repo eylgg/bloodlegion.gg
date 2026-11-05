@@ -39,6 +39,26 @@ export type DiscordSettings = {
 };
 
 /** A roster the Blood Legion client sent, from `GET /api/admin/rosters`, latest first. */
+/** A character a Battle.net listing linked or added, from `GET /api/admin/battlenet-characters`. */
+export type BattlenetCharacter = {
+	id: number;
+	/** The Battle.net account's BattleTag. */
+	account: string | null;
+	/** Who plays it on the site; null before the account's member picks a username. */
+	username: string | null;
+	first_name: string;
+	last_name: string;
+	class: string;
+	race: string | null;
+	sex: Sex;
+	ruleset: Ruleset;
+	level: number;
+	/** Seen by superusers only, until an officer adds a character of its name. */
+	is_hidden: boolean;
+	/** When Battle.net last listed it; null once it stopped. */
+	seen_at: string | null;
+};
+
 export type RosterUpload = {
 	id: number;
 	/** Who sent it; null once their account is gone. */
@@ -270,6 +290,9 @@ export type Race = { slug: string; name: string; faction: Faction };
 /** A character's sex, which picks its race's portrait. */
 export type Sex = 'female' | 'male';
 
+/** A WoW: Forever ruleset, which it has instead of realms. */
+export type Ruleset = 'normal' | 'pvp' | 'roleplay' | 'roleplay-pvp' | 'hardcore';
+
 /* --- the guild --- */
 
 /** A guild rank, highest first (see `RANKS`). Leaders and officers run the guild's records. */
@@ -298,6 +321,8 @@ export type GuildCharacter = {
 	/** Its race's slug, or null while nobody has recorded it. */
 	race: string | null;
 	sex: Sex;
+	/** The guild's unless an officer said otherwise. */
+	ruleset: Ruleset;
 	/** 1 to 60, as an officer last recorded it. */
 	level: number;
 	/** When it reached 60, or null below it: of two at 60, the earlier got there first. */
@@ -322,6 +347,8 @@ export type GuildCharacterInput = {
 	/** Its race's slug, or null for none recorded. Sent with every save: leaving it out clears it. */
 	race: string | null;
 	sex: Sex;
+	/** Omit to keep the one it has; a new character takes the guild's. */
+	ruleset?: Ruleset;
 	/** 1 to 60. */
 	level: number;
 	/** When it reached 60, from the screenshot: null keeps the time it has (or is now). */
@@ -444,6 +471,9 @@ export type GuildSettings = {
 	time_zone: string;
 	/** `20:00`. */
 	default_raid_time: string;
+	/** The faction and ruleset the guild plays: new characters take the ruleset. */
+	faction: Faction;
+	ruleset: Ruleset;
 };
 
 /** One raiding week: `[starts_at, ends_at)`. Week 1 runs from the release to the first reset. */

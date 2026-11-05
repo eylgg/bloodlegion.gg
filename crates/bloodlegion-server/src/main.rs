@@ -146,9 +146,9 @@ enum UsersCommand {
         /// The Battle.net region the account plays in: us, eu, kr, or tw.
         #[arg(long, default_value = "us")]
         region: String,
-        /// The profile API namespace, which selects the game: `profile-<region>` (the default) is
-        /// retail, `profile-classic1x-<region>` Classic Era, `profile-classic-<region>` progression
-        /// Classic.
+        /// The profile API namespace, which selects the game: `profile-forever-<region>` (the
+        /// default) is WoW: Forever, `profile-<region>` retail, `profile-classic1x-<region>`
+        /// Classic Era, `profile-classic-<region>` progression Classic.
         #[arg(long)]
         namespace: Option<String>,
         #[arg(long, default_value = "en_US")]

@@ -97,6 +97,12 @@ pub struct Settings {
     /// `20:00`, in `time_zone`.
     #[serde(with = "crate::local_time::clock")]
     pub default_raid_time: time::Time,
+    /// The faction the guild plays.
+    #[serde(default)]
+    pub faction: crate::wow::catalog::Faction,
+    /// The ruleset the guild plays on, which new characters take.
+    #[serde(default)]
+    pub ruleset: crate::wow::Ruleset,
 }
 
 pub async fn settings(pool: &PgPool) -> sqlx::Result<Settings> {
@@ -110,7 +116,14 @@ pub async fn set_settings(pool: &PgPool, settings: &Settings) -> Result<Settings
     if !db::is_known_time_zone(pool, time_zone).await? {
         return Err(Error::External(GuildError::UnknownTimeZone));
     }
-    Ok(db::set_settings(pool, time_zone, settings.default_raid_time).await?)
+    Ok(db::set_settings(
+        pool,
+        time_zone,
+        settings.default_raid_time,
+        settings.faction,
+        settings.ruleset,
+    )
+    .await?)
 }
 
 /// A member of the guild (an account), with their characters, main first.
@@ -252,7 +265,12 @@ pub(crate) mod tests {
         assert_eq!(defaults.default_raid_time, time::macros::time!(20:00));
         assert_eq!(
             serde_json::to_value(&defaults).unwrap(),
-            serde_json::json!({"time_zone": "America/New_York", "default_raid_time": "20:00"})
+            serde_json::json!({
+                "time_zone": "America/New_York",
+                "default_raid_time": "20:00",
+                "faction": "horde",
+                "ruleset": "pvp"
+            })
         );
 
         let berlin: Settings = serde_json::from_value(

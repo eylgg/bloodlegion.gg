@@ -1266,6 +1266,8 @@ mod tests {
             &crate::guild::Settings {
                 time_zone: "Europe/Berlin".into(),
                 default_raid_time: time::macros::time!(20:00),
+                faction: Default::default(),
+                ruleset: Default::default(),
             },
         )
         .await

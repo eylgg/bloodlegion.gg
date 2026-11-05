@@ -25,7 +25,9 @@ pub fn router() -> Router<State> {
         // Only what members never see: what they can read is not under here.
         .nest(
             "/admin",
-            crate::discord::admin_router().merge(crate::characters::roster::admin_router()),
+            crate::discord::admin_router()
+                .merge(crate::characters::roster::admin_router())
+                .merge(crate::wow::battlenet::admin_router()),
         )
         .merge(crate::raids::router())
         .nest("/auth", crate::auth::api::router())

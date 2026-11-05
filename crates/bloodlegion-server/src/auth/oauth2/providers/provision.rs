@@ -102,7 +102,7 @@ const HANDLE_CLAIMS: &[&str] = &[
 
 /// How the provider identifies the person, as a label (a BattleTag, a nickname), if it
 /// asserted anything of the kind.
-pub(super) fn identity_label(userinfo: &serde_json::Value) -> Option<String> {
+pub(crate) fn identity_label(userinfo: &serde_json::Value) -> Option<String> {
     HANDLE_CLAIMS.iter().find_map(|key| {
         userinfo
             .get(key)

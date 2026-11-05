@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        WITH old AS (\n            SELECT id, level, reached_60_at\n            FROM characters\n            WHERE name_normalized = $1 OR replace(name_normalized, ' ', '') = $1\n            FOR UPDATE\n        ), new AS (\n            UPDATE characters c\n            SET level = GREATEST(c.level, $2),\n                reached_60_at = CASE WHEN GREATEST(c.level, $2) = 60\n                                     THEN LEAST(c.reached_60_at, COALESCE($3, now())) END\n            FROM old\n            WHERE c.id = old.id\n            RETURNING c.id, c.level, c.reached_60_at\n        )\n        SELECT old.id AS \"character_id!\", old.level AS \"old_level!\",\n               old.reached_60_at AS old_reached_60_at,\n               new.level AS \"new_level!\", new.reached_60_at AS new_reached_60_at\n        FROM old\n        JOIN new ON new.id = old.id\n        ",
+  "query": "\n        WITH old AS (\n            SELECT id, level, reached_60_at\n            FROM characters\n            WHERE (name_normalized = $1 OR replace(name_normalized, ' ', '') = $1)\n                AND NOT is_hidden\n            FOR UPDATE\n        ), new AS (\n            UPDATE characters c\n            SET level = GREATEST(c.level, $2),\n                reached_60_at = CASE WHEN GREATEST(c.level, $2) = 60\n                                     THEN LEAST(c.reached_60_at, COALESCE($3, now())) END\n            FROM old\n            WHERE c.id = old.id\n            RETURNING c.id, c.level, c.reached_60_at\n        )\n        SELECT old.id AS \"character_id!\", old.level AS \"old_level!\",\n               old.reached_60_at AS old_reached_60_at,\n               new.level AS \"new_level!\", new.reached_60_at AS new_reached_60_at\n        FROM old\n        JOIN new ON new.id = old.id\n        ",
   "describe": {
     "columns": [
       {
@@ -74,5 +74,5 @@
       true
     ]
   },
-  "hash": "957049257d6ccc5a407e049f74d4f5e0d23c2c7ac878bf41cdfd9d5416235af9"
+  "hash": "40897238d9b8414e73e64443dc056dcbae9e64735745ad3d8ef12e33bd908e50"
 }

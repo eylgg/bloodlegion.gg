@@ -4,6 +4,7 @@ mod db;
 pub mod http;
 pub mod links;
 mod provision;
+pub(crate) use provision::identity_label;
 pub mod register;
 
 pub(crate) use api::{ClaimInput, CreateProviderPayload};

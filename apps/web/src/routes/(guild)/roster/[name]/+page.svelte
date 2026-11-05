@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { api, errorMessage } from '$lib/api';
-	import { characterPath, formatDateTime } from '$lib/guild';
+	import { characterPath, formatDateTime, rulesetLabel } from '$lib/guild';
 	import { classIcon } from '$lib/wow/icons';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
@@ -65,11 +65,9 @@
 	<div>
 		<p class="kicker">
 			Level {character.level}
-			{race ? `${race.name} ` : ''}{wowClass?.name ?? character.class}{character.is_main
-				? ' · Main'
-				: character.user_id
-					? ' · Alt'
-					: ''}
+			{race ? `${race.name} ` : ''}{wowClass?.name ?? character.class} · {rulesetLabel(
+				character.ruleset
+			)}{character.is_main ? ' · Main' : character.user_id ? ' · Alt' : ''}
 		</p>
 		<h1>{character.first_name} {character.last_name}</h1>
 		<p class="muted">

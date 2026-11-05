@@ -3,9 +3,9 @@
 ## Interface: 16001
 ## Title: Blood Legion
 ## IconTexture: Interface\AddOns\BloodLegion\Claws
-## Notes: Saves the guild roster for the Blood Legion Client (/bl shows it)
+## Notes: Saves the guild roster for the Blood Legion Client (/bl shows it, /bl debug what the game says)
 ## Author: Blood Legion
-## Version: 0.3.0
+## Version: 0.4.0
 ## SavedVariables: BloodLegionDB
 
 BloodLegion.lua

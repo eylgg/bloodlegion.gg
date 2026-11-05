@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.provider_id FROM auth_oauth2_providers p\n             JOIN auth_providers a ON a.id = p.provider_id WHERE a.slug = 'battlenet'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "provider_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_providers",
+            "name": "provider_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5e9cada63057af5bc7448dccb7738a6ba9800b25ddafcb0ae402aae63b584250"
+}

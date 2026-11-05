@@ -5,10 +5,13 @@
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import SpecsPicker from './SpecsPicker.svelte';
+	import { RULESETS } from '$lib/guild';
 	import type {
 		GuildCharacter,
 		GuildCharacterInput,
+		GuildSettings,
 		Race,
+		Ruleset,
 		Sex,
 		SpecsInput,
 		WowClass
@@ -36,10 +39,16 @@
 
 	const classes = $derived((page.data.classes as WowClass[] | undefined) ?? []);
 	const races = $derived((page.data.races as Race[] | undefined) ?? []);
-	const FACTIONS = [
-		{ faction: 'alliance', label: 'Alliance' },
-		{ faction: 'horde', label: 'Horde' }
-	] as const;
+	const settings = $derived(page.data.settings as GuildSettings | undefined);
+	// The guild's faction's races first.
+	const FACTIONS = $derived(
+		[
+			{ faction: 'horde', label: 'Horde' },
+			{ faction: 'alliance', label: 'Alliance' }
+		].sort(
+			(a, b) => Number(b.faction === settings?.faction) - Number(a.faction === settings?.faction)
+		)
+	);
 
 	// svelte-ignore state_referenced_locally
 	let firstName = $state(character?.first_name ?? '');
@@ -52,6 +61,8 @@
 	let raceSlug = $state(character?.race ?? '');
 	// svelte-ignore state_referenced_locally
 	let sex = $state<Sex>(character?.sex ?? 'female');
+	// svelte-ignore state_referenced_locally
+	let ruleset = $state<Ruleset>(character?.ruleset ?? settings?.ruleset ?? 'pvp');
 	// svelte-ignore state_referenced_locally
 	let level = $state(character?.level ?? 1);
 	// When it reached 60, as a `datetime-local` value in the reader's own time; '' for now.
@@ -99,6 +110,7 @@
 			class: classSlug,
 			race: raceSlug || null,
 			sex,
+			ruleset,
 			level,
 			reached_60_at: level === 60 && reached60 ? new Date(reached60).toISOString() : null,
 			is_main: isMain && (!owners || owner !== '')
@@ -153,6 +165,14 @@
 			<select bind:value={sex}>
 				<option value="female">Female</option>
 				<option value="male">Male</option>
+			</select>
+		</label>
+		<label class="field">
+			Ruleset
+			<select bind:value={ruleset}>
+				{#each RULESETS as { ruleset: value, label } (value)}
+					<option {value}>{label}</option>
+				{/each}
 			</select>
 		</label>
 		<label class="field">

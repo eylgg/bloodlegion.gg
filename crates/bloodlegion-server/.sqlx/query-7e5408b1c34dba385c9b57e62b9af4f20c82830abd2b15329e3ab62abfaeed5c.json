@@ -1,0 +1,67 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE guild_settings\n        SET time_zone = $1, default_raid_time = $2, faction = $3, ruleset = $4\n        RETURNING time_zone, default_raid_time, faction AS \"faction: Faction\",\n                  ruleset AS \"ruleset: Ruleset\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time_zone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "guild_settings",
+            "name": "time_zone"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "default_raid_time",
+        "type_info": "Time",
+        "origin": {
+          "Table": {
+            "table": "guild_settings",
+            "name": "default_raid_time"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "faction: Faction",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "guild_settings",
+            "name": "faction"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "ruleset: Ruleset",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "guild_settings",
+            "name": "ruleset"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Time",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7e5408b1c34dba385c9b57e62b9af4f20c82830abd2b15329e3ab62abfaeed5c"
+}

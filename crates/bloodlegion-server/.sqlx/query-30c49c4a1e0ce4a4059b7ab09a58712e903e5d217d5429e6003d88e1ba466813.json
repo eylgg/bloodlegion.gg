@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE characters\n        SET user_id = $2, first_name = $3, last_name = $4, class = $5, race = $6, sex = $7,\n            is_main = $8, level = COALESCE($9::smallint, level),\n            ruleset = COALESCE($11::text, ruleset),\n            reached_60_at = CASE WHEN COALESCE($9::smallint, level) = 60\n                                 THEN COALESCE($10, reached_60_at, now()) END\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Int2",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "30c49c4a1e0ce4a4059b7ab09a58712e903e5d217d5429e6003d88e1ba466813"
+}

@@ -141,6 +141,16 @@ pub async fn choose(
             .await?
         }
     };
+    // The characters stored at the sign-in that led here had no member to go to yet.
+    if crate::wow::battlenet::reads_profile(&provider.scope)
+        && let Err(error) =
+            crate::wow::battlenet::claim(&state.pool, provider.id, &request.subject).await
+    {
+        tracing::warn!(
+            error = format!("{error:#}"),
+            "claiming the Battle.net characters failed"
+        );
+    }
     let jar = start_session(
         &state.pool,
         clear(jar),

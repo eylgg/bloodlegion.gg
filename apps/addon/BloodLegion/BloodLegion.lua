@@ -92,9 +92,127 @@ local function rosterStatus()
 	))
 end
 
+-- `/bl debug`: what the game tells addons about the player, the guild roster, and anything
+-- Forever adds, for working out its formats (two names, rulesets). Printed, and saved in
+-- `BloodLegionDB.debug` (written on /reload, like the roster) to send as a file.
+
+local function pack(...)
+	return { n = select("#", ...), ... }
+end
+
+-- Every return value of `fn(...)`, as text; a missing function or an error says so.
+local function call(fn, ...)
+	if type(fn) ~= "function" then
+		return "(no such function)"
+	end
+	local results = pack(pcall(fn, ...))
+	if not results[1] then
+		return "(error: " .. tostring(results[2]) .. ")"
+	end
+	local parts = {}
+	for i = 2, results.n do
+		local value = results[i]
+		parts[#parts + 1] = type(value) == "string" and ("%q"):format(value) or tostring(value)
+	end
+	return #parts > 0 and table.concat(parts, ", ") or "(nothing)"
+end
+
+-- Globals, and functions in the game's C_ namespaces, whose names mention one of these.
+local LOOK_FOR = { "ruleset", "surname", "lastname", "firstname", "camelot", "forever", "realm" }
+local MAX_FOUND = 60
+
+local function mentions(name)
+	local lower = name:lower()
+	for _, word in ipairs(LOOK_FOR) do
+		if lower:find(word, 1, true) then
+			return true
+		end
+	end
+	return false
+end
+
+local function findNames()
+	local found = {}
+	for name, value in pairs(_G) do
+		if type(name) == "string" then
+			local namespace = name:sub(1, 2) == "C_" and type(value) == "table"
+			if mentions(name) then
+				found[#found + 1] = name .. " (" .. type(value) .. ")"
+			end
+			-- A namespace named for one (C_Camelot) shows everything in it.
+			if namespace then
+				local all = mentions(name)
+				for key, inner in pairs(value) do
+					if type(key) == "string" and (all or mentions(key)) then
+						found[#found + 1] = name .. "." .. key .. " (" .. type(inner) .. ")"
+					end
+				end
+			end
+		end
+	end
+	table.sort(found)
+	local total = #found
+	while #found > MAX_FOUND do
+		table.remove(found)
+	end
+	return found, total
+end
+
+local function debugInfo()
+	local lines = {}
+	local function add(label, value)
+		lines[#lines + 1] = label .. ": " .. value
+	end
+	add("Build", call(GetBuildInfo))
+	add("UnitName", call(UnitName, "player"))
+	add("UnitFullName", call(UnitFullName, "player"))
+	add("GetUnitName full", call(GetUnitName, "player", true))
+	add("UnitGUID", call(UnitGUID, "player"))
+	add("GetRealmName", call(GetRealmName))
+	add("GetNormalizedRealmName", call(GetNormalizedRealmName))
+	add("GetRealmID", call(GetRealmID))
+	add("UnitRace", call(UnitRace, "player"))
+	add("UnitSex", call(UnitSex, "player"))
+	add("UnitClass", call(UnitClass, "player"))
+	add("UnitLevel", call(UnitLevel, "player"))
+	add("UnitFactionGroup", call(UnitFactionGroup, "player"))
+	add("IsInGuild", call(IsInGuild))
+	add("GetGuildInfo", call(GetGuildInfo, "player"))
+	add("GetNumGuildMembers", call(GetNumGuildMembers))
+	local count = (IsInGuild() and GetNumGuildMembers and GetNumGuildMembers()) or 0
+	for i = 1, math.min(count, 3) do
+		add("GetGuildRosterInfo(" .. i .. ")", call(GetGuildRosterInfo, i))
+	end
+	local found, total = findNames()
+	add("Names mentioning " .. table.concat(LOOK_FOR, "/"), ("%d found%s"):format(
+		total,
+		total > #found and (", first " .. #found .. " listed") or ""
+	))
+	for _, name in ipairs(found) do
+		lines[#lines + 1] = "  " .. name
+	end
+	return lines
+end
+
+local function debug()
+	requestRoster()
+	local lines = debugInfo()
+	BloodLegionDB = BloodLegionDB or {}
+	BloodLegionDB.debug = { at = time(), lines = lines }
+	say("Debug (also saved for the client: /reload writes it):")
+	for _, line in ipairs(lines) do
+		DEFAULT_CHAT_FRAME:AddMessage(line)
+	end
+end
+
 SLASH_BLOODLEGION1 = "/bl"
 SLASH_BLOODLEGION2 = "/bloodlegion"
-SlashCmdList.BLOODLEGION = function()
-	requestRoster()
-	rosterStatus()
+SlashCmdList.BLOODLEGION = function(message)
+	local command = (message or ""):match("^%s*(%S*)"):lower()
+	if command == "debug" then
+		debug()
+	else
+		requestRoster()
+		rosterStatus()
+	end
 end

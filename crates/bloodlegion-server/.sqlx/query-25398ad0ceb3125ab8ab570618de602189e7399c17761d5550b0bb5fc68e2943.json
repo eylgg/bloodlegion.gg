@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE characters SET user_id = $3\n         WHERE battlenet_provider_id = $1 AND battlenet_subject = $2 AND user_id IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "25398ad0ceb3125ab8ab570618de602189e7399c17761d5550b0bb5fc68e2943"
+}

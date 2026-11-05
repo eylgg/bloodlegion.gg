@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO characters (\n            user_id, first_name, last_name, class, race, sex, is_main, level, reached_60_at,\n            ruleset\n        )\n        VALUES (\n            $1, $2, $3, $4, $5, $6, $7, COALESCE($8::smallint, 1),\n            CASE WHEN $8::smallint = 60 THEN COALESCE($9, now()) END,\n            COALESCE($10::text, (SELECT ruleset FROM guild_settings))\n        )\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Int2",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1cda231b09db1112b4e99858e1c94314d6913c76077b65bea8a98b13cda1e39e"
+}

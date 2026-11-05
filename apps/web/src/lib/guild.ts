@@ -1,5 +1,5 @@
 import { resolve } from '$app/paths';
-import type { Quality, Rank, User, Zone } from '$lib/types';
+import type { Faction, Quality, Rank, Ruleset, User, Zone } from '$lib/types';
 
 /**
  * A character's page: `/roster/garr-bonecrush`, its name lowercase. Names are unique and letters
@@ -16,6 +16,19 @@ export const playerPath = (username: string) =>
 	resolve('/(guild)/@[username]', { username: username.toLowerCase() });
 
 /** Highest first, as the backend orders them. */
+export const RULESETS: { ruleset: Ruleset; label: string }[] = [
+	{ ruleset: 'normal', label: 'Normal' },
+	{ ruleset: 'pvp', label: 'PvP' },
+	{ ruleset: 'roleplay', label: 'Roleplay' },
+	{ ruleset: 'roleplay-pvp', label: 'RP-PvP' },
+	{ ruleset: 'hardcore', label: 'Hardcore' }
+];
+
+export const FACTION_LABEL: Record<Faction, string> = { alliance: 'Alliance', horde: 'Horde' };
+
+export const rulesetLabel = (ruleset: Ruleset) =>
+	RULESETS.find((r) => r.ruleset === ruleset)?.label ?? ruleset;
+
 export const RANKS: Rank[] = ['leader', 'officer', 'raider', 'trial', 'member', 'public'];
 
 export const RANK_LABEL: Record<Rank, string> = {

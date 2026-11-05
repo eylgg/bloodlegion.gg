@@ -4,7 +4,7 @@
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import CharacterSpecs from '$lib/components/guild/CharacterSpecs.svelte';
-	import { RANKS, RANK_GROUP, RANK_LABEL, playerPath } from '$lib/guild';
+	import { RANKS, RANK_GROUP, RANK_LABEL, playerPath, rulesetLabel } from '$lib/guild';
 	import type { GuildCharacter, Rank } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -56,12 +56,14 @@
 	const most = $derived(Math.max(1, ...spread.map((s) => s.count)));
 
 	// Like the guild list in game: a column to sort by, clicked again to turn it around.
-	type Column = 'name' | 'level' | 'race' | 'class' | 'spec' | 'player' | 'rank' | 'main';
+	type Column =
+		'name' | 'level' | 'race' | 'class' | 'ruleset' | 'spec' | 'player' | 'rank' | 'main';
 	const COLUMNS: { key: Column; label: string }[] = [
 		{ key: 'name', label: 'Name' },
 		{ key: 'level', label: 'Level' },
 		{ key: 'race', label: 'Race' },
 		{ key: 'class', label: 'Class' },
+		{ key: 'ruleset', label: 'Ruleset' },
 		{ key: 'spec', label: 'Specs' },
 		{ key: 'player', label: 'Player' },
 		{ key: 'rank', label: 'Rank' },
@@ -91,6 +93,7 @@
 		level: (c) => `${String(60 - c.level).padStart(2, '0')} ${c.reached_60_at ?? ''}`,
 		race: (c) => findRace(c.race)?.name,
 		class: (c) => findClass(c.class)?.name ?? c.class,
+		ruleset: (c) => rulesetLabel(c.ruleset),
 		spec: mainSpec,
 		player: (c) => c.username ?? undefined,
 		// Highest first, as the ranks go.
@@ -201,6 +204,7 @@
 								{wowClass?.name ?? character.class}
 							</span>
 						</td>
+						<td>{rulesetLabel(character.ruleset)}</td>
 						<td>
 							<CharacterSpecs cls={character.class} specs={character.specs} size={20} />
 						</td>

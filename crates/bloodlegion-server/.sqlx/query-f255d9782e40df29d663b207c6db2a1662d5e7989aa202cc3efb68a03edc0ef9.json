@@ -1,28 +1,29 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT user_id AS \"user_id: UserId\" FROM characters WHERE id = $1 FOR UPDATE",
+  "query": "INSERT INTO characters (first_name, last_name, class) VALUES ($1, $2, 'warrior')\n             RETURNING id",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "user_id: UserId",
+        "name": "id",
         "type_info": "Int8",
         "origin": {
           "Table": {
             "table": "characters",
-            "name": "user_id"
+            "name": "id"
           }
         }
       }
     ],
     "parameters": {
       "Left": [
-        "Int8"
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
-      true
+      false
     ]
   },
-  "hash": "ecef63d3bdc7034d755430a19ec1a9af77c85b57000052d5f76581544a4e4b34"
+  "hash": "f255d9782e40df29d663b207c6db2a1662d5e7989aa202cc3efb68a03edc0ef9"
 }

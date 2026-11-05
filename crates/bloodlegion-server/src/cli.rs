@@ -204,7 +204,7 @@ pub async fn users_characters(
     locale: String,
     raw: bool,
 ) -> Result<()> {
-    let namespace = namespace.unwrap_or_else(|| format!("profile-{region}"));
+    let namespace = namespace.unwrap_or_else(|| crate::wow::profile_namespace(&region));
     let state = State::new().await?;
     let id = user_id(&state.pool, &username).await?;
     let slug = crate::Slug::try_from(provider.as_str()).context("invalid provider slug")?;
@@ -245,7 +245,11 @@ pub async fn users_characters(
         )
         .await
         {
-            Ok(profile) => profile,
+            Ok(Some(profile)) => profile,
+            Ok(None) => {
+                eprintln!("{account}: no characters in {namespace}");
+                continue;
+            }
             Err(error) => {
                 eprintln!("{account}: {error:#}");
                 continue;
@@ -256,15 +260,28 @@ pub async fn users_characters(
             continue;
         }
         let characters = crate::wow::parse_characters(&profile);
+        // Forever has no realms, so the column shows only for games that do.
+        let realms = characters.iter().any(|c| !c.realm.is_empty());
+        let realm = |name: &str| {
+            if realms {
+                format!("{name:<22} ")
+            } else {
+                String::new()
+            }
+        };
         println!(
-            "{:<14} {:<22} {:>5} {:<14} {:<20} FACTION",
-            "NAME", "REALM", "LEVEL", "CLASS", "RACE"
+            "{:<26} {}{:>5} {:<14} {:<20} FACTION",
+            "NAME",
+            realm("REALM"),
+            "LEVEL",
+            "CLASS",
+            "RACE"
         );
         for character in &characters {
             println!(
-                "{:<14} {:<22} {:>5} {:<14} {:<20} {}",
-                character.name,
-                character.realm,
+                "{:<26} {}{:>5} {:<14} {:<20} {}",
+                character.full_name(),
+                realm(&character.realm),
                 character.level,
                 character.class,
                 character.race,

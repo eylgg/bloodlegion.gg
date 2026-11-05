@@ -7,6 +7,7 @@ pub mod api;
 mod db;
 pub mod roster;
 
+use crate::wow::Ruleset;
 use sqlx::PgPool;
 use time::{OffsetDateTime, serde::iso8601};
 
@@ -28,6 +29,7 @@ pub struct Character {
     /// Its race's slug (`wow::catalog::RACES`), or `None` while nobody has recorded it.
     pub race: Option<String>,
     pub sex: Sex,
+    pub ruleset: Ruleset,
     /// 1 to 60, as an officer last recorded it.
     pub level: i16,
     /// When it reached 60 (`None` below it): of two at 60, the earlier got there first.
@@ -52,6 +54,9 @@ pub struct CharacterInput {
     #[serde(default)]
     pub race: Option<String>,
     pub sex: Sex,
+    /// Absent keeps the ruleset it has; a new character takes the guild's.
+    #[serde(default)]
+    pub ruleset: Option<Ruleset>,
     /// 1 to 60; absent keeps the level it has (a new character starts at 1).
     #[serde(default)]
     pub level: Option<i16>,
@@ -222,6 +227,11 @@ fn external<T>(error: CharacterError) -> Result<T, CharacterError> {
     Err(Error::External(error))
 }
 
+/// Whether `value` is a valid first or last name as it is (see [`name`]).
+pub(crate) fn is_valid_name(value: &str) -> bool {
+    name(value).is_ok_and(|trimmed| trimmed == value)
+}
+
 /// A first or last name: 2 to 24 letters (any script), surrounding space trimmed.
 fn name(value: &str) -> Result<String, CharacterError> {
     let value = value.trim();
@@ -240,6 +250,8 @@ struct Valid {
     class: &'static str,
     race: Option<&'static str>,
     sex: Sex,
+    /// `None` keeps the ruleset it has (or is the guild's, for a new character).
+    ruleset: Option<Ruleset>,
     /// `None` keeps the level it has.
     level: Option<i16>,
     /// `None` keeps the time it has (or is now, newly at 60).
@@ -279,6 +291,7 @@ fn validate(
         class: class.slug,
         race,
         sex: input.sex,
+        ruleset: input.ruleset,
         level: input.level,
         reached_60_at: input.reached_60_at,
         // An unclaimed character is nobody's main.
@@ -326,7 +339,8 @@ pub async fn find_by_slug(pool: &PgPool, slug: &str) -> sqlx::Result<Option<Char
 }
 
 /// Adds a character (officers only). A member's first character becomes their main whether or
-/// not they asked; declaring another main moves the title.
+/// not they asked; declaring another main moves the title. A hidden character of the same name
+/// (from a Battle.net listing) is brought out instead, keeping its player unless `input` names one.
 pub async fn create(
     pool: &PgPool,
     actor: &User,
@@ -335,8 +349,10 @@ pub async fn create(
     if !actor.is_officer() {
         return external(CharacterError::OfficersOnly);
     }
-    let valid = validate(actor, input, None)?;
     let mut tx = pool.begin().await?;
+    let full_name = format!("{} {}", input.first_name.trim(), input.last_name.trim());
+    let hidden = db::lock_hidden_by_name(&mut tx, &full_name).await?;
+    let valid = validate(actor, input, hidden.map(|(_, owner)| owner))?;
     let mut is_main = valid.is_main;
     if let Some(owner) = valid.user_id {
         is_main |= db::count_owned(&mut tx, owner).await? == 0;
@@ -344,9 +360,19 @@ pub async fn create(
             db::clear_main(&mut tx, owner, None).await?;
         }
     }
-    let id = db::insert(&mut tx, &valid, is_main)
-        .await
-        .map_err(classify)?;
+    let id = match hidden {
+        Some((id, _)) => {
+            db::reveal(&mut tx, id).await?;
+            db::clear_specs_unless_class(&mut tx, id, valid.class).await?;
+            db::update(&mut tx, id, &Valid { is_main, ..valid })
+                .await
+                .map_err(classify)?;
+            id
+        }
+        None => db::insert(&mut tx, &valid, is_main)
+            .await
+            .map_err(classify)?,
+    };
     tx.commit().await?;
     Ok(db::find(pool, id)
         .await?
@@ -606,6 +632,7 @@ pub(crate) mod tests {
             class: class.into(),
             race: None,
             sex: Sex::Female,
+            ruleset: None,
             level: None,
             reached_60_at: None,
             is_main,

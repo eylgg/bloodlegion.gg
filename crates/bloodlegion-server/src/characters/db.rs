@@ -5,6 +5,7 @@ use time::OffsetDateTime;
 
 use super::{Character, CharacterSpec, Note, NoteListing, Sex, Valid, order_specs};
 use crate::users::UserId;
+use crate::wow::Ruleset;
 
 pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
     sqlx::query_as!(
@@ -12,7 +13,7 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.race, c.sex AS "sex!: Sex", c.level AS "level!", c.reached_60_at,
+               c.race, c.sex AS "sex!: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
                c.is_main AS "is_main!",
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
@@ -25,6 +26,7 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
                c.updated_at AS "updated_at!"
         FROM characters c
         LEFT JOIN users u ON u.id = c.user_id
+        WHERE NOT c.is_hidden
         ORDER BY c.name_normalized
         "#,
     )
@@ -42,7 +44,7 @@ fn ordered(mut character: Character) -> Character {
 /// The id of the character named `name` (`first last`), whatever its capitalization.
 pub async fn find_id_by_name(pool: &PgPool, name: &str) -> sqlx::Result<Option<i64>> {
     sqlx::query_scalar!(
-        "SELECT id FROM characters WHERE name_normalized = lower($1)",
+        "SELECT id FROM characters WHERE name_normalized = lower($1) AND NOT is_hidden",
         name,
     )
     .fetch_optional(pool)
@@ -55,7 +57,7 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.race, c.sex AS "sex!: Sex", c.level AS "level!", c.reached_60_at,
+               c.race, c.sex AS "sex!: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
                c.is_main AS "is_main!",
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
@@ -68,7 +70,7 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
                c.updated_at AS "updated_at!"
         FROM characters c
         LEFT JOIN users u ON u.id = c.user_id
-        WHERE c.id = $1
+        WHERE c.id = $1 AND NOT c.is_hidden
         "#,
         id,
     )
@@ -79,7 +81,7 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
 
 pub async fn count_owned(conn: &mut PgConnection, user_id: UserId) -> sqlx::Result<i64> {
     sqlx::query_scalar!(
-        r#"SELECT count(*) AS "count!" FROM characters WHERE user_id = $1"#,
+        r#"SELECT count(*) AS "count!" FROM characters WHERE user_id = $1 AND NOT is_hidden"#,
         user_id.0,
     )
     .fetch_one(&mut *conn)
@@ -114,11 +116,13 @@ pub(super) async fn insert(
     sqlx::query_scalar!(
         r#"
         INSERT INTO characters (
-            user_id, first_name, last_name, class, race, sex, is_main, level, reached_60_at
+            user_id, first_name, last_name, class, race, sex, is_main, level, reached_60_at,
+            ruleset
         )
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, COALESCE($8::smallint, 1),
-            CASE WHEN $8::smallint = 60 THEN COALESCE($9, now()) END
+            CASE WHEN $8::smallint = 60 THEN COALESCE($9, now()) END,
+            COALESCE($10::text, (SELECT ruleset FROM guild_settings))
         )
         RETURNING id
         "#,
@@ -131,6 +135,7 @@ pub(super) async fn insert(
         is_main,
         character.level,
         character.reached_60_at,
+        character.ruleset as Option<Ruleset>,
     )
     .fetch_one(&mut *conn)
     .await
@@ -140,11 +145,36 @@ pub(super) async fn insert(
 /// such character, `Some(None)` when it is unclaimed.
 pub async fn lock_owner(conn: &mut PgConnection, id: i64) -> sqlx::Result<Option<Option<UserId>>> {
     sqlx::query_scalar!(
-        r#"SELECT user_id AS "user_id: UserId" FROM characters WHERE id = $1 FOR UPDATE"#,
+        r#"SELECT user_id AS "user_id: UserId" FROM characters
+           WHERE id = $1 AND NOT is_hidden FOR UPDATE"#,
         id,
     )
     .fetch_optional(&mut *conn)
     .await
+}
+
+/// The hidden character named `name` (`first last`, any capitalization) and its owner, locked for
+/// bringing it out.
+pub async fn lock_hidden_by_name(
+    conn: &mut PgConnection,
+    name: &str,
+) -> sqlx::Result<Option<(i64, Option<UserId>)>> {
+    sqlx::query!(
+        r#"SELECT id, user_id AS "user_id: UserId" FROM characters
+           WHERE name_normalized = lower($1) AND is_hidden FOR UPDATE"#,
+        name,
+    )
+    .fetch_optional(&mut *conn)
+    .await
+    .map(|row| row.map(|row| (row.id, row.user_id)))
+}
+
+/// Brings a hidden character onto the site.
+pub async fn reveal(conn: &mut PgConnection, id: i64) -> sqlx::Result<()> {
+    sqlx::query!("UPDATE characters SET is_hidden = false WHERE id = $1", id)
+        .execute(&mut *conn)
+        .await?;
+    Ok(())
 }
 
 pub(super) async fn update(
@@ -157,6 +187,7 @@ pub(super) async fn update(
         UPDATE characters
         SET user_id = $2, first_name = $3, last_name = $4, class = $5, race = $6, sex = $7,
             is_main = $8, level = COALESCE($9::smallint, level),
+            ruleset = COALESCE($11::text, ruleset),
             reached_60_at = CASE WHEN COALESCE($9::smallint, level) = 60
                                  THEN COALESCE($10, reached_60_at, now()) END
         WHERE id = $1
@@ -171,6 +202,7 @@ pub(super) async fn update(
         character.is_main,
         character.level,
         character.reached_60_at,
+        character.ruleset as Option<Ruleset>,
     )
     .execute(&mut *conn)
     .await?;
@@ -202,7 +234,8 @@ pub async fn raise_level(
         WITH old AS (
             SELECT id, level, reached_60_at
             FROM characters
-            WHERE name_normalized = $1 OR replace(name_normalized, ' ', '') = $1
+            WHERE (name_normalized = $1 OR replace(name_normalized, ' ', '') = $1)
+                AND NOT is_hidden
             FOR UPDATE
         ), new AS (
             UPDATE characters c

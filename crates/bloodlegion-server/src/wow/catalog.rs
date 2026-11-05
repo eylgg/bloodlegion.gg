@@ -258,10 +258,13 @@ pub fn find(slug: &str) -> Option<&'static Class> {
     CLASSES.iter().find(|class| class.slug == slug)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, serde::Deserialize, sqlx::Type)]
+#[sqlx(type_name = "text", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum Faction {
     Alliance,
+    /// The guild's, to start.
+    #[default]
     Horde,
 }
 

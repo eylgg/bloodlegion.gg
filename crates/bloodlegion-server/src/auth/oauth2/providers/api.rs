@@ -368,9 +368,23 @@ async fn finish_login(
         return Err(crate::Error::External(ProviderError::InvalidState));
     }
 
+    // Battle.net's characters, read once the identity is linked to whoever it ends up with (or
+    // to no one yet, for a first sign-in still choosing a username: see `register::choose`).
+    let sync_characters = || {
+        if crate::wow::battlenet::reads_profile(&provider.scope) {
+            crate::wow::battlenet::spawn_sync(
+                state.clone(),
+                provider.id,
+                subject.clone(),
+                tokens.access_token.clone(),
+            );
+        }
+    };
+
     // A link attaches the identity to the member who started it; their session stays as it is.
     if let Some(user_id) = request.user_id {
         let linked = links::link(&state.pool, &provider, user_id, &subject, &userinfo).await?;
+        sync_characters();
         let target = format!(
             "{}?linked={}{}",
             &*request.next,
@@ -380,7 +394,9 @@ async fn finish_login(
         return Ok((jar, Redirect::to(&target)));
     }
 
-    let user_id = match provision_user(&state.pool, &provider, &subject, &userinfo).await? {
+    let provisioned = provision_user(&state.pool, &provider, &subject, &userinfo).await?;
+    sync_characters();
+    let user_id = match provisioned {
         Provisioned::User(user_id) => user_id,
         // The identity is verified and recorded on the request; the person picks a username on
         // the registration page, which resolves the request again through the cookie.

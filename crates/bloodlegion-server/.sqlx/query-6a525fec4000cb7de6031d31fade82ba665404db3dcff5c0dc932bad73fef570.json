@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE characters\n                     SET battlenet_id = $2, battlenet_provider_id = $3, battlenet_subject = $4,\n                         battlenet_seen_at = now()\n                     WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6a525fec4000cb7de6031d31fade82ba665404db3dcff5c0dc932bad73fef570"
+}

@@ -1,0 +1,158 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id, c.first_name, c.last_name, c.class, c.race, c.sex AS \"sex: Sex\",\n                  c.ruleset AS \"ruleset: Ruleset\", c.level, c.is_hidden, c.battlenet_seen_at,\n                  cr.raw_userinfo AS \"raw_userinfo?\", u.username AS \"username?\"\n           FROM characters c\n           LEFT JOIN auth_oauth2_provider_credentials cr\n               ON cr.provider_id = c.battlenet_provider_id AND cr.subject = c.battlenet_subject\n           LEFT JOIN users u ON u.id = c.user_id\n           WHERE c.battlenet_id IS NOT NULL OR c.is_hidden\n           ORDER BY u.username_normalized NULLS LAST, c.battlenet_subject, c.level DESC,\n                    c.name_normalized",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "last_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "class",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "class"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "race",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "race"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "sex: Sex",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "sex"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "ruleset: Ruleset",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "ruleset"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "level",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "level"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "is_hidden",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "is_hidden"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "battlenet_seen_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "battlenet_seen_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "raw_userinfo?",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_credentials",
+            "name": "raw_userinfo"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "username?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "71a99cc753155867de9c3671af4272ae15785da887081152bef2a26e5ff1fa4c"
+}

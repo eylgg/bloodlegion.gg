@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, is_hidden FROM characters\n               WHERE battlenet_id = $1 OR name_normalized = lower($2)\n               ORDER BY battlenet_id = $1 DESC NULLS LAST\n               LIMIT 1\n               FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "is_hidden",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "is_hidden"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "bd117fb38e65cbc6906ee770d479e3396f39d953ed09d667370615d0092aaa7f"
+}

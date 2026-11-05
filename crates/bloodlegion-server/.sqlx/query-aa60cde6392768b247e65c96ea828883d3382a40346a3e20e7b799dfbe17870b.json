@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT user_id AS \"user_id: UserId\" FROM auth_oauth2_provider_credentials\n           WHERE provider_id = $1 AND subject = $2 AND disconnected_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "auth_oauth2_provider_credentials",
+            "name": "user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "aa60cde6392768b247e65c96ea828883d3382a40346a3e20e7b799dfbe17870b"
+}

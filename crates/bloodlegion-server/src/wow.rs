@@ -3,6 +3,7 @@
 //! through the `wow.profile` scope at sign-in).
 
 pub mod api;
+pub mod battlenet;
 pub mod catalog;
 
 use anyhow::Context;
@@ -14,13 +15,40 @@ pub use api::router;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Character {
     pub name: String,
+    /// WoW: Forever's last name; empty in games without one.
+    pub surname: String,
     pub realm: String,
     pub realm_slug: String,
     pub level: u32,
     pub class: String,
     pub race: String,
     pub faction: String,
+    /// "Female" or "Male", as Battle.net names it.
+    pub gender: String,
     pub id: u64,
+    /// The WoW license on the Battle.net account that holds it.
+    pub wow_account_id: u64,
+}
+
+/// A WoW: Forever ruleset, which it has instead of realms: everyone on one plays together.
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, sqlx::Type,
+)]
+#[sqlx(type_name = "text", rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case")]
+pub enum Ruleset {
+    Normal,
+    /// The guild's, to start.
+    #[default]
+    Pvp,
+    Roleplay,
+    RoleplayPvp,
+    Hardcore,
+}
+
+/// The profile API namespace for WoW: Forever in `region`.
+pub fn profile_namespace(region: &str) -> String {
+    format!("profile-forever-{region}")
 }
 
 /// The regional API host for `region` (`us`, `eu`, `kr`, `tw`). China is a separate service and
@@ -30,17 +58,18 @@ fn api_host(region: &str) -> String {
 }
 
 /// `GET /profile/user/wow`, as the API answered it: every character on every WoW license of the
-/// account the token belongs to, in the game the `namespace` selects (`profile-<region>` is
-/// retail; Classic flavors have their own, such as `profile-classic1x-<region>` for Classic Era).
-/// A 401 means the token expired or was revoked; a 403 means either a namespace the API does not
-/// serve or no `wow.profile`.
+/// account the token belongs to, in the game the `namespace` selects (`profile-forever-<region>`
+/// is WoW: Forever, `profile-<region>` retail, `profile-classic1x-<region>` Classic Era).
+/// `None` when the account has no characters there (the API answers 404). A 401 means the token
+/// expired or was revoked; a 403 means either a namespace the API does not serve or no
+/// `wow.profile`.
 pub async fn account_profile(
     http: &reqwest::Client,
     region: &str,
     namespace: &str,
     locale: &str,
     access_token: &str,
-) -> anyhow::Result<Value> {
+) -> anyhow::Result<Option<Value>> {
     let mut url = url::Url::parse(&format!("{}/profile/user/wow", api_host(region)))
         .context("building the WoW account profile URL")?;
     url.query_pairs_mut()
@@ -53,13 +82,15 @@ pub async fn account_profile(
         .await
         .context("calling the WoW account profile API")?;
     let status = response.status();
+    if status == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
     if !status.is_success() {
         let hint = match status.as_u16() {
             401 => " (the access token expired or was revoked: sign in again)",
             // Blizzard answers 403 both for a token without `wow.profile` and for a namespace it
             // does not serve (an unknown or unreleased game), so name both.
             403 => " (the API does not serve this namespace, or the token lacks wow.profile)",
-            404 => " (no characters for this account in that region and namespace)",
             _ => "",
         };
         anyhow::bail!("the WoW account profile API answered {status}{hint}");
@@ -67,6 +98,7 @@ pub async fn account_profile(
     response
         .json()
         .await
+        .map(Some)
         .context("reading the WoW account profile")
 }
 
@@ -84,20 +116,46 @@ pub fn parse_characters(body: &Value) -> Vec<Character> {
         .as_array()
         .into_iter()
         .flatten()
-        .flat_map(|account| account["characters"].as_array().into_iter().flatten())
-        .map(|character| Character {
+        .flat_map(|account| {
+            let wow_account_id = account["id"].as_u64().unwrap_or_default();
+            account["characters"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(move |character| (wow_account_id, character))
+        })
+        .map(|(wow_account_id, character)| Character {
             name: text(character, &["name"]),
+            surname: text(character, &["surname"]),
             realm: text(character, &["realm", "name"]),
             realm_slug: text(character, &["realm", "slug"]),
             level: character["level"].as_u64().unwrap_or_default() as u32,
             class: text(character, &["playable_class", "name"]),
             race: text(character, &["playable_race", "name"]),
             faction: text(character, &["faction", "name"]),
+            gender: text(character, &["gender", "name"]),
             id: character["id"].as_u64().unwrap_or_default(),
+            wow_account_id,
         })
         .collect();
-    characters.sort_by(|a, b| b.level.cmp(&a.level).then_with(|| a.name.cmp(&b.name)));
+    characters.sort_by(|a, b| {
+        b.level
+            .cmp(&a.level)
+            .then_with(|| a.name.cmp(&b.name))
+            .then_with(|| a.surname.cmp(&b.surname))
+    });
     characters
+}
+
+impl Character {
+    /// The first and last name, or just the name in games without last names.
+    pub fn full_name(&self) -> String {
+        if self.surname.is_empty() {
+            self.name.clone()
+        } else {
+            format!("{} {}", self.name, self.surname)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -139,16 +197,38 @@ mod tests {
             characters[0],
             Character {
                 name: "Main".into(),
+                surname: String::new(),
                 realm: "Area 52".into(),
                 realm_slug: "area-52".into(),
                 level: 80,
                 class: "Warrior".into(),
                 race: "Orc".into(),
                 faction: "Horde".into(),
+                gender: String::new(),
                 id: 1,
+                wow_account_id: 11,
             }
         );
         assert_eq!(characters[1].name, "Alt");
         assert!(parse_characters(&serde_json::json!({})).is_empty());
+    }
+
+    #[test]
+    fn reads_forevers_last_names() {
+        // Forever's shape (`profile-forever-us`): a `surname` and no realm.
+        let body = serde_json::json!({
+            "wow_accounts": [{"characters": [
+                {"name": "Eyl", "surname": "Shm", "id": 2, "level": 10,
+                 "playable_class": {"name": "Shaman"}, "playable_race": {"name": "Windshaper Skyborne"},
+                 "faction": {"name": "Horde"}},
+                {"name": "Eyl", "surname": "Gg", "id": 1, "level": 10,
+                 "playable_class": {"name": "Warrior"}, "playable_race": {"name": "Windshaper Skyborne"},
+                 "faction": {"name": "Horde"}}
+            ]}]
+        });
+        let characters = parse_characters(&body);
+        let names: Vec<_> = characters.iter().map(Character::full_name).collect();
+        assert_eq!(names, ["Eyl Gg", "Eyl Shm"]);
+        assert_eq!(characters[0].realm, "");
     }
 }

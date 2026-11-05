@@ -8,7 +8,9 @@ The website for Blood Legion, at [bloodlegion.com](https://bloodlegion.com).
   image. It serves the pages and forwards `/api`, `/auth`, and `/.well-known` to the backend.
 - `apps/addon`: the in-game addon, `BloodLegion`, for WoW: Forever only (interface 16001, in
   `BloodLegion_Forever.toc` and `BloodLegion_Camelot.toc`, Forever's internal name; the two are
-  kept the same). It saves the guild roster for the client (`/bl` shows what it has). Its icon,
+  kept the same). It saves the guild roster for the client (`/bl` shows what it has; `/bl debug` prints what the
+  game tells addons about the player, the roster, and Forever's own functions, and saves it in
+  `BloodLegionDB.debug` on `/reload`, for working out Forever's formats). Its icon,
   `Claws.tga`, is the site's `claws-512.png` at 128×128. Copy or link `apps/addon/BloodLegion` into
   the game's `_forever_/Interface/AddOns`.
 - `crates/bloodlegion-server`: the backend (Rust, axum, Postgres), shipped as the `bloodlegion-server` image.
@@ -155,7 +157,7 @@ bloodlegion-server users list
 bloodlegion-server users demote <username>
 bloodlegion-server users rename <username> <new username>
 bloodlegion-server users rank <username> <rank>  # leader, officer, raider, trial, member, public
-bloodlegion-server users characters <username>   # the WoW characters on each linked Battle.net account
+bloodlegion-server users characters <username>   # the Forever characters on each linked Battle.net account
 bloodlegion-server characters seed              # test characters: four per class, linked to no one
 bloodlegion-server characters unseed            # remove them (keeps any that raided or won loot)
 bloodlegion-server users disable <username>     # suspend: sessions stop, login refused
@@ -203,6 +205,19 @@ the changes.
   which only the administrator is sent, and officers where they record raids and loot:
   `GET /api/characters?unclaimed=true`). A character's notes are written by its player and read by
   officers (the planner's Notes tab, `/planner/notes`).
+- **Battle.net characters**: every Battle.net sign-in (or link) reads the account's Forever
+  characters from the profile API (`profile-forever-us`), in the background so a sign-in never
+  waits on it, into the same characters. One with a site character's name is linked to it, which
+  goes to the account's member when nobody plays it yet (becoming their main if they have none);
+  one another member plays stays theirs. Any other is added **hidden** (`characters.is_hidden`):
+  only superusers see it (`/admin/battlenet`), it is in no list, page, raid, or loot, and it follows
+  Battle.net (level, class, race, player) until Battle.net stops listing it, which removes it. An
+  officer adding a character of its name brings the hidden one out instead of making another
+  (`wow::battlenet`).
+- **Rulesets**: Forever has rulesets instead of realms (Normal, PvP, Roleplay, RP-PvP, Hardcore).
+  The guild's faction and ruleset are settings on the Administration page, Horde and PvP to start.
+  A character records its ruleset, the guild's unless an officer picks another (its faction is its
+  race's); the guild's faction's races come first when picking one.
 - **Raids** are one night in a zone, with the characters who came and the loot they won. The zones,
   their sizes, and their bosses are a file in the repository
   (`crates/bloodlegion-server/data/raids.json`): Barrow Deeps (10), Hyjal Summit (20), and Onyxia's

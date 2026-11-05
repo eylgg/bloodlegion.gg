@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM characters\n         WHERE battlenet_provider_id = $1 AND battlenet_subject = $2 AND is_hidden\n           AND NOT (battlenet_id = ANY($3))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "01a305e9cd204f03ccd50558a1582a0dd7b30f6fa0ad350b91367f5425181fb8"
+}
