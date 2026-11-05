@@ -5,8 +5,10 @@
 -- (`crates/bloodlegion-client`) sends it to the site. Members are never dropped, so someone who
 -- left keeps their last level; the site only ever raises levels anyway.
 --
--- Only Blood Legion's roster: WoW gives addons a guild's name, not an id, and the site checks it
--- too (`characters::roster::GUILD_NAME`).
+-- Only Blood Legion's roster, "BL" in game: WoW gives addons a guild's name, not an id, and the
+-- site checks it too (`characters::roster::GUILD_NAME`). Each member keeps its GUID
+-- (`Player-6934-005096AC`), whose last part is the character's Battle.net id in hex, which the
+-- site matches characters by before their names ("Eyl Gg", as the roster shows them).
 
 -- The claws (`Claws.tga`, from the site's `claws-512.png`) before the name, at the text's height.
 local PREFIX = "|TInterface\\AddOns\\BloodLegion\\Claws:0|t |cffc41e3aBlood Legion|r: "
@@ -15,7 +17,7 @@ local function say(message)
 	DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. message)
 end
 
-local GUILD = "Blood Legion"
+local GUILD = "BL"
 local MAX_LEVEL = 60
 
 local function requestRoster()
@@ -46,11 +48,13 @@ local function scanRoster()
 	end
 	local now = time()
 	for i = 1, GetNumGuildMembers() do
-		local name, _, _, level, class = GetGuildRosterInfo(i)
+		local name, _, _, level, class, _, _, _, _, _, _, _, _, _, _, _, guid =
+			GetGuildRosterInfo(i)
 		if name and level and level > 0 then
 			local member = roster.members[name] or {}
 			member.level = math.max(member.level or 0, level)
 			member.class = class
+			member.guid = guid or member.guid
 			if member.level >= MAX_LEVEL and not member.reached60 then
 				member.reached60 = now
 			end

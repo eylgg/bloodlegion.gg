@@ -20,9 +20,9 @@ use crate::extract::{Admin, SameOrigin};
 use crate::users::UserId;
 use crate::{Result, State};
 
-/// The guild's name in game. The addon records only this guild's roster and the site takes only
-/// this guild's: WoW gives addons a guild's name, not an id.
-pub const GUILD_NAME: &str = "Blood Legion";
+/// The guild's name in game ("BL"). The addon records only this guild's roster and the site takes
+/// only this guild's: WoW gives addons a guild's name, not an id.
+pub const GUILD_NAME: &str = "BL";
 
 /// The most members a roster may name (the game's guild cap is 1,000).
 const MAX_MEMBERS: usize = 1_000;
@@ -45,6 +45,21 @@ pub struct RosterMember {
     /// When the addon first saw it at 60.
     #[serde(default, with = "iso8601::option")]
     pub reached_60_at: Option<OffsetDateTime>,
+    /// The game's GUID for it, `Player-6934-005096AC`: its last part is the character's Battle.net
+    /// id in hex, which it is matched by before its name.
+    #[serde(default)]
+    pub guid: Option<String>,
+}
+
+/// The Battle.net character id in a game GUID (`Player-<realm>-<id in hex>`).
+fn battlenet_id(guid: &str) -> Option<i64> {
+    let mut parts = guid.split('-');
+    let (Some("Player"), Some(_realm), Some(id), None) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
+    else {
+        return None;
+    };
+    i64::from_str_radix(id, 16).ok().filter(|id| *id > 0)
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -66,17 +81,17 @@ pub struct UnmatchedMember {
     pub class: Option<String>,
 }
 
-/// How a roster name is matched against `characters.name_normalized` (lowercase `first last`):
-/// trimmed and lowercased, with any `-Realm` suffix dropped. A name without a space also matches a
-/// character whose two names run together, since Forever's roster format is not known yet.
+/// How a roster name is matched against `characters.name_normalized` (lowercase `first last`, as
+/// Forever's roster shows names: "Eyl Gg"): trimmed and lowercased, with any `-Realm` suffix
+/// dropped. A name without a space also matches a character whose two names run together.
 fn normalize(name: &str) -> String {
     let name = name.trim();
     let name = name.split_once('-').map_or(name, |(name, _realm)| name);
     name.to_lowercase()
 }
 
-/// Applies the roster `by` sent: raises levels and records reaching 60, by name, and records the
-/// upload.
+/// Applies the roster `by` sent: raises levels and records reaching 60, by Battle.net id (from the
+/// GUID) or else by name, and records the upload.
 pub async fn apply(
     pool: &PgPool,
     by: UserId,
@@ -98,6 +113,7 @@ pub async fn apply(
     for member in &input.members {
         let found = super::db::raise_level(
             &mut tx,
+            member.guid.as_deref().and_then(battlenet_id),
             &normalize(&member.name),
             member.level,
             member.reached_60_at,
@@ -280,7 +296,56 @@ mod tests {
             level,
             class: Some("Warrior".into()),
             reached_60_at,
+            guid: None,
         }
+    }
+
+    #[test]
+    fn guids_hold_battlenet_ids() {
+        assert_eq!(battlenet_id("Player-6934-005096AC"), Some(5_281_452));
+        assert_eq!(battlenet_id("Player-6934"), None);
+        assert_eq!(battlenet_id("Creature-0-1-2"), None);
+        assert_eq!(battlenet_id("Player-6934-zz"), None);
+    }
+
+    #[sqlx::test]
+    async fn matches_by_battlenet_id_before_the_name(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let gg = add(&pool, &ey, input("Eyl", "Gg", "warrior", true))
+            .await
+            .unwrap();
+        let other = add(&pool, &ey, input("Eyl", "Other", "warrior", false))
+            .await
+            .unwrap();
+        sqlx::query!(
+            "UPDATE characters SET battlenet_id = 5281452 WHERE id = $1",
+            gg.id
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        // Renamed in game to a name the site has for another character: the id wins.
+        let mut renamed = seen("Eyl Other", 13, None);
+        renamed.guid = Some("Player-6934-005096AC".into());
+        // An id the site does not know falls back to the name.
+        let mut unknown = seen("Eyl Other", 5, None);
+        unknown.guid = Some("Player-6934-00000001".into());
+        let result = apply(&pool, ey.id, &roster(vec![renamed, unknown]))
+            .await
+            .unwrap();
+        assert_eq!(result.matched, 2);
+        let level = |id| {
+            let pool = &pool;
+            async move {
+                crate::characters::find(pool, id)
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .level
+            }
+        };
+        assert_eq!(level(gg.id).await, 13);
+        assert_eq!(level(other.id).await, 5);
     }
 
     #[test]

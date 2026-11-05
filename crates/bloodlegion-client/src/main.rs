@@ -431,6 +431,9 @@ struct Member {
     class: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     reached_60_at: Option<String>,
+    /// The game's GUID, by which the site finds the character's Battle.net id.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    guid: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -486,6 +489,10 @@ fn read_roster(source: &str) -> anyhow::Result<Roster> {
                 .and_then(lua::Value::as_str)
                 .map(str::to_string),
             reached_60_at,
+            guid: member
+                .get("guid")
+                .and_then(lua::Value::as_str)
+                .map(str::to_string),
         });
     }
     Ok(Roster { guild, members })
@@ -569,12 +576,13 @@ mod tests {
         let source = r#"
 BloodLegionDB = {
 ["roster"] = {
-["guild"] = "Blood Legion",
+["guild"] = "BL",
 ["members"] = {
 ["Garr Bonecrush"] = {
 ["level"] = 60,
 ["class"] = "Warrior",
 ["reached60"] = 1763608500,
+["guid"] = "Player-6934-005096AC",
 },
 ["Lira Moonwell"] = {
 ["level"] = 23,
@@ -588,19 +596,21 @@ BloodLegionDB = {
         assert_eq!(
             read_roster(source).unwrap(),
             Roster {
-                guild: "Blood Legion".into(),
+                guild: "BL".into(),
                 members: vec![
                     Member {
                         name: "Garr Bonecrush".into(),
                         level: 60,
                         class: Some("Warrior".into()),
                         reached_60_at: Some("2025-11-20T03:15:00Z".into()),
+                        guid: Some("Player-6934-005096AC".into()),
                     },
                     Member {
                         name: "Lira Moonwell".into(),
                         level: 23,
                         class: Some("Priest".into()),
                         reached_60_at: None,
+                        guid: None,
                     },
                 ],
             }

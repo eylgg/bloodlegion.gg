@@ -218,12 +218,14 @@ pub struct LevelChange {
     pub new_reached_60_at: Option<OffsetDateTime>,
 }
 
-/// Raises the level of the character named `name` (lowercase: `first last`, or the two run
-/// together) to `level` if it is lower, and at 60 keeps the earlier of when it reached it and
+/// Raises the level of the character Battle.net knows as `battlenet_id` (when the site has it
+/// linked), else of the one named `name` (lowercase: `first last`, or the two run together), to
+/// `level` if it is lower, and at 60 keeps the earlier of when it reached it and
 /// `reached_60_at` (or now). Each character of that name, as it was and is now: none when there is
 /// no such character, and the same before and after when nothing changed.
 pub async fn raise_level(
     conn: &mut PgConnection,
+    battlenet_id: Option<i64>,
     name: &str,
     level: i16,
     reached_60_at: Option<OffsetDateTime>,
@@ -234,8 +236,14 @@ pub async fn raise_level(
         WITH old AS (
             SELECT id, level, reached_60_at
             FROM characters
-            WHERE (name_normalized = $1 OR replace(name_normalized, ' ', '') = $1)
-                AND NOT is_hidden
+            WHERE NOT is_hidden
+                AND CASE
+                    -- The character Battle.net says it is, when the site has it linked.
+                    WHEN EXISTS (
+                        SELECT 1 FROM characters WHERE battlenet_id = $4 AND NOT is_hidden
+                    ) THEN battlenet_id = $4
+                    ELSE name_normalized = $1 OR replace(name_normalized, ' ', '') = $1
+                END
             FOR UPDATE
         ), new AS (
             UPDATE characters c
@@ -255,6 +263,7 @@ pub async fn raise_level(
         name,
         level,
         reached_60_at,
+        battlenet_id,
     )
     .fetch_all(&mut *conn)
     .await

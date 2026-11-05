@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        WITH old AS (\n            SELECT id, level, reached_60_at\n            FROM characters\n            WHERE (name_normalized = $1 OR replace(name_normalized, ' ', '') = $1)\n                AND NOT is_hidden\n            FOR UPDATE\n        ), new AS (\n            UPDATE characters c\n            SET level = GREATEST(c.level, $2),\n                reached_60_at = CASE WHEN GREATEST(c.level, $2) = 60\n                                     THEN LEAST(c.reached_60_at, COALESCE($3, now())) END\n            FROM old\n            WHERE c.id = old.id\n            RETURNING c.id, c.level, c.reached_60_at\n        )\n        SELECT old.id AS \"character_id!\", old.level AS \"old_level!\",\n               old.reached_60_at AS old_reached_60_at,\n               new.level AS \"new_level!\", new.reached_60_at AS new_reached_60_at\n        FROM old\n        JOIN new ON new.id = old.id\n        ",
+  "query": "\n        WITH old AS (\n            SELECT id, level, reached_60_at\n            FROM characters\n            WHERE NOT is_hidden\n                AND CASE\n                    -- The character Battle.net says it is, when the site has it linked.\n                    WHEN EXISTS (\n                        SELECT 1 FROM characters WHERE battlenet_id = $4 AND NOT is_hidden\n                    ) THEN battlenet_id = $4\n                    ELSE name_normalized = $1 OR replace(name_normalized, ' ', '') = $1\n                END\n            FOR UPDATE\n        ), new AS (\n            UPDATE characters c\n            SET level = GREATEST(c.level, $2),\n                reached_60_at = CASE WHEN GREATEST(c.level, $2) = 60\n                                     THEN LEAST(c.reached_60_at, COALESCE($3, now())) END\n            FROM old\n            WHERE c.id = old.id\n            RETURNING c.id, c.level, c.reached_60_at\n        )\n        SELECT old.id AS \"character_id!\", old.level AS \"old_level!\",\n               old.reached_60_at AS old_reached_60_at,\n               new.level AS \"new_level!\", new.reached_60_at AS new_reached_60_at\n        FROM old\n        JOIN new ON new.id = old.id\n        ",
   "describe": {
     "columns": [
       {
@@ -63,7 +63,8 @@
       "Left": [
         "Text",
         "Int2",
-        "Timestamptz"
+        "Timestamptz",
+        "Int8"
       ]
     },
     "nullable": [
@@ -74,5 +75,5 @@
       true
     ]
   },
-  "hash": "40897238d9b8414e73e64443dc056dcbae9e64735745ad3d8ef12e33bd908e50"
+  "hash": "6d207af9d5d7ab2aa7638f243f0de2bc1f8b26b633457c8aa1740d47b0acd7d7"
 }

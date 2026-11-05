@@ -282,9 +282,9 @@ and the time a character reached 60 (from the player's screenshot) on its page, 
 the client keep them current:
 
 1. **The addon** reads the guild roster on login, on `/reload`, and whenever the game refreshes the
-   guild list, and saves each member's level and the first time it saw them at 60 in
-   `WTF/Account/<ACCOUNT>/SavedVariables/BloodLegion.lua`. It saves only Blood Legion's roster (the
-   guild's name: WoW gives addons no guild id), and turns on the guild list's offline members so it
+   guild list, and saves each member's level, class, GUID, and the first time it saw them at 60 in
+   `WTF/Account/<ACCOUNT>/SavedVariables/BloodLegion.lua`. It saves only Blood Legion's roster ("BL"
+   in game, matched by name: WoW gives addons no guild id), and turns on the guild list's offline members so it
    sees everyone. The game writes the file on `/reload` and logout.
 2. **The client** (`bloodlegion-client`) sends it to the site (`POST /api/characters/roster`)
    whenever the game rewrites it, for every account in the game folder (by default
@@ -307,11 +307,12 @@ the client keep them current:
    cargo run -p bloodlegion-client -- watch
    ```
 
-3. **The site** matches roster names to characters (`first last`, any `-Realm` dropped, or the two
-   names run together, since Forever's roster format is not known yet: `characters::roster`), only
-   ever raises a level, and keeps the earliest time anyone saw a character reach 60. It takes only
-   Blood Legion's roster, and the client lists the members no character is named after, for an
-   officer to add.
+3. **The site** matches each roster member to a character by its Battle.net id when the site has
+   that character linked (a GUID, `Player-6934-005096AC`, ends in the id in hex), else by name (the
+   roster shows `First Last`; any `-Realm` dropped, or the two names run together:
+   `characters::roster`). It only ever raises a level, keeps the earliest time anyone saw a
+   character reach 60, and leaves hidden characters alone. It takes only the "BL" roster, and the
+   client lists the members no character matches, for an officer to add.
 
 4. **Each upload is recorded**: who sent it, when, and every character it changed, with the
    level and time at 60 before and after. Superusers see them under Administration → Roster uploads

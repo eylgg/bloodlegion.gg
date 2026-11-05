@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE characters SET battlenet_id = 5281452 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bf382eff4c6cd89106a637216ac2d9a6d17fabfd3f8d9a71d37a20931f17b9e2"
+}
