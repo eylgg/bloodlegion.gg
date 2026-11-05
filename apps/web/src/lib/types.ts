@@ -50,7 +50,8 @@ export type BattlenetCharacter = {
 	last_name: string;
 	class: string;
 	race: string | null;
-	sex: Sex;
+	/** Null while nobody has recorded it. */
+	sex: Sex | null;
 	ruleset: Ruleset;
 	level: number;
 	/** Seen by superusers only, until an officer adds a character of its name. */
@@ -306,7 +307,7 @@ export type Faction = 'alliance' | 'horde';
 /** A WoW: Forever race, from `GET /api/wow/races`: Classic's eight and the two Skyborne. */
 export type Race = { slug: string; name: string; faction: Faction };
 
-/** A character's sex, which picks its race's portrait. */
+/** A character's sex, which picks its race's portrait (none shows without one). */
 export type Sex = 'female' | 'male';
 
 /** A WoW: Forever ruleset, which it has instead of realms. */
@@ -339,7 +340,8 @@ export type GuildCharacter = {
 	class: string;
 	/** Its race's slug, or null while nobody has recorded it. */
 	race: string | null;
-	sex: Sex;
+	/** Null while nobody has recorded it. */
+	sex: Sex | null;
 	/** The guild's unless an officer said otherwise. */
 	ruleset: Ruleset;
 	/** 1 to 60, as an officer last recorded it. */
@@ -347,6 +349,8 @@ export type GuildCharacter = {
 	/** When it reached 60, or null below it: of two at 60, the earlier got there first. */
 	reached_60_at: string | null;
 	is_main: boolean;
+	/** Named by the guild's roster (an addon upload): counts like a member's even while nobody plays it. */
+	in_guild: boolean;
 	/** The specs it plays, its main (if it has one) first. */
 	specs: CharacterSpec[];
 	created_at: string;
@@ -365,7 +369,8 @@ export type GuildCharacterInput = {
 	class: string;
 	/** Its race's slug, or null for none recorded. Sent with every save: leaving it out clears it. */
 	race: string | null;
-	sex: Sex;
+	/** Null while nobody has recorded it. */
+	sex: Sex | null;
 	/** Omit to keep the one it has; a new character takes the guild's. */
 	ruleset?: Ruleset;
 	/** 1 to 60. */

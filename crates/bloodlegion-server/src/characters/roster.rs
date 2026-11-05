@@ -591,6 +591,23 @@ mod tests {
             (60, None, "warrior")
         );
         assert!(bank.reached_60_at.is_some());
+        // The guild list says neither.
+        assert_eq!((bank.race.as_deref(), bank.sex), (None, None));
+        assert!(bank.in_guild);
+
+        // Everyone sees it, played or not; a pug an officer recorded stays the admin's.
+        sqlx::query!(
+            "INSERT INTO characters (first_name, last_name, class) VALUES ('Some', 'Pug', 'rogue')"
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let raider = member(&pool, "Raider", Rank::Raider).await;
+        let seen_by_raider = crate::characters::visible(&pool, &raider, false)
+            .await
+            .unwrap();
+        assert!(seen_by_raider.iter().any(|c| c.id == bank.id));
+        assert!(seen_by_raider.iter().all(|c| c.last_name != "Pug"));
         assert_eq!(bank.ruleset, crate::wow::Ruleset::Pvp);
         let battlenet_id = sqlx::query_scalar!(
             "SELECT battlenet_id FROM characters WHERE id = $1",

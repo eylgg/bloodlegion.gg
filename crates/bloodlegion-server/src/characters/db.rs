@@ -13,8 +13,8 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.race, c.sex AS "sex!: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
-               c.is_main AS "is_main!",
+               c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
+               c.is_main AS "is_main!", c.in_guild AS "in_guild!",
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -57,8 +57,8 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.race, c.sex AS "sex!: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
-               c.is_main AS "is_main!",
+               c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
+               c.is_main AS "is_main!", c.in_guild AS "in_guild!",
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -131,7 +131,7 @@ pub(super) async fn insert(
         character.last_name,
         character.class,
         character.race,
-        character.sex as Sex,
+        character.sex as Option<Sex>,
         is_main,
         character.level,
         character.reached_60_at,
@@ -198,7 +198,7 @@ pub(super) async fn update(
         character.last_name,
         character.class,
         character.race,
-        character.sex as Sex,
+        character.sex as Option<Sex>,
         character.is_main,
         character.level,
         character.reached_60_at,
@@ -247,7 +247,7 @@ pub async fn raise_level(
             FOR UPDATE
         ), new AS (
             UPDATE characters c
-            SET level = GREATEST(c.level, $2),
+            SET in_guild = true, level = GREATEST(c.level, $2),
                 reached_60_at = CASE WHEN GREATEST(c.level, $2) = 60
                                      THEN LEAST(c.reached_60_at, COALESCE($3, now())) END
             FROM old
@@ -388,7 +388,7 @@ pub async fn add_from_roster(
     if let Some(id) = hidden {
         sqlx::query!(
             r#"UPDATE characters
-               SET is_hidden = false, level = GREATEST(level, $2),
+               SET is_hidden = false, in_guild = true, level = GREATEST(level, $2),
                    reached_60_at = CASE WHEN GREATEST(level, $2) = 60
                                         THEN LEAST(reached_60_at, COALESCE($3, now())) END
                WHERE id = $1"#,
@@ -405,10 +405,10 @@ pub async fn add_from_roster(
     }
     let id = sqlx::query_scalar!(
         r#"INSERT INTO characters
-               (first_name, last_name, class, level, reached_60_at, ruleset, battlenet_id)
+               (first_name, last_name, class, level, reached_60_at, ruleset, battlenet_id, in_guild)
            VALUES ($1, $2, $3, $4::smallint,
                    CASE WHEN $4::smallint = 60 THEN COALESCE($5, now()) END,
-                   (SELECT ruleset FROM guild_settings), $6)
+                   (SELECT ruleset FROM guild_settings), $6, true)
            RETURNING id"#,
         first_name,
         last_name,

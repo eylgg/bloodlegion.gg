@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO characters\n               (first_name, last_name, class, level, reached_60_at, ruleset, battlenet_id)\n           VALUES ($1, $2, $3, $4::smallint,\n                   CASE WHEN $4::smallint = 60 THEN COALESCE($5, now()) END,\n                   (SELECT ruleset FROM guild_settings), $6)\n           RETURNING id",
+  "query": "INSERT INTO characters\n               (first_name, last_name, class, level, reached_60_at, ruleset, battlenet_id, in_guild)\n           VALUES ($1, $2, $3, $4::smallint,\n                   CASE WHEN $4::smallint = 60 THEN COALESCE($5, now()) END,\n                   (SELECT ruleset FROM guild_settings), $6, true)\n           RETURNING id",
   "describe": {
     "columns": [
       {
@@ -29,5 +29,5 @@
       false
     ]
   },
-  "hash": "5ac77521ab414eb89f06d848380b3b82384b13cdcb38d35434859eaa33eb5cac"
+  "hash": "8d0d8ad1c3cffb1bc66e8ab64cfd7bec3d6b957feb6c0ea917f88dbeaa9f4513"
 }

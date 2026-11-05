@@ -63,7 +63,8 @@
 	// svelte-ignore state_referenced_locally
 	let raceSlug = $state(character?.race ?? '');
 	// svelte-ignore state_referenced_locally
-	let sex = $state<Sex>(character?.sex ?? 'female');
+	// The sex, or '' for none recorded.
+	let sex = $state<Sex | ''>(character?.sex ?? '');
 	// svelte-ignore state_referenced_locally
 	let ruleset = $state<Ruleset>(character?.ruleset ?? settings?.ruleset ?? 'pvp');
 	// svelte-ignore state_referenced_locally
@@ -112,7 +113,7 @@
 			last_name: lastName,
 			class: classSlug,
 			race: raceSlug || null,
-			sex,
+			sex: sex || null,
 			ruleset,
 			level,
 			reached_60_at: level === 60 && reached60 ? new Date(reached60).toISOString() : null,
@@ -166,6 +167,7 @@
 		<label class="field">
 			Sex
 			<select bind:value={sex}>
+				<option value="">Not recorded</option>
 				<option value="female">Female</option>
 				<option value="male">Male</option>
 			</select>

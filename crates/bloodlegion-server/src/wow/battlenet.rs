@@ -334,7 +334,7 @@ pub struct Listed {
     pub last_name: String,
     pub class: String,
     pub race: Option<String>,
-    pub sex: Sex,
+    pub sex: Option<Sex>,
     pub ruleset: Ruleset,
     pub level: i16,
     /// Seen by superusers only, until an officer adds a character of its name.
@@ -527,7 +527,7 @@ mod tests {
         assert!(shm.is_hidden);
         assert_eq!(shm.username.as_deref(), Some("Ey"));
         assert_eq!(shm.race.as_deref(), Some("windshaper-skyborne"));
-        assert_eq!(shm.sex, Sex::Male);
+        assert_eq!(shm.sex, Some(Sex::Male));
         assert_eq!(shm.ruleset, Ruleset::Pvp);
         assert!(!row(&pool, shm.id).await.is_main);
         let site = crate::characters::list(&pool).await.unwrap();

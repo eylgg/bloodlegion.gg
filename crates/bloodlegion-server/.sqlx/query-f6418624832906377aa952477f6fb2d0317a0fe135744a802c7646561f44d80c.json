@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.race, c.sex AS \"sex!: Sex\", c.ruleset AS \"ruleset!: Ruleset\", c.level AS \"level!\", c.reached_60_at,\n               c.is_main AS \"is_main!\",\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE NOT c.is_hidden\n        ORDER BY c.name_normalized\n        ",
+  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.race, c.sex AS \"sex: Sex\", c.ruleset AS \"ruleset!: Ruleset\", c.level AS \"level!\", c.reached_60_at,\n               c.is_main AS \"is_main!\", c.in_guild AS \"in_guild!\",\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE c.id = $1 AND NOT c.is_hidden\n        ",
   "describe": {
     "columns": [
       {
@@ -82,7 +82,7 @@
       },
       {
         "ordinal": 7,
-        "name": "sex!: Sex",
+        "name": "sex: Sex",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -137,12 +137,23 @@
       },
       {
         "ordinal": 12,
+        "name": "in_guild!",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "in_guild"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
         "name": "specs!: Json<Vec<CharacterSpec>>",
         "type_info": "Jsonb",
         "origin": "Expression"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "created_at!",
         "type_info": "Timestamptz",
         "origin": {
@@ -153,7 +164,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "updated_at!",
         "type_info": "Timestamptz",
         "origin": {
@@ -165,25 +176,28 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Int8"
+      ]
     },
     "nullable": [
       false,
       true,
-      false,
-      false,
-      false,
-      false,
       true,
       false,
       false,
       false,
       true,
+      true,
+      false,
+      false,
+      true,
+      false,
       false,
       null,
       false,
       false
     ]
   },
-  "hash": "fd12b5be1827669626c3c301d3fccd0b518f478065572ac8543bec18cad3d104"
+  "hash": "f6418624832906377aa952477f6fb2d0317a0fe135744a802c7646561f44d80c"
 }

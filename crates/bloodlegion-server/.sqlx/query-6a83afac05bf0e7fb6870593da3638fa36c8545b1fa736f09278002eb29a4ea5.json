@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO characters (first_name, last_name, class) VALUES ('Some', 'Pug', 'rogue')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6a83afac05bf0e7fb6870593da3638fa36c8545b1fa736f09278002eb29a4ea5"
+}

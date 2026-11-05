@@ -105,7 +105,9 @@
 							<td>
 								{#if race}
 									<span class="with-icon">
-										<img src={raceIcon(race.slug, character.sex)} alt="" width="20" height="20" />
+										{#if character.sex}
+											<img src={raceIcon(race.slug, character.sex)} alt="" width="20" height="20" />
+										{/if}
 										{race.name}
 									</span>
 								{:else}

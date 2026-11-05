@@ -30,8 +30,9 @@
 		level: number;
 	} | null>(null);
 
-	// Which characters the chart and the table count: by default every ranked member's main. An
-	// unclaimed character (a pug) has no rank, so it is never among them.
+	// Which characters the chart and the table count: by default every ranked member's main. One
+	// the guild's roster named that nobody plays yet counts as a member's main (it is all the site
+	// knows of them); an unclaimed character an officer recorded (a pug) never counts.
 	let mains = $state(true);
 	let alts = $state(false);
 	let ranks = $state<Record<Rank, boolean>>({
@@ -53,10 +54,15 @@
 	// The public are the sign-ups waiting for a rank: only officers filter by them.
 	const rankFilters = $derived(RANKS.filter((rank) => rank !== 'public' || data.officer));
 
+	/** The rank a character counts under: its player's, or a member's for the roster's unplayed. */
+	const countsAs = (c: GuildCharacter): Rank | null =>
+		rankOf(c) ?? (c.user_id === null && c.in_guild ? 'member' : null);
+
 	const counted = $derived(
 		characters.filter((c) => {
-			const rank = rankOf(c);
-			return (c.is_main ? mains : alts) && rank !== null && ranks[rank];
+			const rank = countsAs(c);
+			const main = c.is_main || c.user_id === null;
+			return (main ? mains : alts) && rank !== null && ranks[rank];
 		})
 	);
 
@@ -139,15 +145,15 @@
 		});
 	}
 
-	const claimed = $derived(characters.filter((c) => c.user_id !== null).length);
+	const claimed = $derived(characters.filter((c) => countsAs(c) !== null).length);
 	const shown = $derived(sorted(counted.filter(matches)));
-	// Characters no account claims (pugs), apart from the guild's and for the admin's eyes only.
+	// Characters no account claims and the guild's roster never named (pugs), apart from the
+	// guild's and for the admin's eyes only.
+	const isPug = (c: GuildCharacter) => c.user_id === null && !c.in_guild;
 	const unclaimed = $derived(
-		data.user.is_superuser ? sorted(characters.filter((c) => c.user_id === null && matches(c))) : []
+		data.user.is_superuser ? sorted(characters.filter((c) => isPug(c) && matches(c))) : []
 	);
-	const anyUnclaimed = $derived(
-		data.user.is_superuser && characters.some((c) => c.user_id === null)
-	);
+	const anyUnclaimed = $derived(data.user.is_superuser && characters.some(isPug));
 	// Accounts with no characters yet (mostly new sign-ups), for the administrator to rank.
 	const withoutCharacters = $derived(
 		data.user.is_superuser
@@ -230,7 +236,9 @@
 						<td>
 							{#if race}
 								<span class="with-icon">
-									<img src={raceIcon(race.slug, character.sex)} alt="" width="20" height="20" />
+									{#if character.sex}
+										<img src={raceIcon(race.slug, character.sex)} alt="" width="20" height="20" />
+									{/if}
 									{race.name}
 								</span>
 							{:else}

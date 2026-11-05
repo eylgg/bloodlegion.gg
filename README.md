@@ -199,9 +199,9 @@ the changes.
   capitalization redirects there for good). Each
   has a class and, once recorded, a race: Classic's eight and Forever's Skyborne, Windshaper
   Skyborne for the Horde and High Order Skyborne for the Alliance (`wow::catalog::RACES`, served at
-  `/api/wow/races`; any race may be any class), and a sex, which picks the race's portrait
-  (`static/wow/races`, from Forever's character creation), and a level (1 to 60, and when it reached
-  60). Only officers add, edit, and remove them, for a member or for no account (a pug who won loot,
+  `/api/wow/races`; any race may be any class), and, once recorded, a sex, which picks the race's
+  portrait (`static/wow/races`, from Forever's character creation; none shows without one), and a
+  level (1 to 60, and when it reached 60). Only officers add, edit, and remove them, for a member or for no account (a pug who won loot,
   which only the administrator is sent, and officers where they record raids and loot:
   `GET /api/characters?unclaimed=true`). A character's notes are written by its player and read by
   officers (the planner's Notes tab, `/planner/notes`).
@@ -315,12 +315,14 @@ the client keep them current:
    no character matches is **added**: a hidden character Battle.net listed under its id or name is
    brought onto the roster (keeping its player), or else a new one is made with its name, class,
    level, and Battle.net id, on the guild's ruleset, nobody playing it until someone claims it or a
-   Battle.net sign-in links it (race and sex are left for an officer: the roster has neither). The
+   Battle.net sign-in links it (no race or sex until someone records them: the roster has neither). The
    client lists what it added, and any member it could not (a name or class the site does not
    take); those are also on the roster page for superusers ("Not added from the roster", from
    `GET /api/admin/rosters/not-added`), each with an Add that fills in the character form, until a
-   character of that name is on the site. The ones it added show under the roster page's
-   Unclaimed until someone plays them.
+   character of that name is on the site. Every character a roster names is marked as the guild's
+   (`characters.in_guild`): everyone sees it on the roster, as a member's main, and it races to 60
+   as a member's, even while nobody plays it on the site. A character an officer records for no
+   one (a pug) is not, and stays the administrator's, under Unclaimed.
 
 4. **Each upload is recorded**: who sent it, when, and every character it changed, with the
    level and time at 60 before and after. Superusers see them under Administration → Roster uploads

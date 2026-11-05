@@ -28,7 +28,8 @@ pub struct Character {
     pub class: String,
     /// Its race's slug (`wow::catalog::RACES`), or `None` while nobody has recorded it.
     pub race: Option<String>,
-    pub sex: Sex,
+    /// `None` while nobody has recorded it (a character a roster upload added).
+    pub sex: Option<Sex>,
     pub ruleset: Ruleset,
     /// 1 to 60, as an officer last recorded it.
     pub level: i16,
@@ -36,6 +37,9 @@ pub struct Character {
     #[serde(with = "iso8601::option")]
     pub reached_60_at: Option<OffsetDateTime>,
     pub is_main: bool,
+    /// Named by the guild's roster (an upload from the addon): shown and racing like a member's
+    /// even while nobody plays it on the site.
+    pub in_guild: bool,
     /// The specs it plays, its main (if it has one) first, then in the catalog's order.
     pub specs: sqlx::types::Json<Vec<CharacterSpec>>,
     #[serde(with = "iso8601")]
@@ -53,7 +57,9 @@ pub struct CharacterInput {
     /// Its race's slug; absent, `null`, or empty for none recorded.
     #[serde(default)]
     pub race: Option<String>,
-    pub sex: Sex,
+    /// Absent or `null` for none recorded, like the race.
+    #[serde(default)]
+    pub sex: Option<Sex>,
     /// Absent keeps the ruleset it has; a new character takes the guild's.
     #[serde(default)]
     pub ruleset: Option<Ruleset>,
@@ -249,7 +255,7 @@ struct Valid {
     last_name: String,
     class: &'static str,
     race: Option<&'static str>,
-    sex: Sex,
+    sex: Option<Sex>,
     /// `None` keeps the ruleset it has (or is the guild's, for a new character).
     ruleset: Option<Ruleset>,
     /// `None` keeps the level it has.
@@ -314,11 +320,12 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
 }
 
 /// The characters `actor` may see, by name. Unclaimed ones (pugs) are the admin's, except that an
-/// officer who records raids and loot may ask for them (`unclaimed`) where they pick attendees.
+/// officer who records raids and loot may ask for them (`unclaimed`) where they pick attendees;
+/// one the guild's roster named is everyone's, played or not.
 pub async fn visible(pool: &PgPool, actor: &User, unclaimed: bool) -> sqlx::Result<Vec<Character>> {
     let pugs = actor.is_superuser || (unclaimed && actor.is_officer());
     let mut characters = db::list(pool).await?;
-    characters.retain(|c| pugs || c.user_id.is_some());
+    characters.retain(|c| pugs || c.user_id.is_some() || c.in_guild);
     Ok(characters)
 }
 
@@ -631,7 +638,7 @@ pub(crate) mod tests {
             last_name: last.into(),
             class: class.into(),
             race: None,
-            sex: Sex::Female,
+            sex: Some(Sex::Female),
             ruleset: None,
             level: None,
             reached_60_at: None,
@@ -687,21 +694,27 @@ pub(crate) mod tests {
         let officer = member(&pool, "Officer", Rank::Officer).await;
         let mut sky = input("Aerin", "Gale", "shaman", false);
         let made = add(&pool, &ey, sky.clone()).await.unwrap();
-        assert_eq!(made.sex, Sex::Female);
+        assert_eq!(made.sex, Some(Sex::Female));
 
-        sky.sex = Sex::Male;
+        sky.sex = Some(Sex::Male);
         let changed = update(&pool, &officer, made.id, &sky).await.unwrap();
-        assert_eq!(changed.sex, Sex::Male);
+        assert_eq!(changed.sex, Some(Sex::Male));
 
-        // Required, and only the two.
+        // None recorded, like a race.
+        sky.sex = None;
+        let cleared = update(&pool, &officer, made.id, &sky).await.unwrap();
+        assert_eq!(cleared.sex, None);
+
+        // Optional, and only the two.
         let json = |sex: &str| {
             serde_json::from_str::<CharacterInput>(&format!(
                 r#"{{"first_name":"A","last_name":"B","class":"mage"{sex}}}"#
             ))
         };
-        assert!(json("").is_err());
+        assert_eq!(json("").unwrap().sex, None);
+        assert_eq!(json(r#","sex":null"#).unwrap().sex, None);
         assert!(json(r#","sex":"other""#).is_err());
-        assert_eq!(json(r#","sex":"male""#).unwrap().sex, Sex::Male);
+        assert_eq!(json(r#","sex":"male""#).unwrap().sex, Some(Sex::Male));
     }
 
     #[sqlx::test]
