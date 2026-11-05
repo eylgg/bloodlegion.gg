@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE characters\n               SET is_hidden = false, level = GREATEST(level, $2),\n                   reached_60_at = CASE WHEN GREATEST(level, $2) = 60\n                                        THEN LEAST(reached_60_at, COALESCE($3, now())) END\n               WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int2",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7fb975504e257de9c6c64b7ed469a6ca567030c485e8ae79bf22120a119b641d"
+}

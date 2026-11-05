@@ -59,6 +59,17 @@ export type BattlenetCharacter = {
 	seen_at: string | null;
 };
 
+/** A roster member an upload could not add and the site still lacks, for superusers to add. */
+export type NotAddedMember = {
+	/** As the roster shows it. */
+	name: string;
+	level: number;
+	/** The class as the roster shows it ("Warrior"). */
+	class: string | null;
+	/** When the latest upload naming it was sent. */
+	seen_at: string;
+};
+
 export type RosterUpload = {
 	id: number;
 	/** Who sent it; null once their account is gone. */
@@ -70,6 +81,14 @@ export type RosterUpload = {
 	unmatched: { name: string; level: number; class: string | null }[];
 	/** The characters it changed, by name. */
 	changes: RosterChange[];
+	/** The members it added as characters: made, or hidden ones brought out (`revealed`). */
+	added: {
+		character_id: number;
+		first_name: string;
+		last_name: string;
+		class: string;
+		revealed: boolean;
+	}[];
 	undone_at: string | null;
 	undone_by: string | null;
 };

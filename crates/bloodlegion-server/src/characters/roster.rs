@@ -70,8 +70,33 @@ pub struct RosterResult {
     pub matched: usize,
     /// How many of those it changed.
     pub changed: usize,
-    /// The members no character on the site has the name of, for an officer to add.
+    /// The members no character on the site matched, added as characters.
+    pub added: Vec<AddedMember>,
+    /// The members it could not add (a name or class the site does not take), for an officer.
     pub unmatched: Vec<UnmatchedMember>,
+}
+
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct AddedMember {
+    pub character_id: i64,
+    pub first_name: String,
+    pub last_name: String,
+    pub class: String,
+    /// A hidden character from a Battle.net listing brought out, rather than one made.
+    pub revealed: bool,
+}
+
+/// A roster member as a new character: its two names (`First Last`, as Forever's roster shows
+/// them) and its class's slug. `None` for a name or class the site does not take.
+fn as_character(member: &RosterMember) -> Option<(&str, &str, &'static str)> {
+    let name = member.name.trim();
+    let name = name.split_once('-').map_or(name, |(name, _realm)| name);
+    let (first, last) = name.split_once(' ')?;
+    if !super::is_valid_name(first) || !super::is_valid_name(last) {
+        return None;
+    }
+    let class = crate::wow::catalog::find(&member.class.as_deref()?.trim().to_lowercase())?;
+    Some((first, last, class.slug))
 }
 
 #[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -109,11 +134,13 @@ pub async fn apply(
     let mut tx = pool.begin().await?;
     let mut matched = 0;
     let mut unmatched = Vec::new();
+    let mut added = Vec::new();
     let mut changes: Vec<LevelChange> = Vec::new();
     for member in &input.members {
+        let battlenet_id = member.guid.as_deref().and_then(battlenet_id);
         let found = super::db::raise_level(
             &mut tx,
-            member.guid.as_deref().and_then(battlenet_id),
+            battlenet_id,
             &normalize(&member.name),
             member.level,
             member.reached_60_at,
@@ -134,6 +161,24 @@ pub async fn apply(
                     None => changes.push(change),
                 }
             }
+        } else if let Some((first, last, class)) = as_character(member) {
+            let made = super::db::add_from_roster(
+                &mut tx,
+                battlenet_id,
+                first,
+                last,
+                class,
+                member.level,
+                member.reached_60_at,
+            )
+            .await?;
+            added.push(AddedMember {
+                character_id: made.character_id,
+                first_name: first.to_string(),
+                last_name: last.to_string(),
+                class: class.to_string(),
+                revealed: made.revealed,
+            });
         } else {
             unmatched.push(UnmatchedMember {
                 name: member.name.trim().to_string(),
@@ -150,6 +195,13 @@ pub async fn apply(
         matched as i32,
         serde_json::to_value(&unmatched).context("listing the unmatched members")?,
         &changes,
+        &added
+            .iter()
+            .map(|a| super::db::Added {
+                character_id: a.character_id,
+                revealed: a.revealed,
+            })
+            .collect::<Vec<_>>(),
     )
     .await?;
     tx.commit().await?;
@@ -157,6 +209,7 @@ pub async fn apply(
         upload_id,
         matched,
         changed: changes.len(),
+        added,
         unmatched,
     })
 }
@@ -177,6 +230,7 @@ pub struct Upload {
     pub matched: i32,
     pub unmatched: Vec<UnmatchedMember>,
     pub changes: Vec<Change>,
+    pub added: Vec<AddedMember>,
     #[serde(with = "iso8601::option")]
     pub undone_at: Option<OffsetDateTime>,
     pub undone_by: Option<String>,
@@ -204,6 +258,7 @@ pub async fn uploads(pool: &PgPool) -> Result<Vec<Upload>> {
     let rows = super::db::uploads(pool, LISTED).await?;
     let ids: Vec<i64> = rows.iter().map(|r| r.id).collect();
     let mut changes = super::db::changes(pool, &ids).await?;
+    let mut added = super::db::added(pool, &ids).await?;
     Ok(rows
         .into_iter()
         .map(|row| Upload {
@@ -227,8 +282,43 @@ pub async fn uploads(pool: &PgPool) -> Result<Vec<Upload>> {
                     current: c.current,
                 })
                 .collect(),
+            added: added
+                .extract_if(.., |a| a.upload_id == row.id)
+                .map(|a| AddedMember {
+                    character_id: a.character_id,
+                    first_name: a.first_name,
+                    last_name: a.last_name,
+                    class: a.class,
+                    revealed: a.revealed,
+                })
+                .collect(),
             undone_at: row.undone_at,
             undone_by: row.undone_by,
+        })
+        .collect())
+}
+
+/// A roster member an upload could not add, for the superusers to add by hand.
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct NotAdded {
+    pub name: String,
+    pub level: i16,
+    pub class: Option<String>,
+    /// When the latest upload naming it was sent.
+    #[serde(with = "iso8601")]
+    pub seen_at: OffsetDateTime,
+}
+
+/// The members uploads could not add that are still not on the site, by name.
+pub async fn not_added(pool: &PgPool) -> Result<Vec<NotAdded>> {
+    Ok(super::db::not_added(pool)
+        .await?
+        .into_iter()
+        .map(|row| NotAdded {
+            name: row.name,
+            level: row.level,
+            class: row.class,
+            seen_at: row.seen_at,
         })
         .collect())
 }
@@ -240,21 +330,32 @@ pub struct Undone {
     pub reverted: u64,
     /// Characters changed since (by a later upload or an officer), left as they are.
     pub kept: u64,
+    /// Characters it made, removed (those still nobody's and in no raid or loot).
+    pub removed: u64,
 }
 
 /// Undoes upload `id` as `by`.
 pub async fn undo(pool: &PgPool, id: i64, by: UserId) -> Result<Undone, CharacterError> {
     let mut tx = pool.begin().await?;
-    let Some((reverted, kept)) = super::db::undo_upload(&mut tx, id, by).await? else {
+    let Some((reverted, kept, removed)) = super::db::undo_upload(&mut tx, id, by).await? else {
         return external(CharacterError::UploadNotFound);
     };
     tx.commit().await?;
-    Ok(Undone { reverted, kept })
+    Ok(Undone {
+        reverted,
+        kept,
+        removed,
+    })
 }
 
 /// `GET /api/admin/rosters`: the latest roster uploads. Superusers only.
 async fn list_uploads(state: State, _admin: Admin) -> Result<Json<Vec<Upload>>> {
     Ok(Json(uploads(&state.pool).await?))
+}
+
+/// `GET /api/admin/rosters/not-added`: the roster members still not on the site. Superusers only.
+async fn list_not_added(state: State, _admin: Admin) -> Result<Json<Vec<NotAdded>>> {
+    Ok(Json(not_added(&state.pool).await?))
 }
 
 /// `POST /api/admin/rosters/{id}/undo`: superusers only.
@@ -271,6 +372,7 @@ async fn undo_upload(
 pub fn admin_router() -> Router<State> {
     Router::new()
         .route("/rosters", get(list_uploads))
+        .route("/rosters/not-added", get(list_not_added))
         .route("/rosters/{id}/undo", post(undo_upload))
 }
 
@@ -364,7 +466,8 @@ mod tests {
             .await
             .unwrap();
 
-        // Matched by full name or with the names run together; a stranger is listed.
+        // Matched by full name or with the names run together; a stranger is added, and one
+        // without two names is listed.
         let result = apply(
             &pool,
             ey.id,
@@ -372,15 +475,24 @@ mod tests {
                 seen("garr bonecrush", 40, None),
                 seen("LiraMoonwell-Forever", 12, None),
                 seen("Random Pug", 30, None),
+                seen("Mononym", 30, None),
             ]),
         )
         .await
         .unwrap();
         assert_eq!(result.matched, 2);
+        assert_eq!(result.added.len(), 1);
+        assert_eq!(
+            (
+                result.added[0].first_name.as_str(),
+                result.added[0].last_name.as_str()
+            ),
+            ("Random", "Pug")
+        );
         assert_eq!(
             result.unmatched,
             [UnmatchedMember {
-                name: "Random Pug".into(),
+                name: "Mononym".into(),
                 level: 30,
                 class: Some("Warrior".into())
             }]
@@ -428,6 +540,113 @@ mod tests {
             .await
             .unwrap();
         assert!(level(lira.id).await.reached_60_at.is_some());
+    }
+
+    #[sqlx::test]
+    async fn adds_strangers_and_brings_out_hidden_ones(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Officer).await;
+        let admin = member(&pool, "Admin", Rank::Leader).await;
+        // A hidden character from Ey's Battle.net listing.
+        let hidden = sqlx::query_scalar!(
+            "INSERT INTO characters (user_id, first_name, last_name, class, level, is_hidden,
+                                     battlenet_id)
+             VALUES ($1, 'Eyl', 'Shm', 'shaman', 10, true, 5479164) RETURNING id",
+            ey.id.0,
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        let mut shm = seen("Eyl Shm", 12, None);
+        shm.class = Some("Shaman".into());
+        shm.guid = Some("Player-6934-00539AFC".into());
+        let mut capped = seen("Druthers Bank", 60, None);
+        capped.guid = Some("Player-6800-006C36F7".into());
+        let mut unknown = seen("Odd Class", 5, None);
+        unknown.class = Some("Monk".into());
+        let result = apply(&pool, ey.id, &roster(vec![shm, capped, unknown]))
+            .await
+            .unwrap();
+        assert_eq!(result.matched, 0);
+        assert_eq!(result.added.len(), 2);
+        assert_eq!(result.unmatched.len(), 1, "a class the site does not know");
+
+        let revealed = &result.added[0];
+        assert_eq!((revealed.character_id, revealed.revealed), (hidden, true));
+        let shown = crate::characters::find(&pool, hidden)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(shown.level, 12);
+        assert_eq!(shown.user_id, Some(ey.id), "it keeps its player");
+
+        let made = &result.added[1];
+        assert!(!made.revealed);
+        let bank = crate::characters::find(&pool, made.character_id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            (bank.level, bank.user_id, bank.class.as_str()),
+            (60, None, "warrior")
+        );
+        assert!(bank.reached_60_at.is_some());
+        assert_eq!(bank.ruleset, crate::wow::Ruleset::Pvp);
+        let battlenet_id = sqlx::query_scalar!(
+            "SELECT battlenet_id FROM characters WHERE id = $1",
+            made.character_id
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(battlenet_id, Some(0x006C36F7));
+
+        // Undoing removes the one it made, and keeps the one it brought out.
+        let undone = undo(&pool, result.upload_id, admin.id).await.unwrap();
+        assert_eq!(undone.removed, 1);
+        assert!(
+            crate::characters::find(&pool, made.character_id)
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            crate::characters::find(&pool, hidden)
+                .await
+                .unwrap()
+                .is_some()
+        );
+    }
+
+    #[sqlx::test]
+    async fn lists_the_members_still_not_added(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Officer).await;
+        let admin = member(&pool, "Admin", Rank::Leader).await;
+        apply(&pool, ey.id, &roster(vec![seen("Mononym", 5, None)]))
+            .await
+            .unwrap();
+        let undone = apply(&pool, ey.id, &roster(vec![seen("Gone", 9, None)]))
+            .await
+            .unwrap();
+        undo(&pool, undone.upload_id, admin.id).await.unwrap();
+        apply(
+            &pool,
+            ey.id,
+            &roster(vec![seen("mononym", 7, None), seen("Later", 3, None)]),
+        )
+        .await
+        .unwrap();
+        let listed = not_added(&pool).await.unwrap();
+        let names: Vec<_> = listed.iter().map(|m| (m.name.as_str(), m.level)).collect();
+        // Once by name, as last seen; an undone upload's are not listed.
+        assert_eq!(names, [("Later", 3), ("mononym", 7)]);
+
+        // Added by hand since: no longer listed.
+        add(&pool, &ey, input("Lat", "Er", "mage", false))
+            .await
+            .unwrap();
+        let listed = not_added(&pool).await.unwrap();
+        assert_eq!(listed.len(), 1);
     }
 
     #[sqlx::test]
@@ -513,7 +732,7 @@ mod tests {
                 .unwrap()
                 .current
         );
-        assert_eq!(listed[2].unmatched[0].name, "Random Pug");
+        assert_eq!(listed[2].added[0].first_name, "Random");
 
         // Undoing the bad one puts Garr back, and leaves Lira, changed since.
         let undone = undo(pool, bad.upload_id, admin.id).await.unwrap();
@@ -521,7 +740,8 @@ mod tests {
             undone,
             Undone {
                 reverted: 1,
-                kept: 1
+                kept: 1,
+                removed: 0
             }
         );
         let garr_now = level(garr.id).await;

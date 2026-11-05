@@ -277,6 +277,7 @@ pub async fn record_upload(
     matched: i32,
     unmatched: serde_json::Value,
     changes: &[LevelChange],
+    added: &[Added],
 ) -> sqlx::Result<i64> {
     let id = sqlx::query_scalar!(
         r#"
@@ -308,7 +309,146 @@ pub async fn record_upload(
         .execute(&mut *conn)
         .await?;
     }
+    for added in added {
+        sqlx::query!(
+            "INSERT INTO roster_added (upload_id, character_id, revealed) VALUES ($1, $2, $3)",
+            id,
+            added.character_id,
+            added.revealed,
+        )
+        .execute(&mut *conn)
+        .await?;
+    }
     Ok(id)
+}
+
+pub struct NotAddedRow {
+    pub name: String,
+    pub level: i16,
+    pub class: Option<String>,
+    pub seen_at: OffsetDateTime,
+}
+
+/// The members uploads (not undone) could not add and no character on the site matches by now,
+/// once each by name, as the latest upload naming them saw them.
+pub async fn not_added(pool: &PgPool) -> sqlx::Result<Vec<NotAddedRow>> {
+    sqlx::query_as!(
+        NotAddedRow,
+        r#"
+        SELECT DISTINCT ON (lower(m->>'name'))
+               m->>'name' AS "name!", (m->>'level')::smallint AS "level!",
+               m->>'class' AS class, r.created_at AS seen_at
+        FROM roster_uploads r, jsonb_array_elements(r.unmatched) m
+        WHERE r.undone_at IS NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM characters c
+              WHERE NOT c.is_hidden
+                AND (c.name_normalized = lower(m->>'name')
+                     OR replace(c.name_normalized, ' ', '') = lower(m->>'name'))
+          )
+        ORDER BY lower(m->>'name'), r.created_at DESC, r.id DESC
+        "#
+    )
+    .fetch_all(pool)
+    .await
+}
+
+/// A character a roster upload added: made, or a hidden one brought out (`revealed`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Added {
+    pub character_id: i64,
+    pub revealed: bool,
+}
+
+/// Adds a roster member no character on the site matched: brings out the hidden character
+/// Battle.net listed under its id or name, raising its level as [`raise_level`] would, or else
+/// makes one nobody plays yet, on the guild's ruleset.
+pub async fn add_from_roster(
+    conn: &mut PgConnection,
+    battlenet_id: Option<i64>,
+    first_name: &str,
+    last_name: &str,
+    class: &str,
+    level: i16,
+    reached_60_at: Option<OffsetDateTime>,
+) -> sqlx::Result<Added> {
+    let hidden = sqlx::query_scalar!(
+        r#"SELECT id FROM characters
+           WHERE is_hidden
+             AND (battlenet_id = $1 OR name_normalized = lower($2 || ' ' || $3))
+           ORDER BY battlenet_id = $1 DESC NULLS LAST
+           LIMIT 1
+           FOR UPDATE"#,
+        battlenet_id,
+        first_name,
+        last_name,
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    if let Some(id) = hidden {
+        sqlx::query!(
+            r#"UPDATE characters
+               SET is_hidden = false, level = GREATEST(level, $2),
+                   reached_60_at = CASE WHEN GREATEST(level, $2) = 60
+                                        THEN LEAST(reached_60_at, COALESCE($3, now())) END
+               WHERE id = $1"#,
+            id,
+            level,
+            reached_60_at,
+        )
+        .execute(&mut *conn)
+        .await?;
+        return Ok(Added {
+            character_id: id,
+            revealed: true,
+        });
+    }
+    let id = sqlx::query_scalar!(
+        r#"INSERT INTO characters
+               (first_name, last_name, class, level, reached_60_at, ruleset, battlenet_id)
+           VALUES ($1, $2, $3, $4::smallint,
+                   CASE WHEN $4::smallint = 60 THEN COALESCE($5, now()) END,
+                   (SELECT ruleset FROM guild_settings), $6)
+           RETURNING id"#,
+        first_name,
+        last_name,
+        class,
+        level,
+        reached_60_at,
+        battlenet_id,
+    )
+    .fetch_one(&mut *conn)
+    .await?;
+    Ok(Added {
+        character_id: id,
+        revealed: false,
+    })
+}
+
+pub struct AddedRow {
+    pub upload_id: i64,
+    pub character_id: i64,
+    pub first_name: String,
+    pub last_name: String,
+    pub class: String,
+    pub revealed: bool,
+}
+
+/// The characters the uploads `ids` added, by name.
+pub async fn added(pool: &PgPool, ids: &[i64]) -> sqlx::Result<Vec<AddedRow>> {
+    sqlx::query_as!(
+        AddedRow,
+        r#"
+        SELECT a.upload_id, a.character_id, c.first_name, c.last_name, c.class, a.revealed
+        FROM roster_added a
+        JOIN characters c ON c.id = a.character_id
+        WHERE a.upload_id = ANY($1)
+        ORDER BY c.name_normalized
+        "#,
+        ids,
+    )
+    .fetch_all(pool)
+    .await
 }
 
 pub struct UploadRow {
@@ -376,13 +516,14 @@ pub async fn changes(pool: &PgPool, ids: &[i64]) -> sqlx::Result<Vec<ChangeRow>>
 }
 
 /// Undoes upload `id` as `by`: puts back the old level and time at 60 of each character it changed
-/// that is still as it left it. How many it put back and how many it left (changed since); `None`
-/// when there is no such upload, or it was undone already.
+/// that is still as it left it, and removes the characters it made that are still nobody's and in
+/// no raid or loot. How many it put back, how many it left (changed since), and how many it
+/// removed; `None` when there is no such upload, or it was undone already.
 pub async fn undo_upload(
     conn: &mut PgConnection,
     id: i64,
     by: UserId,
-) -> sqlx::Result<Option<(u64, u64)>> {
+) -> sqlx::Result<Option<(u64, u64, u64)>> {
     let open = sqlx::query_scalar!(
         r#"
         UPDATE roster_uploads SET undone_at = now(), undone_by = $2
@@ -411,7 +552,23 @@ pub async fn undo_upload(
     .execute(&mut *conn)
     .await?
     .rows_affected();
-    Ok(Some((reverted, changes as u64 - reverted)))
+    // The characters it made, while still nobody's and in no raid, loot, or loot priority.
+    let removed = sqlx::query!(
+        r#"
+        DELETE FROM characters c
+        USING roster_added a
+        WHERE a.upload_id = $1 AND a.character_id = c.id AND NOT a.revealed
+          AND c.user_id IS NULL
+          AND NOT EXISTS (SELECT 1 FROM raid_attendees r WHERE r.character_id = c.id)
+          AND NOT EXISTS (SELECT 1 FROM loot l WHERE l.character_id = c.id)
+          AND NOT EXISTS (SELECT 1 FROM loot_priority_characters p WHERE p.character_id = c.id)
+        "#,
+        id,
+    )
+    .execute(&mut *conn)
+    .await?
+    .rows_affected();
+    Ok(Some((reverted, changes as u64 - reverted, removed)))
 }
 
 /// Replaces the character's specs with `specs`.

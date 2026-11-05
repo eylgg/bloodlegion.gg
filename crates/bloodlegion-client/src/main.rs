@@ -442,7 +442,18 @@ struct RosterResult {
     /// How many levels it changed; an older site does not say.
     #[serde(default)]
     changed: usize,
+    /// The members it added as characters; an older site adds none.
+    #[serde(default)]
+    added: Vec<Added>,
     unmatched: Vec<Unmatched>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct Added {
+    first_name: String,
+    last_name: String,
+    /// A hidden character from a Battle.net sign-in, brought onto the roster.
+    revealed: bool,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -517,14 +528,23 @@ async fn upload(file: &Path) -> anyhow::Result<()> {
     .await
     .context("reading the site's answer")?;
     println!(
-        "{}: uploaded {} members, {} matched characters on the site, {} changed.",
+        "{}: uploaded {} members, {} matched characters on the site, {} changed, {} added.",
         file.display(),
         roster.members.len(),
         result.matched,
-        result.changed
+        result.changed,
+        result.added.len()
     );
+    for added in &result.added {
+        let how = if added.revealed {
+            " (from a Battle.net sign-in)"
+        } else {
+            ""
+        };
+        println!("  Added {} {}{how}", added.first_name, added.last_name);
+    }
     if !result.unmatched.is_empty() {
-        println!("Not on the site yet (add them as characters to track them):");
+        println!("Could not add (a name or class the site does not take):");
         for member in &result.unmatched {
             let class = member.class.as_deref().unwrap_or("?");
             println!("  {} ({class} {})", member.name, member.level);

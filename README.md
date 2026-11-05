@@ -311,13 +311,22 @@ the client keep them current:
    that character linked (a GUID, `Player-6934-005096AC`, ends in the id in hex), else by name (the
    roster shows `First Last`; any `-Realm` dropped, or the two names run together:
    `characters::roster`). It only ever raises a level, keeps the earliest time anyone saw a
-   character reach 60, and leaves hidden characters alone. It takes only the "BL" roster, and the
-   client lists the members no character matches, for an officer to add.
+   character reach 60, and leaves hidden characters alone. It takes only the "BL" roster. A member
+   no character matches is **added**: a hidden character Battle.net listed under its id or name is
+   brought onto the roster (keeping its player), or else a new one is made with its name, class,
+   level, and Battle.net id, on the guild's ruleset, nobody playing it until someone claims it or a
+   Battle.net sign-in links it (race and sex are left for an officer: the roster has neither). The
+   client lists what it added, and any member it could not (a name or class the site does not
+   take); those are also on the roster page for superusers ("Not added from the roster", from
+   `GET /api/admin/rosters/not-added`), each with an Add that fills in the character form, until a
+   character of that name is on the site. The ones it added show under the roster page's
+   Unclaimed until someone plays them.
 
 4. **Each upload is recorded**: who sent it, when, and every character it changed, with the
    level and time at 60 before and after. Superusers see them under Administration → Roster uploads
    (`/admin/rosters`) and can undo one with bad data. Undoing puts back the characters still as
-   that upload left them; any changed since, by a later upload or an officer, keep their level.
+   that upload left them (any changed since, by a later upload or an officer, keep their level), and
+   removes the characters it made that are still nobody's and never raided or won loot.
 
 ## The Discord server
 

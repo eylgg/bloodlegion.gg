@@ -4,8 +4,15 @@
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import CharacterSpecs from '$lib/components/guild/CharacterSpecs.svelte';
-	import { RANKS, RANK_GROUP, RANK_LABEL, playerPath, rulesetLabel } from '$lib/guild';
-	import type { GuildCharacter, Rank } from '$lib/types';
+	import {
+		RANKS,
+		RANK_GROUP,
+		RANK_LABEL,
+		formatDateTime,
+		playerPath,
+		rulesetLabel
+	} from '$lib/guild';
+	import type { GuildCharacter, NotAddedMember, Rank } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -15,6 +22,13 @@
 	let query = $state('');
 	let classFilter = $state('');
 	let adding = $state(false);
+	// What the add form starts with: a roster member's, from the list of those not added.
+	let draft = $state<{
+		first_name: string;
+		last_name: string;
+		class: string;
+		level: number;
+	} | null>(null);
 
 	// Which characters the chart and the table count: by default every ranked member's main. An
 	// unclaimed character (a pug) has no rank, so it is never among them.
@@ -146,6 +160,31 @@
 	function added(character: GuildCharacter) {
 		characters = [...characters, character];
 		adding = false;
+		draft = null;
+	}
+
+	// Roster members uploads could not add, until a character of the name is on the site.
+	const onSite = (name: string) => {
+		const wanted = name.toLowerCase();
+		return characters.some((c) => {
+			const full = fullName(c).toLowerCase();
+			return full === wanted || full.replace(' ', '') === wanted;
+		});
+	};
+	const notAdded = $derived(data.notAdded.filter((m) => !onSite(m.name)));
+
+	/** Opens the add form with the member's name (first and last at its first space), class, and level. */
+	function addMember(member: NotAddedMember) {
+		const [first, ...rest] = member.name.trim().split(/\s+/);
+		const wowClass = data.classes.find((c) => c.name.toLowerCase() === member.class?.toLowerCase());
+		draft = {
+			first_name: first ?? '',
+			last_name: rest.join(''),
+			class: wowClass?.slug ?? '',
+			level: member.level
+		};
+		adding = true;
+		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 </script>
 
@@ -246,7 +285,17 @@
 </div>
 
 {#if adding}
-	<CharacterForm owners={data.owners} onsaved={added} oncancel={() => (adding = false)} />
+	{#key draft}
+		<CharacterForm
+			{draft}
+			owners={data.owners}
+			onsaved={added}
+			oncancel={() => {
+				adding = false;
+				draft = null;
+			}}
+		/>
+	{/key}
 {/if}
 
 <section class="panel" aria-label="Characters by class">
@@ -317,6 +366,44 @@
 	<section>
 		<h2>Unclaimed <span class="count">{unclaimed.length}</span></h2>
 		{@render table(unclaimed)}
+	</section>
+{/if}
+
+{#if notAdded.length > 0}
+	<section>
+		<h2>Not added from the roster <span class="count">{notAdded.length}</span></h2>
+		<p class="muted">
+			Guild members the addon's roster named that it could not add, for a name or class the site
+			does not take. Only you see them.
+		</p>
+		<div class="scroll">
+			<table>
+				<thead>
+					<tr>
+						<th class="plain">Name</th>
+						<th class="plain">Level</th>
+						<th class="plain">Class</th>
+						<th class="plain">Last seen</th>
+						<th class="plain" aria-label="Add"></th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each notAdded as member (member.name)}
+						<tr>
+							<td>{member.name}</td>
+							<td class="level">{member.level}</td>
+							<td>{member.class ?? '—'}</td>
+							<td class="muted">{formatDateTime(member.seen_at)}</td>
+							<td>
+								<Button size="small" variant="secondary" onclick={() => addMember(member)}>
+									Add
+								</Button>
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
 	</section>
 {/if}
 

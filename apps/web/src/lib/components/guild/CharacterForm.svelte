@@ -24,12 +24,15 @@
 	 */
 	let {
 		character = null,
+		draft = null,
 		owners = null,
 		firstIsMain = false,
 		onsaved,
 		oncancel
 	}: {
 		character?: GuildCharacter | null;
+		/** What a new character starts with (a roster member's name, class, and level). */
+		draft?: { first_name: string; last_name: string; class: string; level: number } | null;
 		owners?: { id: number; username: string }[] | null;
 		/** A member's first character becomes their main whatever the box says; show it ticked. */
 		firstIsMain?: boolean;
@@ -51,11 +54,11 @@
 	);
 
 	// svelte-ignore state_referenced_locally
-	let firstName = $state(character?.first_name ?? '');
+	let firstName = $state(character?.first_name ?? draft?.first_name ?? '');
 	// svelte-ignore state_referenced_locally
-	let lastName = $state(character?.last_name ?? '');
+	let lastName = $state(character?.last_name ?? draft?.last_name ?? '');
 	// svelte-ignore state_referenced_locally
-	let classSlug = $state(character?.class ?? '');
+	let classSlug = $state(character?.class ?? draft?.class ?? '');
 	// The race's slug, or '' for none recorded.
 	// svelte-ignore state_referenced_locally
 	let raceSlug = $state(character?.race ?? '');
@@ -64,7 +67,7 @@
 	// svelte-ignore state_referenced_locally
 	let ruleset = $state<Ruleset>(character?.ruleset ?? settings?.ruleset ?? 'pvp');
 	// svelte-ignore state_referenced_locally
-	let level = $state(character?.level ?? 1);
+	let level = $state(character?.level ?? draft?.level ?? 1);
 	// When it reached 60, as a `datetime-local` value in the reader's own time; '' for now.
 	// svelte-ignore state_referenced_locally
 	let reached60 = $state(character?.reached_60_at ? localInput(character.reached_60_at) : '');

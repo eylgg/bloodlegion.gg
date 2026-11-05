@@ -20,12 +20,15 @@
 		error = '';
 		done = '';
 		try {
-			const { reverted, kept } = await api.post<{ reverted: number; kept: number }>(
-				`/api/admin/rosters/${upload.id}/undo`
-			);
+			const { reverted, kept, removed } = await api.post<{
+				reverted: number;
+				kept: number;
+				removed: number;
+			}>(`/api/admin/rosters/${upload.id}/undo`);
 			done =
 				`Undone: ${reverted} ${reverted === 1 ? 'character' : 'characters'} put back` +
-				(kept ? `, ${kept} left as they are (changed since).` : '.');
+				(kept ? `, ${kept} left as they are (changed since)` : '') +
+				(removed ? `, ${removed} it added removed.` : '.');
 			await invalidateAll();
 		} catch (err) {
 			error = errorMessage(err, 'Undoing it failed. Please try again.');
@@ -50,8 +53,9 @@
 
 <p class="muted intro">
 	The rosters officers' Blood Legion clients sent from the addon, latest first, with every level
-	each one changed. Undoing one puts back the characters still as it left them; any changed since,
-	by a later upload or an officer, keep their level.
+	each one changed and every member it added as a character. Undoing one puts back the characters
+	still as it left them (any changed since, by a later upload or an officer, keep their level) and
+	removes the characters it added that nobody plays yet and that never raided.
 </p>
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
@@ -64,7 +68,7 @@
 				<h2>{formatDateTime(upload.created_at)}</h2>
 				<p class="muted">
 					By {upload.username ?? 'a deleted account'} · {upload.members} members, {upload.matched}
-					matched, {upload.changes.length} changed
+					matched, {upload.changes.length} changed, {upload.added.length} added
 				</p>
 			</div>
 			{#if upload.undone_at}
@@ -73,7 +77,7 @@
 						? ` by ${upload.undone_by}`
 						: ''}
 				</span>
-			{:else if upload.changes.length > 0}
+			{:else if upload.changes.length > 0 || upload.added.length > 0}
 				<ConfirmButton
 					size="small"
 					question="Undo this upload?"
@@ -128,9 +132,27 @@
 			</details>
 		{/if}
 
+		{#if upload.added.length > 0}
+			<details>
+				<summary>{upload.added.length} added</summary>
+				<ul class="unmatched">
+					{#each upload.added as added (added.character_id)}
+						<li>
+							<CharacterLink
+								firstName={added.first_name}
+								lastName={added.last_name}
+								cls={added.class}
+							/>
+							{#if added.revealed}<span class="muted">from a Battle.net sign-in</span>{/if}
+						</li>
+					{/each}
+				</ul>
+			</details>
+		{/if}
+
 		{#if upload.unmatched.length > 0}
 			<details>
-				<summary>{upload.unmatched.length} not on the site</summary>
+				<summary>{upload.unmatched.length} not added</summary>
 				<ul class="unmatched">
 					{#each upload.unmatched as member (member.name)}
 						<li>
