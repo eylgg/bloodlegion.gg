@@ -651,7 +651,10 @@ mod tests {
 
         assert!(unhide(&pool, shm).await.unwrap());
         let shown = row(&pool, shm).await;
-        assert!(!shown.is_hidden && shown.is_main, "their first, so their main");
+        assert!(
+            !shown.is_hidden && shown.is_main,
+            "their first, so their main"
+        );
         assert_eq!(shown.user_id, Some(ey.id.0));
         assert!(
             crate::characters::find_by_slug(&pool, "eyl-shm")
