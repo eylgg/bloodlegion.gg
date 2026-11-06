@@ -166,9 +166,10 @@ pub struct Difference {
 }
 
 /// Looks up every character on the site (not the hidden ones) in the armory, and compares them.
-/// With `fill`, takes from the armory what the site lacks or has lower: a race or sex not
-/// recorded, and a level below the armory's (as a roster would raise it). Anything else that
-/// differs (a class, a ruleset, a race or sex already recorded) is only reported, for an officer.
+/// With `fill`, takes from the armory what the site lacks, has wrong, or has lower: a race not
+/// recorded, the sex (most recorded before sexes were optional are a default, not a choice), and a
+/// level below the armory's (as a roster would raise it). Anything else that differs (a class, a
+/// ruleset, a race already recorded) is only reported, for an officer.
 pub async fn check(state: &State, fill: bool) -> anyhow::Result<Vec<Checked>> {
     let token = app_token(state).await?;
     let characters = crate::characters::list(&state.pool)
@@ -284,14 +285,8 @@ fn differences(character: &crate::characters::Character, armory: &Armory) -> Vec
         Some(name(&character.ruleset)),
         armory.ruleset.map(|ruleset| name(&ruleset)),
     );
-    // Only a level the armory has lower: a higher one is the site behind, which filling fixes.
-    if armory.level.is_some_and(|level| level < character.level) {
-        differ(
-            "level",
-            Some(character.level.to_string()),
-            armory.level.map(|level| level.to_string()),
-        );
-    }
+    // Levels never count: the armory lags (a roster upload is ahead of it), and a higher one
+    // there is the site behind, which filling in fixes.
     found
 }
 
@@ -303,14 +298,15 @@ fn name<T: serde::Serialize>(value: &T) -> String {
         .unwrap_or_default()
 }
 
-/// Takes the race and sex when the site has none, and the level when the site's is lower.
+/// Takes the race when the site has none, the sex when the site's differs, and the level when the
+/// site's is lower.
 async fn fill_in(
     pool: &sqlx::PgPool,
     character: &crate::characters::Character,
     armory: &Armory,
 ) -> sqlx::Result<Vec<&'static str>> {
     let race = armory.race.filter(|_| character.race.is_none());
-    let sex = armory.sex.filter(|_| character.sex.is_none());
+    let sex = armory.sex.filter(|sex| character.sex != Some(*sex));
     let level = armory
         .level
         .filter(|level| (1..=60).contains(level) && *level > character.level);
@@ -329,7 +325,7 @@ async fn fill_in(
     }
     sqlx::query!(
         r#"UPDATE characters
-           SET race = COALESCE(race, $2), sex = COALESCE(sex, $3),
+           SET race = COALESCE(race, $2), sex = COALESCE($3, sex),
                level = GREATEST(level, COALESCE($4, level)),
                reached_60_at = CASE WHEN GREATEST(level, COALESCE($4, level)) = 60
                                     THEN COALESCE(reached_60_at, now()) END

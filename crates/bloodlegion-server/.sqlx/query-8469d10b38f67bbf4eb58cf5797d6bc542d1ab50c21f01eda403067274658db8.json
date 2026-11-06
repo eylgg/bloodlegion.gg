@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE characters\n           SET race = COALESCE(race, $2), sex = COALESCE($3, sex),\n               level = GREATEST(level, COALESCE($4, level)),\n               reached_60_at = CASE WHEN GREATEST(level, COALESCE($4, level)) = 60\n                                    THEN COALESCE(reached_60_at, now()) END\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8469d10b38f67bbf4eb58cf5797d6bc542d1ab50c21f01eda403067274658db8"
+}

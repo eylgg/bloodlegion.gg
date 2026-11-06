@@ -34,15 +34,10 @@
 
 	const differing = $derived(checked?.filter((c) => c.differences.length > 0) ?? []);
 	const filled = $derived(checked?.filter((c) => c.filled.length > 0) ?? []);
-	// What filling in would take: a race or sex the site lacks, or a higher level.
+	// What filling in would fix: a sex that differs (a race the site lacks shows no difference).
 	const fillable = $derived(
-		checked?.filter(
-			(c) =>
-				c.filled.length === 0 &&
-				c.armory &&
-				((c.armory.race && !c.differences.some((d) => d.field === 'race')) ||
-					(c.armory.sex && !c.differences.some((d) => d.field === 'sex')))
-		) ?? []
+		checked?.filter((c) => c.filled.length === 0 && c.differences.some((d) => d.field === 'sex')) ??
+			[]
 	);
 	const missing = $derived(checked?.filter((c) => !c.found && !c.error) ?? []);
 	const failed = $derived(checked?.filter((c) => c.error) ?? []);
@@ -61,9 +56,10 @@
 
 <p class="muted intro">
 	Looks every character on the roster up in Blizzard's armory by its name. Checking only lists where
-	the site and the armory disagree; filling in also takes from the armory what the site lacks: a
-	race or sex nobody recorded, and a level the site has lower. Anything else that differs (a class,
-	a ruleset, a race already recorded) is for you to fix on the character's page.
+	the site and the armory disagree; filling in also takes from the armory a race nobody recorded,
+	the sex (most recorded so far are the old default, female), and a level the site has lower. A
+	level the site has higher is left alone: the armory catches up later. Anything else that differs
+	(a class, a ruleset, a race already recorded) is for you to fix on the character's page.
 </p>
 
 <div class="actions">
@@ -103,8 +99,8 @@
 	{#if fillable.length > 0 && filled.length === 0}
 		<p class="muted">
 			{fillable.length}
-			{fillable.length === 1 ? 'character lacks' : 'characters lack'} a race or sex the armory has: Check
-			and fill in takes them.
+			{fillable.length === 1 ? 'character has' : 'characters have'} a different sex in the armory: Check
+			and fill in takes the armory's.
 		</p>
 	{/if}
 

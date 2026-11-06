@@ -222,8 +222,10 @@ the changes.
   (Administration → Armory check, `/admin/armory`; `POST /api/admin/armory-check`, or
   `bloodlegion-server characters armory-check [--fill]`; `characters armory <eyl-gg> [--raw]` shows
   one): it lists where the site and the armory differ and the characters the armory does not have,
-  and filling in takes a race or sex nobody recorded and a level the site has lower. Anything else
-  that differs is only listed, for an officer to fix.
+  and filling in takes a race nobody recorded, the armory's sex (most recorded before sexes were
+  optional were the old default, female), and a level the site has lower. A level the site has
+  higher is left alone and not listed (the armory lags a roster upload); anything else that
+  differs is only listed, for an officer to fix.
 - **Rulesets**: Forever has rulesets instead of realms (Normal, PvP, Roleplay, RP-PvP, Hardcore).
   The guild's faction and ruleset are settings on the Administration page, Horde and PvP to start.
   A character records its ruleset, the guild's unless an officer picks another (its faction is its
