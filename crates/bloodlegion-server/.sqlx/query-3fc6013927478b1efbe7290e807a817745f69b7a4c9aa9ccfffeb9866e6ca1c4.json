@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE characters SET is_main = true\n             WHERE id = $1\n               AND NOT EXISTS (SELECT 1 FROM characters WHERE user_id = $2 AND is_main)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3fc6013927478b1efbe7290e807a817745f69b7a4c9aa9ccfffeb9866e6ca1c4"
+}

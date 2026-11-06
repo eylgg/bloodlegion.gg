@@ -2,19 +2,21 @@
 //! every sign-in into the site's own characters. A listed character with a site character's name is
 //! linked to it, which goes to the account's member when nobody plays it yet; any other is added
 //! hidden, for superusers only, until an officer adds a character of that name (which brings it out:
-//! `characters::create`). Hidden ones follow Battle.net (its level, class, race, player) and go when
+//! `characters::create`) or a superuser [`unhide`]s it. Hidden ones follow Battle.net (its level, class, race, player) and go when
 //! it stops listing them; the site's own characters only gain the link.
 
 use anyhow::Context;
-use axum::routing::get;
+use axum::extract::Path;
+use axum::http::StatusCode;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use sqlx::{PgConnection, PgPool};
 use time::{OffsetDateTime, serde::iso8601};
 
 use super::{Character, Ruleset};
 use crate::auth::providers::ProviderId;
-use crate::characters::Sex;
-use crate::extract::Admin;
+use crate::characters::{CharacterError, Sex};
+use crate::extract::{Admin, SameOrigin};
 use crate::users::UserId;
 use crate::{Result, State};
 
@@ -388,8 +390,53 @@ async fn list_all(state: State, _admin: Admin) -> Result<Json<Vec<Listed>>> {
     Ok(Json(list(&state.pool).await?))
 }
 
+/// Brings a hidden character onto the roster, as its account's member's (their main when they
+/// have none). Battle.net stops updating it, as with any site character. Returns `false` when no
+/// hidden character has that id.
+pub async fn unhide(pool: &PgPool, id: i64) -> sqlx::Result<bool> {
+    let mut tx = pool.begin().await?;
+    let Some(owner) = sqlx::query_scalar!(
+        "UPDATE characters SET is_hidden = false WHERE id = $1 AND is_hidden RETURNING user_id",
+        id,
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    else {
+        return Ok(false);
+    };
+    if let Some(owner) = owner {
+        sqlx::query!(
+            "UPDATE characters SET is_main = true
+             WHERE id = $1
+               AND NOT EXISTS (SELECT 1 FROM characters WHERE user_id = $2 AND is_main)",
+            id,
+            owner,
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
+    Ok(true)
+}
+
+/// `POST /api/admin/battlenet-characters/{id}/unhide`. Superusers only.
+async fn unhide_one(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, CharacterError> {
+    if unhide(&state.pool, id).await? {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(crate::Error::External(CharacterError::NotFound))
+    }
+}
+
 pub fn admin_router() -> Router<State> {
-    Router::new().route("/battlenet-characters", get(list_all))
+    Router::new()
+        .route("/battlenet-characters", get(list_all))
+        .route("/battlenet-characters/{id}/unhide", post(unhide_one))
 }
 
 #[cfg(test)]
@@ -584,6 +631,45 @@ mod tests {
         assert_eq!(shown.level, 10);
         assert!(shown.is_main, "their first character on the site");
         assert!(!list(&pool).await.unwrap()[0].is_hidden);
+    }
+
+    #[sqlx::test]
+    async fn unhiding_brings_it_onto_the_roster(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let provider = account(&pool, "ey#1", Some(ey.id)).await;
+        apply(
+            &pool,
+            provider,
+            "ey#1",
+            &[listed(1, "Eyl", "Shm", 10), listed(2, "Eyl", "Two", 5)],
+        )
+        .await
+        .unwrap();
+        let all = list(&pool).await.unwrap();
+        let shm = all.iter().find(|c| c.last_name == "Shm").unwrap().id;
+        let two = all.iter().find(|c| c.last_name == "Two").unwrap().id;
+
+        assert!(unhide(&pool, shm).await.unwrap());
+        let shown = row(&pool, shm).await;
+        assert!(!shown.is_hidden && shown.is_main, "their first, so their main");
+        assert_eq!(shown.user_id, Some(ey.id.0));
+        assert!(
+            crate::characters::find_by_slug(&pool, "eyl-shm")
+                .await
+                .unwrap()
+                .is_some()
+        );
+
+        assert!(unhide(&pool, two).await.unwrap());
+        assert!(!row(&pool, two).await.is_main, "the main stays");
+        assert!(!unhide(&pool, two).await.unwrap(), "already shown");
+
+        // The next sign-in keeps it: it is a site character now, only linked.
+        let synced = apply(&pool, provider, "ey#1", &[listed(1, "Eyl", "Shm", 12)])
+            .await
+            .unwrap();
+        assert_eq!((synced.linked, synced.hidden, synced.removed), (1, 0, 0));
+        assert!(!row(&pool, two).await.is_hidden);
     }
 
     #[sqlx::test]
