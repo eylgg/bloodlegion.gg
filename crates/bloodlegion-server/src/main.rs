@@ -170,6 +170,19 @@ enum CharactersCommand {
     /// Remove the test raids and loot `seed` makes, then its characters, except any that raided
     /// or won loot with real characters.
     Unseed,
+    /// Print what the armory says of a character, by its page name (`eyl-gg`).
+    Armory {
+        name: String,
+        /// Print the API's JSON as it answered.
+        #[arg(long)]
+        raw: bool,
+    },
+    /// Look up every character in the armory and list where the site differs.
+    ArmoryCheck {
+        /// Fill in what the site lacks: a race or sex not recorded, a lower level.
+        #[arg(long)]
+        fill: bool,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -381,6 +394,8 @@ fn main() -> Result<()> {
         Some(Command::Characters { command }) => match command {
             CharactersCommand::Seed => cli::characters_seed(),
             CharactersCommand::Unseed => cli::characters_unseed(),
+            CharactersCommand::Armory { name, raw } => cli::characters_armory(name, raw),
+            CharactersCommand::ArmoryCheck { fill } => cli::characters_armory_check(fill),
         },
         Some(Command::Passwords { command }) => match command {
             PasswordsCommand::Status => cli::passwords_status(),

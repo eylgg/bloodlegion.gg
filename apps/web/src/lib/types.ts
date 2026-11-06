@@ -71,6 +71,30 @@ export type NotAddedMember = {
 	seen_at: string;
 };
 
+/** One character as the armory check found it, from `POST /api/admin/armory-check`. */
+export type ArmoryChecked = {
+	id: number;
+	first_name: string;
+	last_name: string;
+	class: string;
+	/** Whether the armory has a character of its name. */
+	found: boolean;
+	armory: {
+		level: number | null;
+		class: string | null;
+		race: string | null;
+		sex: Sex | null;
+		ruleset: Ruleset | null;
+		guild: string | null;
+	} | null;
+	/** Where the site has something the armory disagrees with. */
+	differences: { field: string; site: string; armory: string }[];
+	/** What filling in took from the armory: race, sex, level. */
+	filled: string[];
+	/** Why the lookup failed, when it did (not "no such character"). */
+	error: string | null;
+};
+
 export type RosterUpload = {
 	id: number;
 	/** Who sent it; null once their account is gone. */

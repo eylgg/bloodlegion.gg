@@ -118,6 +118,17 @@
 
 <section class="panel">
 	<div class="head">
+		<h2>Armory check</h2>
+		<Button href={resolve('/admin/armory')} variant="secondary" size="small">View</Button>
+	</div>
+	<p class="muted">
+		Every character against Blizzard's armory: where the site and the armory disagree, and filling
+		in the races, sexes, and levels the site lacks.
+	</p>
+</section>
+
+<section class="panel">
+	<div class="head">
 		<h2>Roster uploads</h2>
 		<Button href={resolve('/admin/rosters')} variant="secondary" size="small">View</Button>
 	</div>

@@ -548,6 +548,51 @@ pub async fn characters_seed() -> Result<()> {
     Ok(())
 }
 
+/// `characters armory`: what the armory says of one character.
+#[tokio::main(flavor = "current_thread")]
+pub async fn characters_armory(name: String, raw: bool) -> Result<()> {
+    let state = State::new().await?;
+    let token = crate::wow::armory::app_token(&state).await?;
+    let Some(profile) = crate::wow::armory::profile(&state.http_client, &token, &name).await?
+    else {
+        return Err(anyhow::anyhow!("the armory has no character '{name}'").into());
+    };
+    if raw {
+        println!("{profile:#}");
+    } else {
+        println!("{:#?}", crate::wow::armory::parse(&profile));
+    }
+    Ok(())
+}
+
+/// `characters armory-check`: every character against the armory.
+#[tokio::main(flavor = "current_thread")]
+pub async fn characters_armory_check(fill: bool) -> Result<()> {
+    let state = State::new().await?;
+    let checked = crate::wow::armory::check(&state, fill).await?;
+    for character in &checked {
+        let name = format!("{} {}", character.first_name, character.last_name);
+        if let Some(error) = &character.error {
+            println!("{name}: lookup failed: {error}");
+        } else if !character.found {
+            println!("{name}: not in the armory");
+        } else {
+            for difference in &character.differences {
+                println!(
+                    "{name}: {} is {} here, {} in the armory",
+                    difference.field, difference.site, difference.armory
+                );
+            }
+            if !character.filled.is_empty() {
+                println!("{name}: filled in {}", character.filled.join(", "));
+            }
+        }
+    }
+    let found = checked.iter().filter(|c| c.found).count();
+    eprintln!("{} characters, {found} in the armory", checked.len());
+    Ok(())
+}
+
 /// `characters unseed`: removes the test raids, then the test characters that have no history.
 #[tokio::main(flavor = "current_thread")]
 pub async fn characters_unseed() -> Result<()> {

@@ -3,6 +3,7 @@
 //! through the `wow.profile` scope at sign-in).
 
 pub mod api;
+pub mod armory;
 pub mod battlenet;
 pub mod catalog;
 

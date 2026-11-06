@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { api, errorMessage } from '$lib/api';
-	import { characterPath, formatDateTime, rulesetLabel } from '$lib/guild';
+	import { armoryUrl, characterPath, formatDateTime, rulesetLabel } from '$lib/guild';
 	import { classIcon } from '$lib/wow/icons';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
@@ -74,7 +74,14 @@
 			<CharacterSpecs cls={character.class} specs={character.specs} />
 			{character.username ? `Played by ${character.username} · ` : ''}{data.detail.raids_attended}
 			{data.detail.raids_attended === 1 ? 'raid' : 'raids'} · {data.detail.loot.length}
-			{data.detail.loot.length === 1 ? 'item' : 'items'}
+			{data.detail.loot.length === 1 ? 'item' : 'items'} ·
+			<!-- eslint-disable svelte/no-navigation-without-resolve -- Blizzard's site -->
+			<a
+				href={armoryUrl(character.first_name, character.last_name)}
+				target="_blank"
+				rel="noreferrer">Armory</a
+			>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		</p>
 	</div>
 	{#if data.detail.can_edit && !editing}

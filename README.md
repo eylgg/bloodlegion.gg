@@ -214,6 +214,16 @@ the changes.
   Battle.net (level, class, race, player) until Battle.net stops listing it, which removes it. An
   officer adding a character of its name brings the hidden one out instead of making another
   (`wow::battlenet`).
+- **The armory**: each character's page links to its page in Blizzard's armory
+  (`worldofwarcraft.blizzard.com/en-us/forever/us/armory/character/eyl-gg`, its name lowercase).
+  The same profile is in the API (`/profile/wow/character/eyl-gg`, `profile-forever-us`), read with
+  the site's own token from the `battlenet` sign-in client (client credentials): level, class,
+  race, sex, ruleset, and guild. Superusers check every character on the roster against it
+  (Administration → Armory check, `/admin/armory`; `POST /api/admin/armory-check`, or
+  `bloodlegion-server characters armory-check [--fill]`; `characters armory <eyl-gg> [--raw]` shows
+  one): it lists where the site and the armory differ and the characters the armory does not have,
+  and filling in takes a race or sex nobody recorded and a level the site has lower. Anything else
+  that differs is only listed, for an officer to fix.
 - **Rulesets**: Forever has rulesets instead of realms (Normal, PvP, Roleplay, RP-PvP, Hardcore).
   The guild's faction and ruleset are settings on the Administration page, Horde and PvP to start.
   A character records its ruleset, the guild's unless an officer picks another (its faction is its

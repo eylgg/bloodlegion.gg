@@ -12,6 +12,12 @@ export const characterPath = (firstName: string, lastName: string) =>
 	resolve('/(guild)/roster/[name]', { name: characterSlug(firstName, lastName) });
 
 /** A player's page: `/@eyl`, the username lowercase, as it is unique. */
+/** The character's armory page at Blizzard: its name lowercase, like its page here. */
+export const armoryUrl = (firstName: string, lastName: string) =>
+	`https://worldofwarcraft.blizzard.com/en-us/forever/us/armory/character/${encodeURIComponent(
+		characterSlug(firstName, lastName)
+	)}`;
+
 export const playerPath = (username: string) =>
 	resolve('/(guild)/@[username]', { username: username.toLowerCase() });
 

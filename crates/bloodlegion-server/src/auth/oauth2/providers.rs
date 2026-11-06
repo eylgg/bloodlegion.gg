@@ -280,6 +280,24 @@ pub(crate) async fn tokens_for_user(
         .collect()
 }
 
+/// The provider `slug`'s client id and decrypted secret, for calling its APIs as the site itself
+/// (a client credentials token); `None` when there is no such provider.
+pub(crate) async fn client_credentials(
+    state: &State,
+    slug: &crate::Slug,
+) -> anyhow::Result<Option<(String, String)>> {
+    let Some(provider) = db::find_provider_by_slug(&state.pool, slug)
+        .await
+        .context("looking up the provider")?
+    else {
+        return Ok(None);
+    };
+    let secret = state
+        .decrypt(&provider.client_secret)
+        .context("decrypting the client secret")?;
+    Ok(Some((provider.client_id, secret)))
+}
+
 /// OAuth2 providers offered on the login page.
 pub async fn list_login_providers(
     pool: &PgPool,
