@@ -4,7 +4,7 @@
 	import { RANK_LABEL, formatDate, playerPath } from '$lib/guild';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
-	import type { AdminAccount, Connection } from '$lib/types';
+	import type { AdminAccount, BattlenetRead, Connection } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -78,6 +78,37 @@
 		}
 	}
 
+	let reading = $state<number | null>(null);
+
+	/** Reads the member's characters from Battle.net now, with their last sign-in's token. */
+	async function readCharacters(account: AdminAccount) {
+		reading = account.id;
+		error = '';
+		done = '';
+		try {
+			const reads = await api.post<BattlenetRead[]>(
+				`/api/admin/users/${account.id}/battlenet-sync`
+			);
+			if (reads.length === 0) {
+				error = `${account.username} has no Battle.net token stored: they need to sign in with Battle.net again.`;
+				return;
+			}
+			const lines = reads.map((read) => {
+				const name = read.account ?? 'Their Battle.net account';
+				if (read.error) return `${name}: ${read.error}`;
+				const s = read.synced!;
+				return `${name}: ${s.listed} listed, ${s.linked} on the site, ${s.hidden} hidden, ${s.claimed} given to them.`;
+			});
+			if (reads.some((read) => read.error)) error = lines.join(' ');
+			else done = lines.join(' ');
+			await invalidateAll();
+		} catch (err) {
+			error = errorMessage(err, 'Reading the characters failed. Please try again.');
+		} finally {
+			reading = null;
+		}
+	}
+
 	const FILTERS: { value: Filter; label: string }[] = [
 		{ value: 'all', label: 'Everyone' },
 		{ value: 'no-battlenet', label: 'No Battle.net' },
@@ -99,7 +130,9 @@
 <p class="muted intro">
 	Every account on the site, with the Battle.net and Discord accounts its member signed in with. An
 	account made by an admin, or by a password sign-in, has none until its member connects one from
-	their profile. A rename follows the same rules as signing up.
+	their profile. Read characters reads a member's Battle.net characters now, as a sign-in does, with
+	the token from their last sign-in; it lasts about a day, after which they need to sign in again. A
+	rename follows the same rules as signing up.
 </p>
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
@@ -195,7 +228,19 @@
 							{/if}
 						</td>
 						<td>{RANK_LABEL[account.guild_rank]}</td>
-						<td>{@render sign_in(connected(account, 'battlenet'))}</td>
+						<td>
+							{@render sign_in(connected(account, 'battlenet'))}
+							{#if connected(account, 'battlenet')}
+								<button
+									type="button"
+									class="link"
+									disabled={reading !== null}
+									onclick={() => readCharacters(account)}
+								>
+									{reading === account.id ? 'Reading...' : 'Read characters'}
+								</button>
+							{/if}
+						</td>
 						<td>{@render sign_in(connected(account, 'discord'))}</td>
 						<td>
 							{#each others(account) as connection (connection.provider + connection.subject)}

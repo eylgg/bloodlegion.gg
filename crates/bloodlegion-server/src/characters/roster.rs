@@ -136,6 +136,8 @@ pub async fn apply(
     let mut unmatched = Vec::new();
     let mut added = Vec::new();
     let mut changes: Vec<LevelChange> = Vec::new();
+    // Every character it named, matched or added: the guild as the game has it now.
+    let mut named: Vec<i64> = Vec::new();
     for member in &input.members {
         let battlenet_id = member.guid.as_deref().and_then(battlenet_id);
         let found = super::db::raise_level(
@@ -148,6 +150,7 @@ pub async fn apply(
         .await?;
         if !found.is_empty() {
             matched += 1;
+            named.extend(found.iter().map(|change| change.character_id));
             // A character named twice in one roster: its first state is the one to go back to.
             for change in found {
                 match changes
@@ -172,6 +175,7 @@ pub async fn apply(
                 member.reached_60_at,
             )
             .await?;
+            named.push(made.character_id);
             added.push(AddedMember {
                 character_id: made.character_id,
                 first_name: first.to_string(),
@@ -194,6 +198,7 @@ pub async fn apply(
         input.members.len() as i32,
         matched as i32,
         serde_json::to_value(&unmatched).context("listing the unmatched members")?,
+        &named,
         &changes,
         &added
             .iter()
@@ -204,6 +209,7 @@ pub async fn apply(
             .collect::<Vec<_>>(),
     )
     .await?;
+    super::db::sync_in_guild(&mut tx).await?;
     tx.commit().await?;
     Ok(RosterResult {
         upload_id,
@@ -348,6 +354,55 @@ pub async fn undo(pool: &PgPool, id: i64, by: UserId) -> Result<Undone, Characte
     })
 }
 
+/// The guild as the latest upload saw it, for the superusers.
+#[derive(Debug, serde::Serialize)]
+pub struct Standing {
+    /// The latest upload that decides who is in the guild; `None` before any did.
+    pub latest: Option<LatestUpload>,
+    /// Characters on the site in the guild, and on the site at all (hidden ones left out).
+    pub in_guild: i64,
+    pub characters: i64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct LatestUpload {
+    pub id: i64,
+    #[serde(with = "iso8601")]
+    pub created_at: OffsetDateTime,
+    pub username: Option<String>,
+    /// How many members it named, and how many of those it matched.
+    pub members: i32,
+    pub matched: i32,
+}
+
+pub async fn standing(pool: &PgPool) -> Result<Standing> {
+    let latest = super::db::latest_upload(pool)
+        .await?
+        .map(|row| LatestUpload {
+            id: row.id,
+            created_at: row.created_at,
+            username: row.username,
+            members: row.members,
+            matched: row.matched,
+        });
+    let counts = sqlx::query!(
+        r#"SELECT count(*) FILTER (WHERE in_guild) AS "in_guild!", count(*) AS "characters!"
+           FROM characters WHERE NOT is_hidden"#
+    )
+    .fetch_one(pool)
+    .await?;
+    Ok(Standing {
+        latest,
+        in_guild: counts.in_guild,
+        characters: counts.characters,
+    })
+}
+
+/// `GET /api/admin/rosters/standing`: [`standing`]. Superusers only.
+async fn get_standing(state: State, _admin: Admin) -> Result<Json<Standing>> {
+    Ok(Json(standing(&state.pool).await?))
+}
+
 /// `GET /api/admin/rosters`: the latest roster uploads. Superusers only.
 async fn list_uploads(state: State, _admin: Admin) -> Result<Json<Vec<Upload>>> {
     Ok(Json(uploads(&state.pool).await?))
@@ -373,6 +428,7 @@ pub fn admin_router() -> Router<State> {
     Router::new()
         .route("/rosters", get(list_uploads))
         .route("/rosters/not-added", get(list_not_added))
+        .route("/rosters/standing", get(get_standing))
         .route("/rosters/{id}/undo", post(undo_upload))
 }
 
@@ -408,6 +464,56 @@ mod tests {
         assert_eq!(battlenet_id("Player-6934"), None);
         assert_eq!(battlenet_id("Creature-0-1-2"), None);
         assert_eq!(battlenet_id("Player-6934-zz"), None);
+    }
+
+    #[sqlx::test]
+    async fn the_latest_upload_says_who_is_in_the_guild(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let mine = add(&pool, &ey, input("Eyl", "Gg", "warrior", true))
+            .await
+            .unwrap();
+        let in_guild = |name: &'static str| {
+            let pool = pool.clone();
+            async move {
+                sqlx::query_scalar!(
+                    "SELECT in_guild FROM characters WHERE name_normalized = $1",
+                    name
+                )
+                .fetch_one(&pool)
+                .await
+                .unwrap()
+            }
+        };
+        assert!(
+            !mine.in_guild,
+            "an officer adding it says nothing of the guild"
+        );
+
+        let first = apply(
+            &pool,
+            ey.id,
+            &roster(vec![seen("Eyl Gg", 5, None), seen("Other Member", 3, None)]),
+        )
+        .await
+        .unwrap();
+        assert!(in_guild("eyl gg").await && in_guild("other member").await);
+        let summary = standing(&pool).await.unwrap();
+        assert_eq!((summary.in_guild, summary.characters), (2, 2));
+        assert_eq!(summary.latest.unwrap().id, first.upload_id);
+
+        // Other Member left the guild.
+        let second = apply(&pool, ey.id, &roster(vec![seen("Eyl Gg", 6, None)]))
+            .await
+            .unwrap();
+        assert!(in_guild("eyl gg").await && !in_guild("other member").await);
+
+        // Undoing it goes back to the guild the one before saw.
+        undo(&pool, second.upload_id, ey.id).await.unwrap();
+        assert!(in_guild("other member").await);
+        assert_eq!(
+            standing(&pool).await.unwrap().latest.unwrap().id,
+            first.upload_id
+        );
     }
 
     #[sqlx::test]

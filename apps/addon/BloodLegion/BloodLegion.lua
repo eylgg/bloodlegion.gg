@@ -47,9 +47,15 @@ local function scanRoster()
 		BloodLegionDB.roster = roster
 	end
 	local now = time()
-	for i = 1, GetNumGuildMembers() do
+	local total = GetNumGuildMembers() or 0
+	local named, seen = 0, {}
+	for i = 1, total do
 		local name, _, _, level, class, _, _, _, _, _, _, _, _, _, _, _, guid =
 			GetGuildRosterInfo(i)
+		if name then
+			named = named + 1
+			seen[name] = true
+		end
 		if name and level and level > 0 then
 			local member = roster.members[name] or {}
 			member.level = math.max(member.level or 0, level)
@@ -59,6 +65,15 @@ local function scanRoster()
 				member.reached60 = now
 			end
 			roster.members[name] = member
+		end
+	end
+	-- A scan that named every member, offline ones too, is the guild as it is: anyone else left.
+	-- One that missed some (offline members hidden, the list still loading) only adds.
+	if total > 0 and named >= total then
+		for name in pairs(roster.members) do
+			if not seen[name] then
+				roster.members[name] = nil
+			end
 		end
 	end
 	roster.scannedAt = now

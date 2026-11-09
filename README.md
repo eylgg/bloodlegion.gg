@@ -213,7 +213,14 @@ the changes.
   only superusers see it (`/admin/battlenet`), it is in no list, page, raid, or loot, and it follows
   Battle.net (level, class, race, player) until Battle.net stops listing it, which removes it. An
   officer adding a character of its name brings the hidden one out instead of making another, and
-  so does a superuser's Unhide there (`wow::battlenet`).
+  so does a superuser's Unhide there (`wow::battlenet`). **A sign-in is the only way the site
+  learns a character's Battle.net account** (`battlenet_subject`, with `battlenet_seen_at` the time
+  it was last read): a roster upload knows only the character's own id (from its GUID), and an
+  officer giving a character to a member is the site's say. The page lists only characters a
+  sign-in linked; one Battle.net stops listing is unlinked from the account but keeps its id.
+  Superusers can also read a member's characters without waiting for a sign-in (Users → Read
+  characters, `POST /api/admin/users/{id}/battlenet-sync`), with the token from their last
+  sign-in, which Battle.net keeps good for about a day.
 - **Users**: superusers see every account (Administration → Users, `/admin/users`;
   `GET /api/admin/users`) with the Battle.net and Discord accounts it signed in with (a BattleTag,
   a Discord username), any disconnected or other sign-ins, whether it has a password, and its
@@ -302,7 +309,9 @@ the client keep them current:
    guild list, and saves each member's level, class, GUID, and the first time it saw them at 60 in
    `WTF/Account/<ACCOUNT>/SavedVariables/BloodLegion.lua`. It saves only Blood Legion's roster ("BL"
    in game, matched by name: WoW gives addons no guild id), and turns on the guild list's offline members so it
-   sees everyone. The game writes the file on `/reload` and logout.
+   sees everyone. A scan that names every member drops anyone saved before who is no longer in the
+   list (they left); one that missed some only adds. The game writes the file on `/reload` and
+   logout.
 2. **The client** (`bloodlegion-client`) sends it to the site (`POST /api/characters/roster`)
    whenever the game rewrites it, for every account in the game folder (by default
    `C:\Program Files (x86)\World of Warcraft\_forever_`; `--game` for another, `--file` for one
@@ -336,16 +345,22 @@ the client keep them current:
    client lists what it added, and any member it could not (a name or class the site does not
    take); those are also on the roster page for superusers ("Not added from the roster", from
    `GET /api/admin/rosters/not-added`), each with an Add that fills in the character form, until a
-   character of that name is on the site. Every character a roster names is marked as the guild's
-   (`characters.in_guild`): everyone sees it on the roster, as a member's main, and it races to 60
-   as a member's, even while nobody plays it on the site. A character an officer records for no
-   one (a pug) is not, and stays the administrator's, under Unclaimed.
+   character of that name is on the site. **Only roster uploads say who is in the guild**
+   (`characters.in_guild`): the latest upload marks every character it named, matched or added,
+   and clears every other (`roster_members`, `db::sync_in_guild`). A character in the guild shows
+   on the roster for everyone, as a member's main, and races to 60 as a member's, even while
+   nobody plays it on the site. A character an officer records for no one (a pug) is not, and
+   stays the administrator's, under Unclaimed; one a member plays that the latest upload did not
+   name is listed for superusers on the roster under "Not in the guild". Neither an officer
+   adding a character nor a Battle.net sign-in changes it.
 
-4. **Each upload is recorded**: who sent it, when, and every character it changed, with the
-   level and time at 60 before and after. Superusers see them under Administration → Roster uploads
-   (`/admin/rosters`) and can undo one with bad data. Undoing puts back the characters still as
-   that upload left them (any changed since, by a later upload or an officer, keep their level), and
-   removes the characters it made that are still nobody's and never raided or won loot.
+4. **Each upload is recorded**: who sent it, when, every character it named, and every character
+   it changed, with the level and time at 60 before and after. Superusers see them under
+   Administration → Roster uploads (`/admin/rosters`), headed by how many characters are in the
+   guild and the upload that says so (`GET /api/admin/rosters/standing`), and can undo one with bad
+   data. Undoing puts back the characters still as that upload left them (any changed since, by a
+   later upload or an officer, keep their level), removes the characters it made that are still
+   nobody's and never raided or won loot, and goes back to the guild the upload before saw.
 
 ## The Discord server
 

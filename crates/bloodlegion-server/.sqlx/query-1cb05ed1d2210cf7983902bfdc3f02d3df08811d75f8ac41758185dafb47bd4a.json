@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO roster_uploads (user_id, members, matched, unmatched)\n        VALUES ($1, $2, $3, $4)\n        RETURNING id\n        ",
+  "query": "\n        INSERT INTO roster_uploads (user_id, members, matched, unmatched, records_members)\n        VALUES ($1, $2, $3, $4, true)\n        RETURNING id\n        ",
   "describe": {
     "columns": [
       {
@@ -27,5 +27,5 @@
       false
     ]
   },
-  "hash": "fe395a9fecde6720565508aafb4df9629774eeb77dd13203df56efff255e5675"
+  "hash": "1cb05ed1d2210cf7983902bfdc3f02d3df08811d75f8ac41758185dafb47bd4a"
 }

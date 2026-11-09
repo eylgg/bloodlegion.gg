@@ -154,6 +154,20 @@
 		data.user.is_superuser ? sorted(characters.filter((c) => isPug(c) && matches(c))) : []
 	);
 	const anyUnclaimed = $derived(data.user.is_superuser && characters.some(isPug));
+	// Characters members play that the latest roster upload did not name: not in the guild in the
+	// game (left, never invited, or another guild's), for the administrator's eyes only. Only once
+	// an upload has said who is in the guild.
+	const notInGuild = $derived(
+		data.user.is_superuser && data.standing?.latest
+			? sorted(characters.filter((c) => c.user_id !== null && !c.in_guild && matches(c)))
+			: []
+	);
+	const anyNotInGuild = $derived(
+		data.user.is_superuser &&
+			!!data.standing?.latest &&
+			characters.some((c) => c.user_id !== null && !c.in_guild)
+	);
+
 	// Accounts with no characters yet (mostly new sign-ups), for the administrator to rank.
 	const withoutCharacters = $derived(
 		data.user.is_superuser
@@ -374,6 +388,18 @@
 	<section>
 		<h2>Unclaimed <span class="count">{unclaimed.length}</span></h2>
 		{@render table(unclaimed)}
+	</section>
+{/if}
+
+{#if anyNotInGuild && data.standing?.latest}
+	<section>
+		<h2>Not in the guild <span class="count">{notInGuild.length}</span></h2>
+		<p class="muted">
+			Characters members play on the site that the latest roster upload ({formatDateTime(
+				data.standing.latest.created_at
+			)}) did not name, so they are not in the guild in the game. Only you see this.
+		</p>
+		{@render table(notInGuild)}
 	</section>
 {/if}
 

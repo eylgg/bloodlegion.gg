@@ -58,6 +58,27 @@
 	removes the characters it added that nobody plays yet and that never raided.
 </p>
 
+<section class="panel standing">
+	<h2>The guild now</h2>
+	{#if data.standing.latest}
+		<p>
+			<strong>{data.standing.in_guild}</strong> of the site's {data.standing.characters} characters are
+			in the guild, as the roster upload of
+			<strong>{formatDateTime(data.standing.latest.created_at)}</strong> saw it ({data.standing
+				.latest.members} members, by {data.standing.latest.username ?? 'a deleted account'}).
+		</p>
+		<p class="muted">
+			Only roster uploads say who is in the guild: each one marks the characters it named and no
+			others, and undoing one goes back to the upload before.
+		</p>
+	{:else}
+		<p class="muted">
+			No roster upload has said who is in the guild yet ({data.standing.in_guild} of
+			{data.standing.characters} characters are marked in it from older uploads). The next upload decides.
+		</p>
+	{/if}
+</section>
+
 {#if error}<Alert variant="error">{error}</Alert>{/if}
 {#if done}<Alert variant="success">{done}</Alert>{/if}
 

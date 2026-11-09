@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT c.id, c.first_name, c.last_name, c.class, c.race, c.sex AS \"sex: Sex\",\n                  c.ruleset AS \"ruleset: Ruleset\", c.level, c.is_hidden, c.battlenet_seen_at,\n                  cr.raw_userinfo AS \"raw_userinfo?\", u.username AS \"username?\"\n           FROM characters c\n           LEFT JOIN auth_oauth2_provider_credentials cr\n               ON cr.provider_id = c.battlenet_provider_id AND cr.subject = c.battlenet_subject\n           LEFT JOIN users u ON u.id = c.user_id\n           WHERE c.battlenet_id IS NOT NULL OR c.is_hidden\n           ORDER BY u.username_normalized NULLS LAST, c.battlenet_subject, c.level DESC,\n                    c.name_normalized",
+  "query": "SELECT c.id, c.first_name, c.last_name, c.class, c.race, c.sex AS \"sex: Sex\",\n                  c.ruleset AS \"ruleset: Ruleset\", c.level, c.is_hidden, c.battlenet_seen_at,\n                  cr.raw_userinfo AS \"raw_userinfo?\", u.username AS \"username?\"\n           FROM characters c\n           LEFT JOIN auth_oauth2_provider_credentials cr\n               ON cr.provider_id = c.battlenet_provider_id AND cr.subject = c.battlenet_subject\n           LEFT JOIN users u ON u.id = c.user_id\n           WHERE c.battlenet_subject IS NOT NULL OR c.is_hidden\n           ORDER BY u.username_normalized NULLS LAST, c.battlenet_subject, c.level DESC,\n                    c.name_normalized",
   "describe": {
     "columns": [
       {
@@ -154,5 +154,5 @@
       false
     ]
   },
-  "hash": "71a99cc753155867de9c3671af4272ae15785da887081152bef2a26e5ff1fa4c"
+  "hash": "6a247a275cd2885666af28db244d46c62c6fb2a1060c5d086812db2d2474dd68"
 }

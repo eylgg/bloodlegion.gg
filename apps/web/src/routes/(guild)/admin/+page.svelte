@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { api, errorMessage } from '$lib/api';
-	import { FACTION_LABEL, RULESETS, formatInZone, zoneCity } from '$lib/guild';
+	import { FACTION_LABEL, RULESETS, formatDateTime, formatInZone, zoneCity } from '$lib/guild';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import DiscordSettings from '$lib/components/guild/DiscordSettings.svelte';
@@ -145,6 +145,14 @@
 	<p class="muted">
 		Every roster the officers' Blood Legion clients sent from the addon: who sent it, the levels it
 		changed, and an undo for one with bad data.
+	</p>
+	<p>
+		{#if data.standing.latest}
+			<strong>{data.standing.in_guild}</strong> characters in the guild, from the upload of
+			{formatDateTime(data.standing.latest.created_at)}.
+		{:else}
+			No upload has said who is in the guild yet.
+		{/if}
 	</p>
 </section>
 

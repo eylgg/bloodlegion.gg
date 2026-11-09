@@ -344,6 +344,8 @@ pub async fn upsert_tokens(
 
 /// The tokens stored for one of a user's connected identities at the provider named by `slug`.
 pub struct StoredTokens {
+    pub provider_id: ProviderId,
+    pub subject: String,
     /// The identity's raw userinfo, to say which account the tokens belong to (a BattleTag).
     pub raw_userinfo: serde_json::Value,
     pub access_token: Ciphertext,
@@ -362,7 +364,8 @@ pub async fn find_tokens_for_user(
     sqlx::query_as!(
         StoredTokens,
         r#"
-        SELECT c.raw_userinfo, t.access_token_ciphertext AS "access_token: Ciphertext",
+        SELECT c.provider_id AS "provider_id: ProviderId", c.subject,
+               c.raw_userinfo, t.access_token_ciphertext AS "access_token: Ciphertext",
                t.refresh_token_ciphertext AS "refresh_token: Ciphertext",
                t.expires_at, t.scope, t.updated_at
         FROM auth_oauth2_provider_credentials c

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH latest AS (\n            SELECT id FROM roster_uploads\n            WHERE records_members AND undone_at IS NULL\n            ORDER BY created_at DESC, id DESC\n            LIMIT 1\n        ), named AS (\n            SELECT c.id,\n                   EXISTS (\n                       SELECT 1 FROM roster_members m\n                       WHERE m.upload_id = (SELECT id FROM latest) AND m.character_id = c.id\n                   ) AS in_guild\n            FROM characters c\n            WHERE EXISTS (SELECT 1 FROM latest)\n        )\n        UPDATE characters c SET in_guild = named.in_guild\n        FROM named\n        WHERE c.id = named.id AND c.in_guild <> named.in_guild\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c44cf7d4de1d5cafbf0cac3f5168ea9e3671533b72db623725f554a947e670d1"
+}

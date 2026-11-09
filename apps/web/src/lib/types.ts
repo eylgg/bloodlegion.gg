@@ -69,6 +69,34 @@ export type AdminAccount = {
 	created_at: string;
 };
 
+/** The guild as the latest roster upload saw it. */
+export type RosterStanding = {
+	/** The latest upload that decides who is in the guild; null before any did. */
+	latest: {
+		id: number;
+		created_at: string;
+		username: string | null;
+		members: number;
+		matched: number;
+	} | null;
+	/** Characters on the site in the guild, and on the site at all. */
+	in_guild: number;
+	characters: number;
+};
+
+/** What reading one Battle.net account's characters did. */
+export type BattlenetRead = {
+	account: string | null;
+	synced: {
+		listed: number;
+		linked: number;
+		hidden: number;
+		claimed: number;
+		removed: number;
+	} | null;
+	error: string | null;
+};
+
 export type BattlenetCharacter = {
 	id: number;
 	/** The Battle.net account's BattleTag. */

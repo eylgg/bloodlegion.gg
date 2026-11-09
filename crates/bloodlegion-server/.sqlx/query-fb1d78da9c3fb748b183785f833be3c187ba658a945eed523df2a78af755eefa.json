@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT in_guild FROM characters WHERE name_normalized = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "in_guild",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "in_guild"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "fb1d78da9c3fb748b183785f833be3c187ba658a945eed523df2a78af755eefa"
+}

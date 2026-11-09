@@ -66,6 +66,12 @@
 	hidden one onto the roster, or until a superuser unhides it here. Once on the roster it is the
 	member's like any other character, and sign-ins no longer change it.
 </p>
+<p class="muted intro">
+	A sign-in is the only way the site learns which Battle.net account a character is on, so a guild
+	member who never signed in with Battle.net is not here: their characters are on the roster from
+	the roster uploads. Read characters on the Users page reads a member's account without waiting for
+	their next sign-in.
+</p>
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
 {#if done}<Alert variant="success">{done}</Alert>{/if}
@@ -92,7 +98,7 @@
 						<th>Race</th>
 						<th>Ruleset</th>
 						<th>On the site</th>
-						<th>Last seen</th>
+						<th>Read at sign-in</th>
 					</tr>
 				</thead>
 				<tbody>

@@ -53,7 +53,7 @@ pub fn spawn_sync(state: State, provider_id: ProviderId, subject: String, access
 }
 
 /// What a sync did.
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, serde::Serialize)]
 pub struct Synced {
     /// Characters Battle.net listed.
     pub listed: usize,
@@ -127,7 +127,8 @@ fn map(character: &Character) -> Option<Mapped<'_>> {
 }
 
 /// Applies the account's listing: links each character to the site's of the same Battle.net id or
-/// name, adds the rest hidden, removes hidden ones no longer listed (and unlinks site ones), then
+/// name, adds the rest hidden, removes hidden ones no longer listed (and unlinks site ones from the
+/// account, keeping the character's own id, which is the game's), then
 /// gives the account's characters nobody plays to its member ([`claim`]).
 pub async fn apply(
     pool: &PgPool,
@@ -245,8 +246,7 @@ pub async fn apply(
     .rows_affected();
     sqlx::query!(
         "UPDATE characters
-         SET battlenet_id = NULL, battlenet_provider_id = NULL, battlenet_subject = NULL,
-             battlenet_seen_at = NULL
+         SET battlenet_provider_id = NULL, battlenet_subject = NULL, battlenet_seen_at = NULL
          WHERE battlenet_provider_id = $1 AND battlenet_subject = $2
            AND NOT (battlenet_id = ANY($3))",
         provider_id.0,
@@ -324,7 +324,9 @@ async fn claim_in(
     Ok(claimed)
 }
 
-/// A character a Battle.net listing linked or added, for the superusers' page.
+/// A character a Battle.net sign-in linked to its account or added, for the superusers' page. Only a
+/// sign-in says which account a character is on: a roster upload's id (from the in-game GUID) is the
+/// character's alone, and an officer giving it to a member is the site's say, not Battle.net's.
 #[derive(Debug, serde::Serialize)]
 pub struct Listed {
     pub id: i64,
@@ -356,7 +358,7 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Listed>> {
            LEFT JOIN auth_oauth2_provider_credentials cr
                ON cr.provider_id = c.battlenet_provider_id AND cr.subject = c.battlenet_subject
            LEFT JOIN users u ON u.id = c.user_id
-           WHERE c.battlenet_id IS NOT NULL OR c.is_hidden
+           WHERE c.battlenet_subject IS NOT NULL OR c.is_hidden
            ORDER BY u.username_normalized NULLS LAST, c.battlenet_subject, c.level DESC,
                     c.name_normalized"#
     )
@@ -433,9 +435,84 @@ async fn unhide_one(
     }
 }
 
+/// One Battle.net account's read, for a superuser's [`sync_user`].
+#[derive(Debug, serde::Serialize)]
+pub struct AccountRead {
+    /// Its BattleTag, when it gave one.
+    pub account: Option<String>,
+    /// What the read did, when it worked.
+    pub synced: Option<Synced>,
+    /// Why it did not, when it failed (an expired token, the profile scope never granted).
+    pub error: Option<String>,
+}
+
+/// Reads a member's characters from each Battle.net account they linked, now, with the tokens their
+/// latest sign-in left (Battle.net's last a day). Empty when there are none: they linked before
+/// tokens were kept, or have no Battle.net account linked.
+pub async fn sync_user(state: &State, user_id: UserId) -> anyhow::Result<Vec<AccountRead>> {
+    let slug = crate::Slug::try_from("battlenet").context("the battlenet slug")?;
+    let accounts = crate::auth::oauth2::providers::tokens_for_user(state, user_id, &slug).await?;
+    let now = OffsetDateTime::now_utc();
+    let mut reads = Vec::new();
+    for tokens in accounts {
+        let result = match unusable(&tokens.scope, tokens.expires_at, now) {
+            Some(reason) => Err(reason),
+            None => sync(
+                state,
+                tokens.provider_id,
+                &tokens.subject,
+                &tokens.access_token,
+            )
+            .await
+            .map_err(|error| format!("{error:#}")),
+        };
+        let (synced, error) = match result {
+            Ok(synced) => (Some(synced), None),
+            Err(error) => (None, Some(error)),
+        };
+        reads.push(AccountRead {
+            account: tokens.identity,
+            synced,
+            error,
+        });
+    }
+    Ok(reads)
+}
+
+/// Why a sign-in's token cannot read the profile, if it cannot: the scope was never granted, or it
+/// expired.
+fn unusable(
+    scope: &str,
+    expires_at: Option<OffsetDateTime>,
+    now: OffsetDateTime,
+) -> Option<String> {
+    if !reads_profile(scope) {
+        return Some(format!(
+            "Their sign-in did not grant the WoW profile (scope: {scope})."
+        ));
+    }
+    let at = expires_at.filter(|at| *at <= now)?;
+    Some(format!(
+        "The token from their last sign-in expired on {}. They need to sign in with Battle.net \
+         again.",
+        at.date()
+    ))
+}
+
+/// `POST /api/admin/users/{id}/battlenet-sync`: [`sync_user`]. Superusers only.
+async fn sync_one(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+    Path(id): Path<UserId>,
+) -> Result<Json<Vec<AccountRead>>> {
+    Ok(Json(sync_user(&state, id).await?))
+}
+
 pub fn admin_router() -> Router<State> {
     Router::new()
         .route("/battlenet-characters", get(list_all))
+        .route("/users/{id}/battlenet-sync", post(sync_one))
         .route("/battlenet-characters/{id}/unhide", post(unhide_one))
 }
 
@@ -606,6 +683,11 @@ mod tests {
         assert_eq!(synced.removed, 0);
         let all = list(&pool).await.unwrap();
         assert_eq!(all.len(), 1, "the site character is unlinked, not removed");
+        let kept = sqlx::query_scalar!("SELECT battlenet_id FROM characters WHERE id = $1", gg)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(kept, Some(1), "it keeps the game's id for roster matching");
         assert_eq!(all[0].level, 60);
         assert!(row(&pool, gg).await.user_id.is_some());
 
@@ -723,6 +805,47 @@ mod tests {
             error.as_database_error().unwrap().constraint(),
             Some("raid_attendees_character_id_fkey")
         );
+    }
+
+    #[test]
+    fn expired_or_unscoped_tokens_cannot_read() {
+        let now = OffsetDateTime::now_utc();
+        let day = time::Duration::days(1);
+        assert_eq!(unusable("openid wow.profile", None, now), None);
+        assert_eq!(unusable("openid wow.profile", Some(now + day), now), None);
+        assert!(
+            unusable("openid wow.profile", Some(now - day), now)
+                .unwrap()
+                .contains("sign in with Battle.net again")
+        );
+        assert!(
+            unusable("openid", None, now)
+                .unwrap()
+                .contains("scope: openid")
+        );
+    }
+
+    #[sqlx::test]
+    async fn only_sign_ins_link_an_account(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let provider = account(&pool, "ey#1", Some(ey.id)).await;
+        apply(&pool, provider, "ey#1", &[listed(1, "Eyl", "Shm", 10)])
+            .await
+            .unwrap();
+        // A roster upload's id, and an officer's say: neither is a Battle.net account.
+        let zx = unowned(&pool, "Zx", "Forever").await;
+        sqlx::query!(
+            "UPDATE characters SET battlenet_id = 99, user_id = $2 WHERE id = $1",
+            zx,
+            ey.id.0
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let all = list(&pool).await.unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].last_name, "Shm");
+        assert!(all[0].seen_at.is_some());
     }
 
     #[test]

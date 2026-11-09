@@ -269,20 +269,22 @@ pub async fn raise_level(
     .await
 }
 
-/// Records an upload and the characters it changed; its id.
+/// Records an upload, every character it named, and the ones it changed; its id.
+#[allow(clippy::too_many_arguments)]
 pub async fn record_upload(
     conn: &mut PgConnection,
     user_id: UserId,
     members: i32,
     matched: i32,
     unmatched: serde_json::Value,
+    named: &[i64],
     changes: &[LevelChange],
     added: &[Added],
 ) -> sqlx::Result<i64> {
     let id = sqlx::query_scalar!(
         r#"
-        INSERT INTO roster_uploads (user_id, members, matched, unmatched)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO roster_uploads (user_id, members, matched, unmatched, records_members)
+        VALUES ($1, $2, $3, $4, true)
         RETURNING id
         "#,
         user_id as UserId,
@@ -291,6 +293,14 @@ pub async fn record_upload(
         unmatched,
     )
     .fetch_one(&mut *conn)
+    .await?;
+    sqlx::query!(
+        "INSERT INTO roster_members (upload_id, character_id)
+         SELECT $1, unnest($2::bigint[]) ON CONFLICT DO NOTHING",
+        id,
+        named,
+    )
+    .execute(&mut *conn)
     .await?;
     for change in changes {
         sqlx::query!(
@@ -515,6 +525,61 @@ pub async fn changes(pool: &PgPool, ids: &[i64]) -> sqlx::Result<Vec<ChangeRow>>
     .await
 }
 
+/// Sets `in_guild` from the latest upload that recorded its members and is not undone: the
+/// characters it named are in the guild, and no others. Leaves it alone while there is none.
+/// How many characters changed.
+pub async fn sync_in_guild(conn: &mut PgConnection) -> sqlx::Result<u64> {
+    Ok(sqlx::query!(
+        r#"
+        WITH latest AS (
+            SELECT id FROM roster_uploads
+            WHERE records_members AND undone_at IS NULL
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+        ), named AS (
+            SELECT c.id,
+                   EXISTS (
+                       SELECT 1 FROM roster_members m
+                       WHERE m.upload_id = (SELECT id FROM latest) AND m.character_id = c.id
+                   ) AS in_guild
+            FROM characters c
+            WHERE EXISTS (SELECT 1 FROM latest)
+        )
+        UPDATE characters c SET in_guild = named.in_guild
+        FROM named
+        WHERE c.id = named.id AND c.in_guild <> named.in_guild
+        "#
+    )
+    .execute(&mut *conn)
+    .await?
+    .rows_affected())
+}
+
+/// The latest upload that decides `in_guild` ([`sync_in_guild`]), if any.
+pub struct LatestUpload {
+    pub id: i64,
+    pub created_at: OffsetDateTime,
+    pub username: Option<String>,
+    pub members: i32,
+    pub matched: i32,
+}
+
+pub async fn latest_upload(pool: &sqlx::PgPool) -> sqlx::Result<Option<LatestUpload>> {
+    sqlx::query_as!(
+        LatestUpload,
+        r#"
+        SELECT r.id, r.created_at, u.username AS "username?", r.members, r.matched
+        FROM roster_uploads r
+        LEFT JOIN users u ON u.id = r.user_id
+        WHERE r.records_members AND r.undone_at IS NULL
+        ORDER BY r.created_at DESC, r.id DESC
+        LIMIT 1
+        "#
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 /// Undoes upload `id` as `by`: puts back the old level and time at 60 of each character it changed
 /// that is still as it left it, and removes the characters it made that are still nobody's and in
 /// no raid or loot. How many it put back, how many it left (changed since), and how many it
@@ -568,6 +633,8 @@ pub async fn undo_upload(
     .execute(&mut *conn)
     .await?
     .rows_affected();
+    // The guild is as the upload before saw it.
+    sync_in_guild(conn).await?;
     Ok(Some((reverted, changes as u64 - reverted, removed)))
 }
 

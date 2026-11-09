@@ -243,6 +243,9 @@ fn missing_scopes(requested: &str, granted: Option<&str>) -> Option<String> {
 /// One of a user's linked identities' decrypted tokens, for calling the provider's APIs on their
 /// behalf.
 pub(crate) struct ProviderTokens {
+    pub provider_id: crate::auth::providers::ProviderId,
+    /// The provider's id for the account.
+    pub subject: String,
     /// Which account at the provider these are for (a BattleTag), when it said.
     pub identity: Option<String>,
     pub access_token: String,
@@ -267,6 +270,8 @@ pub(crate) async fn tokens_for_user(
         .into_iter()
         .map(|stored| {
             Ok(ProviderTokens {
+                provider_id: stored.provider_id,
+                subject: stored.subject,
                 identity: provision::identity_label(&stored.raw_userinfo),
                 access_token: state
                     .decrypt(&stored.access_token)
