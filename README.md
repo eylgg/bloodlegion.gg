@@ -220,7 +220,9 @@ the changes.
   sign-in linked; one Battle.net stops listing is unlinked from the account but keeps its id.
   Superusers can also read a member's characters without waiting for a sign-in (Users → Read
   characters, `POST /api/admin/users/{id}/battlenet-sync`), with the token from their last
-  sign-in, which Battle.net keeps good for about a day.
+  sign-in, which Battle.net keeps good for about a day. Members who signed in before the read went
+  live are listed by `bloodlegion-server users battlenet-unread`, and `--sign-out` signs out their
+  sessions so their next visit is a fresh Battle.net sign-in that reads them.
 - **Users**: superusers see every account (Administration → Users, `/admin/users`;
   `GET /api/admin/users`) with the Battle.net and Discord accounts it signed in with (a BattleTag,
   a Discord username) and its characters (in their class colors, each linking to its page),

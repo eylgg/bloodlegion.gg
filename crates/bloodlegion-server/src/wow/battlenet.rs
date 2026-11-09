@@ -435,6 +435,70 @@ async fn unhide_one(
     }
 }
 
+/// A member a Battle.net sign-in never read characters for, with their signed-in sessions.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Unread {
+    pub user_id: UserId,
+    pub username: String,
+    /// The connected Battle.net account's BattleTag, when it gave one.
+    pub account: Option<String>,
+    /// Their sessions still signed in.
+    pub sessions: i64,
+}
+
+/// The members with a Battle.net account connected that no sign-in has read characters from
+/// (they signed in before the read went live, or have none on WoW: Forever), with how many
+/// sessions they still have signed in.
+pub async fn unread(pool: &PgPool) -> sqlx::Result<Vec<Unread>> {
+    let rows = sqlx::query!(
+        r#"
+        SELECT u.id AS "user_id: UserId", u.username, cr.raw_userinfo,
+               (SELECT count(*) FROM auth_sessions s
+                WHERE s.user_id = u.id AND s.revoked_at IS NULL AND s.expires_at > now())
+                   AS "sessions!"
+        FROM auth_oauth2_provider_credentials cr
+        JOIN auth_providers p ON p.id = cr.provider_id
+        JOIN users u ON u.id = cr.user_id
+        WHERE p.slug = 'battlenet' AND cr.disconnected_at IS NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM characters c
+              WHERE c.battlenet_provider_id = cr.provider_id
+                AND c.battlenet_subject = cr.subject
+          )
+        ORDER BY u.username_normalized
+        "#
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| Unread {
+            user_id: row.user_id,
+            username: row.username,
+            account: crate::auth::oauth2::providers::identity_label(&row.raw_userinfo),
+            sessions: row.sessions,
+        })
+        .collect())
+}
+
+/// Signs out every session of the members [`unread`] lists, so their next visit is a fresh
+/// Battle.net sign-in, which reads their characters. How many sessions it signed out.
+pub async fn sign_out_unread(pool: &PgPool) -> sqlx::Result<u64> {
+    let users: Vec<i64> = unread(pool)
+        .await?
+        .into_iter()
+        .map(|u| u.user_id.0)
+        .collect();
+    Ok(sqlx::query!(
+        "UPDATE auth_sessions SET revoked_at = now()
+         WHERE user_id = ANY($1) AND revoked_at IS NULL",
+        &users,
+    )
+    .execute(pool)
+    .await?
+    .rows_affected())
+}
+
 /// One Battle.net account's read, for a superuser's [`sync_user`].
 #[derive(Debug, serde::Serialize)]
 pub struct AccountRead {
@@ -805,6 +869,62 @@ mod tests {
             error.as_database_error().unwrap().constraint(),
             Some("raid_attendees_character_id_fkey")
         );
+    }
+
+    async fn session(pool: &PgPool, user_id: UserId, n: usize) {
+        sqlx::query!(
+            "INSERT INTO auth_sessions (token_hash, user_id, ip_address)
+             VALUES ($1, $2, '127.0.0.1')",
+            format!("{n:0>43}"),
+            user_id.0,
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    #[sqlx::test]
+    async fn signs_out_members_no_sign_in_read(pool: PgPool) {
+        let read = member(&pool, "Read", Rank::Raider).await;
+        let unread_member = member(&pool, "Unread", Rank::Raider).await;
+        let other = member(&pool, "Other", Rank::Raider).await;
+        let provider = account(&pool, "read#1", Some(read.id)).await;
+        account(&pool, "unread#1", Some(unread_member.id)).await;
+        apply(&pool, provider, "read#1", &[listed(1, "Eyl", "Gg", 10)])
+            .await
+            .unwrap();
+        for (n, user) in [&read, &unread_member, &unread_member, &other]
+            .into_iter()
+            .enumerate()
+        {
+            session(&pool, user.id, n).await;
+        }
+
+        let found = unread(&pool).await.unwrap();
+        assert_eq!(
+            found
+                .iter()
+                .map(|u| (u.username.as_str(), u.sessions))
+                .collect::<Vec<_>>(),
+            [("Unread", 2)],
+            "a member without Battle.net is not listed"
+        );
+        assert_eq!(sign_out_unread(&pool).await.unwrap(), 2);
+        assert_eq!(unread(&pool).await.unwrap()[0].sessions, 0);
+        let active = |id: UserId| {
+            let pool = pool.clone();
+            async move {
+                sqlx::query_scalar!(
+                    r#"SELECT count(*) AS "n!" FROM auth_sessions
+                       WHERE user_id = $1 AND revoked_at IS NULL"#,
+                    id.0
+                )
+                .fetch_one(&pool)
+                .await
+                .unwrap()
+            }
+        };
+        assert_eq!((active(read.id).await, active(other.id).await), (1, 1));
     }
 
     #[test]

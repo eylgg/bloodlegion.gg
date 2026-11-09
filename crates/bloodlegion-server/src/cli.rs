@@ -142,6 +142,45 @@ pub async fn users_set_superuser(username: String, is_superuser: bool) -> Result
     Ok(())
 }
 
+/// `users battlenet-unread [--sign-out]`: lists the members with Battle.net connected that no sign-in
+/// read characters from, and signs out their sessions.
+#[tokio::main(flavor = "current_thread")]
+pub async fn users_battlenet_unread(sign_out: bool) -> Result<()> {
+    let pool = State::load_pool().await?;
+    let unread = crate::wow::battlenet::unread(&pool)
+        .await
+        .context("listing the unread Battle.net members")?;
+    if unread.is_empty() {
+        eprintln!("Every member with Battle.net connected has had their characters read.");
+        return Ok(());
+    }
+    println!("{:<32} {:<32} SESSIONS", "USERNAME", "BATTLE.NET");
+    for user in &unread {
+        println!(
+            "{:<32} {:<32} {}",
+            user.username,
+            user.account.as_deref().unwrap_or("-"),
+            user.sessions
+        );
+    }
+    let sessions: i64 = unread.iter().map(|u| u.sessions).sum();
+    if sign_out {
+        let signed_out = crate::wow::battlenet::sign_out_unread(&pool)
+            .await
+            .context("signing out the unread members")?;
+        eprintln!(
+            "Signed out {signed_out} sessions of {} members: their next visit signs in again.",
+            unread.len()
+        );
+    } else {
+        eprintln!(
+            "{} members, {sessions} sessions signed in. Run again with --sign-out to sign them out.",
+            unread.len()
+        );
+    }
+    Ok(())
+}
+
 /// `users rank`: sets a guild rank, without the officers' rules (the operator bootstraps the
 /// first leader this way).
 #[tokio::main(flavor = "current_thread")]

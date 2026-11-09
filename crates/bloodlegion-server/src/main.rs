@@ -136,6 +136,14 @@ enum UsersCommand {
         username: String,
         new_username: String,
     },
+    /// List the members with Battle.net connected that no sign-in has read characters from (they
+    /// signed in before the read went live, or play no WoW: Forever), with their signed-in
+    /// sessions. With `--sign-out`, signs those sessions out, so their next visit is a fresh
+    /// Battle.net sign-in that reads their characters.
+    BattlenetUnread {
+        #[arg(long)]
+        sign_out: bool,
+    },
     /// List the WoW characters on a user's Battle.net account, using the token from their latest
     /// sign-in (which needs the `wow.profile` scope). Also shows that token's status.
     Characters {
@@ -382,6 +390,7 @@ fn main() -> Result<()> {
                 username,
                 new_username,
             } => cli::users_rename(username, new_username),
+            UsersCommand::BattlenetUnread { sign_out } => cli::users_battlenet_unread(sign_out),
             UsersCommand::Characters {
                 username,
                 provider,

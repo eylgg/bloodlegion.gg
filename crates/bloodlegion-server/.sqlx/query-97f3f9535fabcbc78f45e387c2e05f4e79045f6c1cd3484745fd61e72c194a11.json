@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO auth_sessions (token_hash, user_id, ip_address)\n             VALUES ($1, $2, '127.0.0.1')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "97f3f9535fabcbc78f45e387c2e05f4e79045f6c1cd3484745fd61e72c194a11"
+}
