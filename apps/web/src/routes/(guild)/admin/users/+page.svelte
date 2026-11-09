@@ -4,6 +4,7 @@
 	import { RANK_LABEL, formatDate, playerPath } from '$lib/guild';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import type { AdminAccount, BattlenetRead, Connection } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -22,11 +23,6 @@
 	/** The account's connected sign-in with that provider, if any. */
 	const connected = (account: AdminAccount, provider: string) =>
 		account.connections.find((c) => c.provider === provider && !c.disconnected_at);
-	/** Ones it disconnected, or with any other provider. */
-	const others = (account: AdminAccount) =>
-		account.connections.filter(
-			(c) => c.disconnected_at || (c.provider !== 'battlenet' && c.provider !== 'discord')
-		);
 
 	const counts = $derived({
 		all: data.accounts.length,
@@ -44,7 +40,8 @@
 				account.username,
 				account.first_name,
 				account.last_name,
-				...account.connections.map((c) => c.label)
+				...account.connections.map((c) => c.label),
+				...account.characters.map((c) => `${c.first_name} ${c.last_name}`)
 			].some((value) => value?.toLowerCase().includes(query));
 		});
 	});
@@ -151,7 +148,7 @@
 			</button>
 		{/each}
 	</div>
-	<input type="search" placeholder="Search names and accounts" bind:value={search} />
+	<input type="search" placeholder="Search names, accounts, and characters" bind:value={search} />
 </div>
 
 {#snippet sign_in(connection: Connection | undefined)}
@@ -171,8 +168,7 @@
 					<th>Rank</th>
 					<th>Battle.net</th>
 					<th>Discord</th>
-					<th>Other sign-ins</th>
-					<th class="number">Characters</th>
+					<th>Characters</th>
 					<th>Joined</th>
 				</tr>
 			</thead>
@@ -243,22 +239,23 @@
 						</td>
 						<td>{@render sign_in(connected(account, 'discord'))}</td>
 						<td>
-							{#each others(account) as connection (connection.provider + connection.subject)}
-								<div class:muted={connection.disconnected_at}>
-									{connection.provider_name}: {connection.label ?? connection.subject}
-									{#if connection.disconnected_at}(disconnected){/if}
+							{#each account.characters as character (character.first_name + ' ' + character.last_name)}
+								<div>
+									<CharacterLink
+										firstName={character.first_name}
+										lastName={character.last_name}
+										cls={character.class}
+										icon={false}
+									/>
 								</div>
+							{:else}
+								<span class="none">None</span>
 							{/each}
-							{#if account.has_password}<div>Password</div>{/if}
-							{#if !account.has_password && others(account).length === 0}
-								<span class="none">—</span>
-							{/if}
 						</td>
-						<td class="number">{account.characters}</td>
 						<td class="muted">{formatDate(account.created_at)}</td>
 					</tr>
 				{:else}
-					<tr><td colspan="7" class="muted">Nobody matches.</td></tr>
+					<tr><td colspan="6" class="muted">Nobody matches.</td></tr>
 				{/each}
 			</tbody>
 		</table>
@@ -392,10 +389,5 @@
 		padding: var(--space-2) var(--space-3);
 		vertical-align: top;
 		border-bottom: 1px solid var(--grey-surface);
-	}
-
-	.number {
-		font-variant-numeric: tabular-nums;
-		text-align: right;
 	}
 </style>

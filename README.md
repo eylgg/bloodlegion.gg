@@ -223,8 +223,8 @@ the changes.
   sign-in, which Battle.net keeps good for about a day.
 - **Users**: superusers see every account (Administration → Users, `/admin/users`;
   `GET /api/admin/users`) with the Battle.net and Discord accounts it signed in with (a BattleTag,
-  a Discord username), any disconnected or other sign-ins, whether it has a password, and its
-  characters, filtered to those with no Battle.net or no Discord. They rename an account there
+  a Discord username) and its characters (in their class colors, each linking to its page),
+  filtered to those with no Battle.net or no Discord. They rename an account there
   (`PUT /api/admin/users/{id}/username`), under signup's rules (`users::admin`).
 - **The armory**: each character's page links to its page in Blizzard's armory
   (`worldofwarcraft.blizzard.com/en-us/forever/us/armory/character/eyl-gg`, its name lowercase).

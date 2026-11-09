@@ -61,9 +61,8 @@ export type AdminAccount = {
 	guild_rank: Rank;
 	is_superuser: boolean;
 	disabled: boolean;
-	has_password: boolean;
-	/** Their characters on the site, hidden ones left out. */
-	characters: number;
+	/** Their characters on the site, main first, hidden ones left out. */
+	characters: { first_name: string; last_name: string; class: string; is_main: boolean }[];
 	/** Every sign-in account ever linked, connected ones first. */
 	connections: Connection[];
 	created_at: string;

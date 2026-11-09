@@ -40,14 +40,21 @@ pub struct Account {
     pub guild_rank: Rank,
     pub is_superuser: bool,
     pub disabled: bool,
-    /// Whether they can sign in with a password.
-    pub has_password: bool,
-    /// Their characters on the site, hidden ones left out.
-    pub characters: i64,
+    /// Their characters on the site, main first, hidden ones left out.
+    pub characters: Vec<AccountCharacter>,
     /// Every sign-in account ever linked, connected ones first.
     pub connections: Vec<Connection>,
     #[serde(with = "iso8601")]
     pub created_at: OffsetDateTime,
+}
+
+/// One of an account's characters, as the users page names it.
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct AccountCharacter {
+    pub first_name: String,
+    pub last_name: String,
+    pub class: String,
+    pub is_main: bool,
 }
 
 /// A connection row as the query gives it: the label still to read from the userinfo.
@@ -88,11 +95,19 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Account>> {
             u.guild_rank AS "guild_rank: Rank",
             u.is_superuser,
             (u.disabled_at IS NOT NULL) AS "disabled!",
-            EXISTS (
-                SELECT 1 FROM auth_local_credentials l WHERE l.user_id = u.id
-            ) AS "has_password!",
-            (SELECT count(*) FROM characters ch WHERE ch.user_id = u.id AND NOT ch.is_hidden)
-                AS "characters!",
+            COALESCE(
+                (SELECT jsonb_agg(
+                     jsonb_build_object(
+                         'first_name', ch.first_name,
+                         'last_name', ch.last_name,
+                         'class', ch.class,
+                         'is_main', ch.is_main
+                     ) ORDER BY ch.is_main DESC, ch.level DESC, ch.name_normalized
+                 )
+                 FROM characters ch
+                 WHERE ch.user_id = u.id AND NOT ch.is_hidden),
+                '[]'::jsonb
+            ) AS "characters!: sqlx::types::Json<Vec<AccountCharacter>>",
             COALESCE(
                 (SELECT jsonb_agg(
                      jsonb_build_object(
@@ -125,8 +140,7 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Account>> {
             guild_rank: row.guild_rank,
             is_superuser: row.is_superuser,
             disabled: row.disabled,
-            has_password: row.has_password,
-            characters: row.characters,
+            characters: row.characters.0,
             connections: row
                 .connections
                 .0
@@ -184,23 +198,40 @@ mod tests {
         member(&pool, "Zx", Rank::Member).await;
         crate::auth::oauth2::providers::link_for_test(&pool, "battlenet", "ey#1", ey.id).await;
         crate::auth::oauth2::providers::link_for_test(&pool, "discord", "123", ey.id).await;
+        use crate::characters::tests::{add, input};
+        add(&pool, &ey, input("Eyl", "Alt", "mage", false))
+            .await
+            .unwrap();
+        add(&pool, &ey, input("Eyl", "Gg", "warrior", true))
+            .await
+            .unwrap();
 
+        // The helper adds as an admin account of its own, which is listed too.
         let accounts = list(&pool).await.unwrap();
+        let find = |name: &str| accounts.iter().find(|a| a.username == name).unwrap();
+        let (ey, zx) = (find("Ey"), find("Zx"));
         assert_eq!(
-            accounts
+            ey.characters
                 .iter()
-                .map(|a| a.username.as_str())
+                .map(|c| (c.last_name.as_str(), c.class.as_str(), c.is_main))
                 .collect::<Vec<_>>(),
-            ["Ey", "Zx"]
+            [("Gg", "warrior", true), ("Alt", "mage", false)],
+            "main first"
         );
-        let providers: Vec<_> = accounts[0]
+        assert!(
+            accounts
+                .windows(2)
+                .all(|pair| pair[0].username.to_lowercase() <= pair[1].username.to_lowercase()),
+            "by username"
+        );
+        let providers: Vec<_> = ey
             .connections
             .iter()
             .map(|c| (c.provider.as_str(), c.subject.as_str()))
             .collect();
         assert_eq!(providers, [("battlenet", "ey#1"), ("discord", "123")]);
-        assert!(accounts[1].connections.is_empty());
-        assert!(!accounts[1].has_password);
+        assert!(zx.connections.is_empty());
+        assert!(zx.characters.is_empty());
     }
 
     #[sqlx::test]

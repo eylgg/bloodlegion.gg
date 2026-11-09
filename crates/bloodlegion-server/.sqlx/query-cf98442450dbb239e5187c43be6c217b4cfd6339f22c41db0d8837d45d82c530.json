@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            u.id AS \"id: UserId\",\n            u.username,\n            u.first_name,\n            u.last_name,\n            u.guild_rank AS \"guild_rank: Rank\",\n            u.is_superuser,\n            (u.disabled_at IS NOT NULL) AS \"disabled!\",\n            EXISTS (\n                SELECT 1 FROM auth_local_credentials l WHERE l.user_id = u.id\n            ) AS \"has_password!\",\n            (SELECT count(*) FROM characters ch WHERE ch.user_id = u.id AND NOT ch.is_hidden)\n                AS \"characters!\",\n            COALESCE(\n                (SELECT jsonb_agg(\n                     jsonb_build_object(\n                         'provider', p.slug,\n                         'provider_name', p.name,\n                         'subject', c.subject,\n                         'userinfo', c.raw_userinfo,\n                         'disconnected_at', c.disconnected_at\n                     ) ORDER BY c.disconnected_at NULLS FIRST, p.name\n                 )\n                 FROM auth_oauth2_provider_credentials c\n                 JOIN auth_providers p ON p.id = c.provider_id\n                 WHERE c.user_id = u.id),\n                '[]'::jsonb\n            ) AS \"connections!: sqlx::types::Json<Vec<RawConnection>>\",\n            u.created_at\n        FROM users u\n        ORDER BY u.username_normalized\n        ",
+  "query": "\n        SELECT\n            u.id AS \"id: UserId\",\n            u.username,\n            u.first_name,\n            u.last_name,\n            u.guild_rank AS \"guild_rank: Rank\",\n            u.is_superuser,\n            (u.disabled_at IS NOT NULL) AS \"disabled!\",\n            COALESCE(\n                (SELECT jsonb_agg(\n                     jsonb_build_object(\n                         'first_name', ch.first_name,\n                         'last_name', ch.last_name,\n                         'class', ch.class,\n                         'is_main', ch.is_main\n                     ) ORDER BY ch.is_main DESC, ch.level DESC, ch.name_normalized\n                 )\n                 FROM characters ch\n                 WHERE ch.user_id = u.id AND NOT ch.is_hidden),\n                '[]'::jsonb\n            ) AS \"characters!: sqlx::types::Json<Vec<AccountCharacter>>\",\n            COALESCE(\n                (SELECT jsonb_agg(\n                     jsonb_build_object(\n                         'provider', p.slug,\n                         'provider_name', p.name,\n                         'subject', c.subject,\n                         'userinfo', c.raw_userinfo,\n                         'disconnected_at', c.disconnected_at\n                     ) ORDER BY c.disconnected_at NULLS FIRST, p.name\n                 )\n                 FROM auth_oauth2_provider_credentials c\n                 JOIN auth_providers p ON p.id = c.provider_id\n                 WHERE c.user_id = u.id),\n                '[]'::jsonb\n            ) AS \"connections!: sqlx::types::Json<Vec<RawConnection>>\",\n            u.created_at\n        FROM users u\n        ORDER BY u.username_normalized\n        ",
   "describe": {
     "columns": [
       {
@@ -77,24 +77,18 @@
       },
       {
         "ordinal": 7,
-        "name": "has_password!",
-        "type_info": "Bool",
+        "name": "characters!: sqlx::types::Json<Vec<AccountCharacter>>",
+        "type_info": "Jsonb",
         "origin": "Expression"
       },
       {
         "ordinal": 8,
-        "name": "characters!",
-        "type_info": "Int8",
-        "origin": "Expression"
-      },
-      {
-        "ordinal": 9,
         "name": "connections!: sqlx::types::Json<Vec<RawConnection>>",
         "type_info": "Jsonb",
         "origin": "Expression"
       },
       {
-        "ordinal": 10,
+        "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -118,9 +112,8 @@
       null,
       null,
       null,
-      null,
       false
     ]
   },
-  "hash": "c30aeebc7d9b7811489d082e4cd6687e29942d8aee73ba144dd962c1dce51342"
+  "hash": "cf98442450dbb239e5187c43be6c217b4cfd6339f22c41db0d8837d45d82c530"
 }
