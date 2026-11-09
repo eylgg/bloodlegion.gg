@@ -40,6 +40,35 @@ export type DiscordSettings = {
 
 /** A roster the Blood Legion client sent, from `GET /api/admin/rosters`, latest first. */
 /** A character a Battle.net listing linked or added, from `GET /api/admin/battlenet-characters`. */
+/** A sign-in account linked to a member. */
+export type Connection = {
+	/** The provider's slug, such as `battlenet` or `discord`. */
+	provider: string;
+	provider_name: string;
+	subject: string;
+	/** How the provider names the account (a BattleTag, a Discord username), when it said. */
+	label: string | null;
+	/** Null while connected. */
+	disconnected_at: string | null;
+};
+
+/** An account on the superusers' users page. */
+export type AdminAccount = {
+	id: number;
+	username: string;
+	first_name: string | null;
+	last_name: string | null;
+	guild_rank: Rank;
+	is_superuser: boolean;
+	disabled: boolean;
+	has_password: boolean;
+	/** Their characters on the site, hidden ones left out. */
+	characters: number;
+	/** Every sign-in account ever linked, connected ones first. */
+	connections: Connection[];
+	created_at: string;
+};
+
 export type BattlenetCharacter = {
 	id: number;
 	/** The Battle.net account's BattleTag. */

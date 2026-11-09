@@ -118,6 +118,16 @@
 
 <section class="panel">
 	<div class="head">
+		<h2>Users</h2>
+		<Button href={resolve('/admin/users')} variant="secondary" size="small">View</Button>
+	</div>
+	<p class="muted">
+		Every account, with the Battle.net and Discord accounts it signed in with, and a rename.
+	</p>
+</section>
+
+<section class="panel">
+	<div class="head">
 		<h2>Armory check</h2>
 		<Button href={resolve('/admin/armory')} variant="secondary" size="small">View</Button>
 	</div>

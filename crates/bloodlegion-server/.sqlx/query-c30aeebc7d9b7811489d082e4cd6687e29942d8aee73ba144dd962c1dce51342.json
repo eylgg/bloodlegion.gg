@@ -1,0 +1,126 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            u.id AS \"id: UserId\",\n            u.username,\n            u.first_name,\n            u.last_name,\n            u.guild_rank AS \"guild_rank: Rank\",\n            u.is_superuser,\n            (u.disabled_at IS NOT NULL) AS \"disabled!\",\n            EXISTS (\n                SELECT 1 FROM auth_local_credentials l WHERE l.user_id = u.id\n            ) AS \"has_password!\",\n            (SELECT count(*) FROM characters ch WHERE ch.user_id = u.id AND NOT ch.is_hidden)\n                AS \"characters!\",\n            COALESCE(\n                (SELECT jsonb_agg(\n                     jsonb_build_object(\n                         'provider', p.slug,\n                         'provider_name', p.name,\n                         'subject', c.subject,\n                         'userinfo', c.raw_userinfo,\n                         'disconnected_at', c.disconnected_at\n                     ) ORDER BY c.disconnected_at NULLS FIRST, p.name\n                 )\n                 FROM auth_oauth2_provider_credentials c\n                 JOIN auth_providers p ON p.id = c.provider_id\n                 WHERE c.user_id = u.id),\n                '[]'::jsonb\n            ) AS \"connections!: sqlx::types::Json<Vec<RawConnection>>\",\n            u.created_at\n        FROM users u\n        ORDER BY u.username_normalized\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "last_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "guild_rank: Rank",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "guild_rank"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_superuser",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "is_superuser"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "disabled!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "has_password!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "characters!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "connections!: sqlx::types::Json<Vec<RawConnection>>",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      false
+    ]
+  },
+  "hash": "c30aeebc7d9b7811489d082e4cd6687e29942d8aee73ba144dd962c1dce51342"
+}

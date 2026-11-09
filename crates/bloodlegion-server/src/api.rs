@@ -28,7 +28,8 @@ pub fn router() -> Router<State> {
             crate::discord::admin_router()
                 .merge(crate::characters::roster::admin_router())
                 .merge(crate::wow::battlenet::admin_router())
-                .merge(crate::wow::armory::admin_router()),
+                .merge(crate::wow::armory::admin_router())
+                .merge(crate::users::admin::admin_router()),
         )
         .merge(crate::raids::router())
         .nest("/auth", crate::auth::api::router())

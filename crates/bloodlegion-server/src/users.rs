@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod api;
 mod db;
 mod email;

@@ -212,8 +212,13 @@ the changes.
   one another member plays stays theirs. Any other is added **hidden** (`characters.is_hidden`):
   only superusers see it (`/admin/battlenet`), it is in no list, page, raid, or loot, and it follows
   Battle.net (level, class, race, player) until Battle.net stops listing it, which removes it. An
-  officer adding a character of its name brings the hidden one out instead of making another
-  (`wow::battlenet`).
+  officer adding a character of its name brings the hidden one out instead of making another, and
+  so does a superuser's Unhide there (`wow::battlenet`).
+- **Users**: superusers see every account (Administration → Users, `/admin/users`;
+  `GET /api/admin/users`) with the Battle.net and Discord accounts it signed in with (a BattleTag,
+  a Discord username), any disconnected or other sign-ins, whether it has a password, and its
+  characters, filtered to those with no Battle.net or no Discord. They rename an account there
+  (`PUT /api/admin/users/{id}/username`), under signup's rules (`users::admin`).
 - **The armory**: each character's page links to its page in Blizzard's armory
   (`worldofwarcraft.blizzard.com/en-us/forever/us/armory/character/eyl-gg`, its name lowercase).
   The same profile is in the API (`/profile/wow/character/eyl-gg`, `profile-forever-us`), read with
