@@ -1268,6 +1268,7 @@ mod tests {
                 default_raid_time: time::macros::time!(20:00),
                 faction: Default::default(),
                 ruleset: Default::default(),
+                guild_name: "BL".into(),
             },
         )
         .await

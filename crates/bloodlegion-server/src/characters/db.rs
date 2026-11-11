@@ -15,6 +15,7 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
                c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
                c.is_main AS "is_main!", c.in_guild AS "in_guild!",
+               c.guild, c.guild_rank, c.guild_rank_index,
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -59,6 +60,7 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
                c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
                c.is_main AS "is_main!", c.in_guild AS "in_guild!",
+               c.guild, c.guild_rank, c.guild_rank_index,
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -274,34 +276,69 @@ pub async fn raise_level(
 pub async fn record_upload(
     conn: &mut PgConnection,
     user_id: UserId,
+    guild: &str,
     members: i32,
     matched: i32,
     unmatched: serde_json::Value,
-    named: &[i64],
+    named: &[Named],
     changes: &[LevelChange],
     added: &[Added],
 ) -> sqlx::Result<i64> {
     let id = sqlx::query_scalar!(
         r#"
-        INSERT INTO roster_uploads (user_id, members, matched, unmatched, records_members)
-        VALUES ($1, $2, $3, $4, true)
+        INSERT INTO roster_uploads (user_id, guild, members, matched, unmatched, records_members)
+        VALUES ($1, $2, $3, $4, $5, true)
         RETURNING id
         "#,
         user_id as UserId,
+        guild,
         members,
         matched,
         unmatched,
     )
     .fetch_one(&mut *conn)
     .await?;
+    let ids: Vec<i64> = named.iter().map(|n| n.character_id).collect();
+    let rank_names: Vec<Option<String>> = named.iter().map(|n| n.rank.clone()).collect();
+    let rank_indexes: Vec<Option<i16>> = named.iter().map(|n| n.rank_index).collect();
+    // A character named twice: the first naming's rank.
     sqlx::query!(
-        "INSERT INTO roster_members (upload_id, character_id)
-         SELECT $1, unnest($2::bigint[]) ON CONFLICT DO NOTHING",
+        r#"INSERT INTO roster_members (upload_id, character_id, rank_name, rank_index)
+           SELECT $1, n.id, n.rank_name, n.rank_index
+           FROM unnest($2::bigint[], $3::text[], $4::smallint[])
+                WITH ORDINALITY AS n(id, rank_name, rank_index, i)
+           ORDER BY n.i
+           ON CONFLICT DO NOTHING"#,
         id,
-        named,
+        &ids,
+        &rank_names as &[Option<String>],
+        &rank_indexes as &[Option<i16>],
     )
     .execute(&mut *conn)
     .await?;
+    // The ranks it saw, each matched to the site's by its name the first time.
+    let mut seen: Vec<(&str, i16)> = Vec::new();
+    for n in named {
+        if let (Some(name), Some(index)) = (n.rank.as_deref(), n.rank_index)
+            && !seen.iter().any(|(seen, _)| *seen == name)
+        {
+            seen.push((name, index));
+        }
+    }
+    for (name, index) in seen {
+        sqlx::query!(
+            r#"INSERT INTO guild_ranks (guild, name, rank_index, site_rank)
+               VALUES ($1, $2, $3, $4)
+               ON CONFLICT (guild, name)
+               DO UPDATE SET rank_index = EXCLUDED.rank_index, seen_at = now()"#,
+            guild,
+            name,
+            index,
+            super::ranks::guess(name, index).map(crate::guild::Rank::slug),
+        )
+        .execute(&mut *conn)
+        .await?;
+    }
     for change in changes {
         sqlx::query!(
             r#"
@@ -461,6 +498,13 @@ pub async fn added(pool: &PgPool, ids: &[i64]) -> sqlx::Result<Vec<AddedRow>> {
     .await
 }
 
+/// A character a roster upload named, with its rank in game when the addon saw it.
+pub struct Named {
+    pub character_id: i64,
+    pub rank: Option<String>,
+    pub rank_index: Option<i16>,
+}
+
 pub struct UploadRow {
     pub id: i64,
     pub username: Option<String>,
@@ -532,22 +576,26 @@ pub async fn sync_in_guild(conn: &mut PgConnection) -> sqlx::Result<u64> {
     Ok(sqlx::query!(
         r#"
         WITH latest AS (
-            SELECT id FROM roster_uploads
-            WHERE records_members AND undone_at IS NULL
-            ORDER BY created_at DESC, id DESC
+            SELECT r.id, r.guild FROM roster_uploads r
+            WHERE r.records_members AND r.undone_at IS NULL
+              AND r.guild = (SELECT guild_name FROM guild_settings)
+            ORDER BY r.created_at DESC, r.id DESC
             LIMIT 1
         ), named AS (
-            SELECT c.id,
-                   EXISTS (
-                       SELECT 1 FROM roster_members m
-                       WHERE m.upload_id = (SELECT id FROM latest) AND m.character_id = c.id
-                   ) AS in_guild
+            SELECT c.id, m.character_id IS NOT NULL AS in_guild,
+                   CASE WHEN m.character_id IS NOT NULL THEN latest.guild END AS guild,
+                   m.rank_name, m.rank_index
             FROM characters c
-            WHERE EXISTS (SELECT 1 FROM latest)
+            CROSS JOIN latest
+            LEFT JOIN roster_members m ON m.upload_id = latest.id AND m.character_id = c.id
         )
-        UPDATE characters c SET in_guild = named.in_guild
+        UPDATE characters c
+        SET in_guild = named.in_guild, guild = named.guild,
+            guild_rank = named.rank_name, guild_rank_index = named.rank_index
         FROM named
-        WHERE c.id = named.id AND c.in_guild <> named.in_guild
+        WHERE c.id = named.id
+          AND (c.in_guild, c.guild, c.guild_rank, c.guild_rank_index)
+              IS DISTINCT FROM (named.in_guild, named.guild, named.rank_name, named.rank_index)
         "#
     )
     .execute(&mut *conn)
@@ -555,7 +603,8 @@ pub async fn sync_in_guild(conn: &mut PgConnection) -> sqlx::Result<u64> {
     .rows_affected())
 }
 
-/// The latest upload that decides `in_guild` ([`sync_in_guild`]), if any.
+/// The latest upload of the guild in the settings, which decides `in_guild` ([`sync_in_guild`]),
+/// if any.
 pub struct LatestUpload {
     pub id: i64,
     pub created_at: OffsetDateTime,
@@ -572,6 +621,7 @@ pub async fn latest_upload(pool: &sqlx::PgPool) -> sqlx::Result<Option<LatestUpl
         FROM roster_uploads r
         LEFT JOIN users u ON u.id = r.user_id
         WHERE r.records_members AND r.undone_at IS NULL
+          AND r.guild = (SELECT guild_name FROM guild_settings)
         ORDER BY r.created_at DESC, r.id DESC
         LIMIT 1
         "#

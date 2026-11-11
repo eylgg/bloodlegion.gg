@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE guild_settings\n        SET time_zone = $1, default_raid_time = $2, faction = $3, ruleset = $4\n        RETURNING time_zone, default_raid_time, faction AS \"faction: Faction\",\n                  ruleset AS \"ruleset: Ruleset\"\n        ",
+  "query": "\n        UPDATE guild_settings\n        SET time_zone = $1, default_raid_time = $2, faction = $3, ruleset = $4, guild_name = $5\n        RETURNING time_zone, default_raid_time, faction AS \"faction: Faction\",\n                  ruleset AS \"ruleset: Ruleset\", guild_name\n        ",
   "describe": {
     "columns": [
       {
@@ -46,12 +46,24 @@
             "name": "ruleset"
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "guild_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "guild_settings",
+            "name": "guild_name"
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
         "Text",
         "Time",
+        "Text",
         "Text",
         "Text"
       ]
@@ -60,8 +72,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "7e5408b1c34dba385c9b57e62b9af4f20c82830abd2b15329e3ab62abfaeed5c"
+  "hash": "ffe05cee7fc0722c0dfb9b050e56cdbeb46bfda78ee05f61be52c9cacbccf1a2"
 }

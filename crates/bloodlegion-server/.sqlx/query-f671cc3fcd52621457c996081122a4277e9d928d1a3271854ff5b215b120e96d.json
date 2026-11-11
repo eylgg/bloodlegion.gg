@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO roster_uploads (user_id, members, matched, unmatched, records_members)\n        VALUES ($1, $2, $3, $4, true)\n        RETURNING id\n        ",
+  "query": "\n        INSERT INTO roster_uploads (user_id, guild, members, matched, unmatched, records_members)\n        VALUES ($1, $2, $3, $4, $5, true)\n        RETURNING id\n        ",
   "describe": {
     "columns": [
       {
@@ -18,6 +18,7 @@
     "parameters": {
       "Left": [
         "Int8",
+        "Text",
         "Int4",
         "Int4",
         "Jsonb"
@@ -27,5 +28,5 @@
       false
     ]
   },
-  "hash": "1cb05ed1d2210cf7983902bfdc3f02d3df08811d75f8ac41758185dafb47bd4a"
+  "hash": "f671cc3fcd52621457c996081122a4277e9d928d1a3271854ff5b215b120e96d"
 }

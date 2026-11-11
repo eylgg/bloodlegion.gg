@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { classIcon, raceIcon } from '$lib/wow/icons';
 	import Button from '$lib/components/Button.svelte';
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
@@ -77,7 +78,7 @@
 
 	// Like the guild list in game: a column to sort by, clicked again to turn it around.
 	type Column =
-		'name' | 'level' | 'race' | 'class' | 'ruleset' | 'spec' | 'player' | 'rank' | 'main';
+		'name' | 'level' | 'race' | 'class' | 'ruleset' | 'spec' | 'player' | 'rank' | 'game' | 'main';
 	const COLUMNS: { key: Column; label: string }[] = [
 		{ key: 'name', label: 'Name' },
 		{ key: 'level', label: 'Level' },
@@ -87,6 +88,7 @@
 		{ key: 'spec', label: 'Specs' },
 		{ key: 'player', label: 'Player' },
 		{ key: 'rank', label: 'Rank' },
+		{ key: 'game', label: 'In game' },
 		{ key: 'main', label: 'Main' }
 	];
 	let sort = $state<{ column: Column; descending: boolean }>({ column: 'name', descending: false });
@@ -121,6 +123,9 @@
 			const rank = rankOf(c);
 			return rank === null ? undefined : String(RANKS.indexOf(rank));
 		},
+		// The guild master first, as the game numbers its ranks.
+		game: (c) =>
+			c.guild_rank_index === null ? undefined : String(c.guild_rank_index).padStart(2, '0'),
 		// Mains first.
 		main: (c) => (c.is_main ? '0' : '1')
 	};
@@ -283,6 +288,13 @@
 								<span class="muted">—</span>
 							{/if}
 						</td>
+						<td>
+							{#if character.guild_rank}
+								{character.guild_rank}
+							{:else}
+								<span class="muted">—</span>
+							{/if}
+						</td>
 						<td>{character.is_main ? 'Main' : 'Alt'}</td>
 					</tr>
 				{:else}
@@ -388,6 +400,62 @@
 	<section>
 		<h2>Unclaimed <span class="count">{unclaimed.length}</span></h2>
 		{@render table(unclaimed)}
+	</section>
+{/if}
+
+{#if data.mismatches.length > 0}
+	<section>
+		<h2>Rank not as in game <span class="count">{data.mismatches.length}</span></h2>
+		<p class="muted">
+			Members whose rank here is not the highest their characters have in the guild in game (as the
+			ranks in game stand for the site's, on <a href={resolve('/admin/rosters')}>Roster uploads</a
+			>), or who have a rank but no character in the guild. Change it on their page. Only you see
+			this.
+		</p>
+		<div class="scroll">
+			<table>
+				<thead>
+					<tr>
+						<th class="plain">Player</th>
+						<th class="plain">Rank here</th>
+						<th class="plain">In game</th>
+						<th class="plain">Characters in the guild</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each data.mismatches as mismatch (mismatch.user_id)}
+						<tr>
+							<td><a href={playerPath(mismatch.username)}>{mismatch.username}</a></td>
+							<td>{RANK_LABEL[mismatch.rank]}</td>
+							<td>
+								{#if mismatch.expected}
+									{RANK_LABEL[mismatch.expected]}
+								{:else}
+									<span class="muted">Not in the guild</span>
+								{/if}
+							</td>
+							<td>
+								{#each mismatch.characters as character (character.first_name + ' ' + character.last_name)}
+									<div>
+										<CharacterLink
+											firstName={character.first_name}
+											lastName={character.last_name}
+											cls={character.class}
+											icon={false}
+										/>
+										{#if character.guild_rank}
+											<span class="muted">{character.guild_rank}</span>
+										{/if}
+									</div>
+								{:else}
+									<span class="muted">—</span>
+								{/each}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
 	</section>
 {/if}
 

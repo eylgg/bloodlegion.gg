@@ -69,6 +69,24 @@ export type AdminAccount = {
 };
 
 /** The guild as the latest roster upload saw it. */
+/** A rank in game as roster uploads saw it, and the site rank it stands for (null: not compared). */
+export type GameRank = {
+	name: string;
+	rank_index: number;
+	site_rank: Rank | null;
+	characters: number;
+};
+
+/** A member whose site rank is not the one their characters have in game. */
+export type RankMismatch = {
+	user_id: number;
+	username: string;
+	rank: Rank;
+	/** The highest site rank their characters in the guild stand for; null when none is in it. */
+	expected: Rank | null;
+	characters: { first_name: string; last_name: string; class: string; guild_rank: string | null }[];
+};
+
 export type RosterStanding = {
 	/** The latest upload that decides who is in the guild; null before any did. */
 	latest: {
@@ -431,6 +449,11 @@ export type GuildCharacter = {
 	is_main: boolean;
 	/** Named by the guild's roster (an addon upload): counts like a member's even while nobody plays it. */
 	in_guild: boolean;
+	/** The guild and rank in game the latest roster upload saw it with (rank 0 the guild master);
+	 * null while no upload of the guild named it. */
+	guild: string | null;
+	guild_rank: string | null;
+	guild_rank_index: number | null;
 	/** The specs it plays, its main (if it has one) first. */
 	specs: CharacterSpec[];
 	created_at: string;
@@ -578,6 +601,8 @@ export type GuildSettings = {
 	/** The faction and ruleset the guild plays: new characters take the ruleset. */
 	faction: Faction;
 	ruleset: Ruleset;
+	/** The guild's name in game, `BL`: roster uploads from a guild of another name are turned down. */
+	guild_name: string;
 };
 
 /** One raiding week: `[starts_at, ends_at)`. Week 1 runs from the release to the first reset. */

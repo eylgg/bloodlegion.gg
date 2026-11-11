@@ -5,6 +5,7 @@
 
 pub mod api;
 mod db;
+pub mod ranks;
 pub mod roster;
 
 use crate::wow::Ruleset;
@@ -15,6 +16,7 @@ use crate::users::{User, UserId};
 use crate::{Error, Problem, Result};
 
 pub use api::router;
+pub use db::sync_in_guild;
 
 #[derive(Debug, serde::Serialize)]
 pub struct Character {
@@ -40,6 +42,11 @@ pub struct Character {
     /// Named by the guild's roster (an upload from the addon): shown and racing like a member's
     /// even while nobody plays it on the site.
     pub in_guild: bool,
+    /// The guild the latest roster upload of the guild saw it in (the guild's own name), with its
+    /// rank there by name and number (0 the guild master); `None` while no upload named it.
+    pub guild: Option<String>,
+    pub guild_rank: Option<String>,
+    pub guild_rank_index: Option<i16>,
     /// The specs it plays, its main (if it has one) first, then in the catalog's order.
     pub specs: sqlx::types::Json<Vec<CharacterSpec>>,
     #[serde(with = "iso8601")]
@@ -203,7 +210,7 @@ pub enum CharacterError {
     #[problem(
         status = UNPROCESSABLE_ENTITY,
         title = "Wrong Guild",
-        detail = "That roster is not Blood Legion's: log in on a character in the guild."
+        detail = "That roster is another guild's than the one in the guild's settings: log in on a character in the guild."
     )]
     WrongGuild,
     #[error("roster too long")]

@@ -19,6 +19,8 @@
 	let faction = $state(data.settings.faction);
 	// svelte-ignore state_referenced_locally
 	let ruleset = $state(data.settings.ruleset);
+	// svelte-ignore state_referenced_locally
+	let guildName = $state(data.settings.guild_name);
 	let saving = $state(false);
 	let error = $state('');
 	let saved = $state(false);
@@ -39,7 +41,8 @@
 				time_zone: timeZone,
 				default_raid_time: defaultRaidTime,
 				faction,
-				ruleset
+				ruleset,
+				guild_name: guildName
 			});
 			// Every page under the guild layout reads the settings from its load.
 			await invalidateAll();
@@ -69,9 +72,17 @@
 		Raids are scheduled on the guild's clock. A raid keeps the zone it was scheduled in, so changing
 		the zone here moves only raids scheduled from now on. Members see every raid in its own zone.
 		New characters take the guild's ruleset, and its faction's races come first when picking one.
+		The guild's name is its name in game: the site takes roster uploads only from a guild of that
+		name, and its latest upload says who is in the guild.
 	</p>
 	{#if error}<Alert variant="error">{error}</Alert>{/if}
 	{#if saved}<Alert variant="success">Saved.</Alert>{/if}
+	<div class="row">
+		<label class="field">
+			Name in game
+			<input bind:value={guildName} required maxlength="24" autocomplete="off" />
+		</label>
+	</div>
 	<div class="row">
 		<label class="field">
 			Time zone

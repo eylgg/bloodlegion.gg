@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.race, c.sex AS \"sex: Sex\", c.ruleset AS \"ruleset!: Ruleset\", c.level AS \"level!\", c.reached_60_at,\n               c.is_main AS \"is_main!\", c.in_guild AS \"in_guild!\",\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE NOT c.is_hidden\n        ORDER BY c.name_normalized\n        ",
+  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.race, c.sex AS \"sex: Sex\", c.ruleset AS \"ruleset!: Ruleset\", c.level AS \"level!\", c.reached_60_at,\n               c.is_main AS \"is_main!\", c.in_guild AS \"in_guild!\",\n               c.guild, c.guild_rank, c.guild_rank_index,\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE NOT c.is_hidden\n        ORDER BY c.name_normalized\n        ",
   "describe": {
     "columns": [
       {
@@ -148,12 +148,45 @@
       },
       {
         "ordinal": 13,
+        "name": "guild",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "guild"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "guild_rank",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "guild_rank"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "guild_rank_index",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "guild_rank_index"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
         "name": "specs!: Json<Vec<CharacterSpec>>",
         "type_info": "Jsonb",
         "origin": "Expression"
       },
       {
-        "ordinal": 14,
+        "ordinal": 17,
         "name": "created_at!",
         "type_info": "Timestamptz",
         "origin": {
@@ -164,7 +197,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 18,
         "name": "updated_at!",
         "type_info": "Timestamptz",
         "origin": {
@@ -192,10 +225,13 @@
       true,
       false,
       false,
+      true,
+      true,
+      true,
       null,
       false,
       false
     ]
   },
-  "hash": "acff49168e53a34d1d62ab1cf16c5d24a8ed986d0a7998a3be5ac4d3ab8759ca"
+  "hash": "bd4b26c17f7e734b4f7b3f3389cd47e0e7765a24f038c7fc473d453bd6dca2b1"
 }

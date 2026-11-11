@@ -1,0 +1,13 @@
+# Forever only, like BloodLegion: its client loads BloodLegion_GCD_Forever.toc or
+# BloodLegion_GCD_Camelot.toc (Camelot is its internal name). Keep the two the same.
+## Interface: 16001
+## Title: Blood Legion - GCD
+## IconTexture: Interface\AddOns\BloodLegion\Claws
+## Notes: Shows what you pressed on the global cooldown, and what is queued for the next one (/bl gcd)
+## Author: Blood Legion
+## Version: 0.1.0
+## Dependencies: BloodLegion
+## Group: BloodLegion
+## SavedVariables: BloodLegionGCDDB
+
+GCD.lua

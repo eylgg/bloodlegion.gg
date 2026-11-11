@@ -12,7 +12,12 @@ The website for Blood Legion, at [bloodlegion.com](https://bloodlegion.com).
   game tells addons about the player, the roster, and Forever's own functions, and saves it in
   `BloodLegionDB.debug` on `/reload`, for working out Forever's formats). Its icon,
   `Claws.tga`, is the site's `claws-512.png` at 128×128. Copy or link `apps/addon/BloodLegion` into
-  the game's `_forever_/Interface/AddOns`.
+  the game's `_forever_/Interface/AddOns`. Sub-addons sit beside it, each in its own folder (which
+  WoW needs) with `## Dependencies` and `## Group: BloodLegion`, and add `/bl` commands through
+  the core's `BloodLegion.commands`: `BloodLegion_GCD` ("Blood Legion - GCD") shows the spell that
+  started the running global cooldown, the presses before it, and the spell queued for the next
+  (`/bl gcd` to unlock and move it; `/bl gcd probe` prints what Forever's API gives it, secret
+  values in combat included, and saves it in `BloodLegionGCDDB.probe`).
 - `crates/bloodlegion-server`: the backend (Rust, axum, Postgres), shipped as the `bloodlegion-server` image.
   Accounts and sessions, username/password login, OAuth2 / OpenID Connect login sources such as
   Battle.net, and an OpenID Connect provider so other guild tools can sign people in with their
@@ -308,14 +313,17 @@ and the time a character reached 60 (from the player's screenshot) on its page, 
 the client keep them current:
 
 1. **The addon** reads the guild roster on login, on `/reload`, and whenever the game refreshes the
-   guild list, and saves each member's level, class, GUID, and the first time it saw them at 60 in
-   `WTF/Account/<ACCOUNT>/SavedVariables/BloodLegion.lua`. It saves only Blood Legion's roster ("BL"
-   in game, matched by name: WoW gives addons no guild id), and turns on the guild list's offline members so it
-   sees everyone. A scan that names every member drops anyone saved before who is no longer in the
+   guild list, and saves each member's level, class, GUID, guild rank (its name and number, 0 the
+   guild master), and the first time it saw them at 60 in
+   `WTF/Account/<ACCOUNT>/SavedVariables/BloodLegion.lua`. It keeps one roster for each guild the
+   account's characters are in (`BloodLegionDB.rosters`, by name: WoW gives addons no guild id),
+   and turns on the guild list's offline members so it sees everyone. A scan that names every member drops anyone saved before who is no longer in the
    list (they left); one that missed some only adds. The game writes the file on `/reload` and
    logout.
 2. **The client** (`bloodlegion-client`) sends it to the site (`POST /api/characters/roster`)
-   whenever the game rewrites it, for every account in the game folder (by default
+   whenever the game rewrites it, every guild's roster in it (the site turns down the ones not its
+   guild, which the client skips; it also reads an older addon's single `BloodLegionDB.roster`),
+   for every account in the game folder (by default
    `C:\Program Files (x86)\World of Warcraft\_forever_`; `--game` for another, `--file` for one
    file). It signs in as an officer through the site's own OAuth2 (a public client with PKCE, back
    to any free loopback port: a registered `http://127.0.0.1/callback` takes any port), asking for
@@ -339,7 +347,9 @@ the client keep them current:
    that character linked (a GUID, `Player-6934-005096AC`, ends in the id in hex), else by name (the
    roster shows `First Last`; any `-Realm` dropped, or the two names run together:
    `characters::roster`). It only ever raises a level, keeps the earliest time anyone saw a
-   character reach 60, and leaves hidden characters alone. It takes only the "BL" roster. A member
+   character reach 60, and leaves hidden characters alone. It takes only the roster of the guild
+   named in Administration's settings ("Name in game", `guild_settings.guild_name`, `BL` by
+   default), so the site works for another guild by its name. A member
    no character matches is **added**: a hidden character Battle.net listed under its id or name is
    brought onto the roster (keeping its player), or else a new one is made with its name, class,
    level, and Battle.net id, on the guild's ruleset, nobody playing it until someone claims it or a
@@ -349,12 +359,24 @@ the client keep them current:
    `GET /api/admin/rosters/not-added`), each with an Add that fills in the character form, until a
    character of that name is on the site. **Only roster uploads say who is in the guild**
    (`characters.in_guild`): the latest upload marks every character it named, matched or added,
-   and clears every other (`roster_members`, `db::sync_in_guild`). A character in the guild shows
+   and clears every other (`roster_members`, `db::sync_in_guild`), and gives each the guild and
+   rank in game the upload saw (`characters.guild`, `guild_rank`, `guild_rank_index`), shown on
+   the roster's "In game" column. Only uploads of the guild in the settings count, so renaming it
+   there leaves things as they are until an upload of the new name. A character in the guild shows
    on the roster for everyone, as a member's main, and races to 60 as a member's, even while
    nobody plays it on the site. A character an officer records for no one (a pug) is not, and
    stays the administrator's, under Unclaimed; one a member plays that the latest upload did not
    name is listed for superusers on the roster under "Not in the guild". Neither an officer
-   adding a character nor a Battle.net sign-in changes it.
+   adding a character nor a Battle.net sign-in changes it. **Ranks in game are matched to the
+   site's** (`guild_ranks`, `characters::ranks`): each rank an upload sees is matched the first
+   time (rank 0 the leader; a rank named exactly as a site rank, "Officer" or "Raider" in any case,
+   that rank; anything else, "Raider Alt" or "Core" among them, not compared), and superusers
+   change it under Roster
+   uploads → Ranks in game. The roster then lists for superusers, under "Rank not as in game"
+   (`GET /api/admin/rosters/rank-mismatches`), every member whose site rank is not the highest
+   their characters in the guild stand for, and every member with a rank but no character in the
+   guild. The site rank stays the account's and an officer changes it; nothing changes it on its
+   own.
 
 4. **Each upload is recorded**: who sent it, when, every character it named, and every character
    it changed, with the level and time at 60 before and after. Superusers see them under

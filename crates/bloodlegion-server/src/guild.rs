@@ -86,6 +86,13 @@ pub enum GuildError {
         detail = "That is not a time zone name the server knows, such as America/New_York."
     )]
     UnknownTimeZone,
+    #[error("invalid guild name")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Invalid Guild Name",
+        detail = "The guild's name is its name in game, 1 to 24 characters."
+    )]
+    InvalidGuildName,
 }
 
 /// The guild's settings, which a superuser changes: the time zone raids are scheduled in, and when
@@ -103,6 +110,14 @@ pub struct Settings {
     /// The ruleset the guild plays on, which new characters take.
     #[serde(default)]
     pub ruleset: crate::wow::Ruleset,
+    /// The guild's name in game (`BL`): a roster upload is the guild's when the addon saw it in a
+    /// guild of this name. WoW gives addons a guild's name, not an id.
+    #[serde(default = "default_guild_name")]
+    pub guild_name: String,
+}
+
+fn default_guild_name() -> String {
+    "BL".into()
 }
 
 pub async fn settings(pool: &PgPool) -> sqlx::Result<Settings> {
@@ -116,14 +131,24 @@ pub async fn set_settings(pool: &PgPool, settings: &Settings) -> Result<Settings
     if !db::is_known_time_zone(pool, time_zone).await? {
         return Err(Error::External(GuildError::UnknownTimeZone));
     }
-    Ok(db::set_settings(
-        pool,
+    let guild_name = settings.guild_name.trim();
+    if !(1..=24).contains(&guild_name.chars().count()) {
+        return Err(Error::External(GuildError::InvalidGuildName));
+    }
+    let mut tx = pool.begin().await?;
+    let saved = db::set_settings(
+        &mut tx,
         time_zone,
         settings.default_raid_time,
         settings.faction,
         settings.ruleset,
+        guild_name,
     )
-    .await?)
+    .await?;
+    // Another guild's name: who is in the guild is as its latest upload saw it.
+    crate::characters::sync_in_guild(&mut tx).await?;
+    tx.commit().await?;
+    Ok(saved)
 }
 
 /// A member of the guild (an account), with their characters, main first.
@@ -269,7 +294,8 @@ pub(crate) mod tests {
                 "time_zone": "America/New_York",
                 "default_raid_time": "20:00",
                 "faction": "horde",
-                "ruleset": "pvp"
+                "ruleset": "pvp",
+                "guild_name": "BL"
             })
         );
 
@@ -288,6 +314,14 @@ pub(crate) mod tests {
         assert!(matches!(
             set_settings(&pool, &nowhere).await,
             Err(Error::External(GuildError::UnknownTimeZone))
+        ));
+        let nameless = Settings {
+            guild_name: "  ".into(),
+            ..settings(&pool).await.unwrap()
+        };
+        assert!(matches!(
+            set_settings(&pool, &nameless).await,
+            Err(Error::External(GuildError::InvalidGuildName))
         ));
     }
 

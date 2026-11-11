@@ -20,16 +20,13 @@ use crate::extract::{Admin, SameOrigin};
 use crate::users::UserId;
 use crate::{Result, State};
 
-/// The guild's name in game ("BL"). The addon records only this guild's roster and the site takes
-/// only this guild's: WoW gives addons a guild's name, not an id.
-pub const GUILD_NAME: &str = "BL";
-
 /// The most members a roster may name (the game's guild cap is 1,000).
 const MAX_MEMBERS: usize = 1_000;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct RosterInput {
-    /// The guild the addon saw it in, which must be [`GUILD_NAME`].
+    /// The guild the addon saw it in, which must be the one in the guild's settings
+    /// ([`crate::guild::Settings::guild_name`]): WoW gives addons a guild's name, not an id.
     pub guild: String,
     pub members: Vec<RosterMember>,
 }
@@ -49,6 +46,12 @@ pub struct RosterMember {
     /// id in hex, which it is matched by before its name.
     #[serde(default)]
     pub guid: Option<String>,
+    /// Its rank in the guild by name, as the roster shows it ("Officer").
+    #[serde(default)]
+    pub rank: Option<String>,
+    /// That rank's number: 0 is the guild master, then down the ranks.
+    #[serde(default)]
+    pub rank_index: Option<i16>,
 }
 
 /// The Battle.net character id in a game GUID (`Player-<realm>-<id in hex>`).
@@ -122,7 +125,8 @@ pub async fn apply(
     by: UserId,
     input: &RosterInput,
 ) -> Result<RosterResult, CharacterError> {
-    if input.guild.trim() != GUILD_NAME {
+    let guild = crate::guild::settings(pool).await?.guild_name;
+    if input.guild.trim() != guild {
         return external(CharacterError::WrongGuild);
     }
     if input.members.len() > MAX_MEMBERS {
@@ -137,9 +141,21 @@ pub async fn apply(
     let mut added = Vec::new();
     let mut changes: Vec<LevelChange> = Vec::new();
     // Every character it named, matched or added: the guild as the game has it now.
-    let mut named: Vec<i64> = Vec::new();
+    let mut named: Vec<super::db::Named> = Vec::new();
     for member in &input.members {
         let battlenet_id = member.guid.as_deref().and_then(battlenet_id);
+        let rank = member
+            .rank
+            .as_deref()
+            .map(str::trim)
+            .filter(|rank| !rank.is_empty())
+            .map(str::to_string);
+        let rank_index = member.rank_index.filter(|index| *index >= 0);
+        let named_as = |character_id| super::db::Named {
+            character_id,
+            rank: rank.clone(),
+            rank_index,
+        };
         let found = super::db::raise_level(
             &mut tx,
             battlenet_id,
@@ -150,7 +166,7 @@ pub async fn apply(
         .await?;
         if !found.is_empty() {
             matched += 1;
-            named.extend(found.iter().map(|change| change.character_id));
+            named.extend(found.iter().map(|change| named_as(change.character_id)));
             // A character named twice in one roster: its first state is the one to go back to.
             for change in found {
                 match changes
@@ -175,7 +191,7 @@ pub async fn apply(
                 member.reached_60_at,
             )
             .await?;
-            named.push(made.character_id);
+            named.push(named_as(made.character_id));
             added.push(AddedMember {
                 character_id: made.character_id,
                 first_name: first.to_string(),
@@ -195,6 +211,7 @@ pub async fn apply(
     let upload_id = super::db::record_upload(
         &mut tx,
         by,
+        &guild,
         input.members.len() as i32,
         matched as i32,
         serde_json::to_value(&unmatched).context("listing the unmatched members")?,
@@ -429,6 +446,14 @@ pub fn admin_router() -> Router<State> {
         .route("/rosters", get(list_uploads))
         .route("/rosters/not-added", get(list_not_added))
         .route("/rosters/standing", get(get_standing))
+        .route(
+            "/rosters/ranks",
+            get(super::ranks::list_ranks).put(super::ranks::set_rank),
+        )
+        .route(
+            "/rosters/rank-mismatches",
+            get(super::ranks::list_mismatches),
+        )
         .route("/rosters/{id}/undo", post(undo_upload))
 }
 
@@ -443,7 +468,7 @@ mod tests {
 
     fn roster(members: Vec<RosterMember>) -> RosterInput {
         RosterInput {
-            guild: GUILD_NAME.into(),
+            guild: "BL".into(),
             members,
         }
     }
@@ -455,6 +480,8 @@ mod tests {
             class: Some("Warrior".into()),
             reached_60_at,
             guid: None,
+            rank: None,
+            rank_index: None,
         }
     }
 
@@ -514,6 +541,120 @@ mod tests {
             standing(&pool).await.unwrap().latest.unwrap().id,
             first.upload_id
         );
+    }
+
+    fn ranked(name: &str, rank: &str, rank_index: i16) -> RosterMember {
+        RosterMember {
+            rank: Some(rank.into()),
+            rank_index: Some(rank_index),
+            ..seen(name, 10, None)
+        }
+    }
+
+    #[sqlx::test]
+    async fn ranks_in_game_point_out_site_ranks_that_differ(pool: PgPool) {
+        use crate::characters::ranks;
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let zx = member(&pool, "Zx", Rank::Member).await;
+        let gone = member(&pool, "Gone", Rank::Trial).await;
+        add(&pool, &ey, input("Eyl", "Gg", "warrior", true))
+            .await
+            .unwrap();
+        add(&pool, &ey, input("Eyl", "Alt", "mage", false))
+            .await
+            .unwrap();
+        add(&pool, &zx, input("Zx", "Main", "rogue", true))
+            .await
+            .unwrap();
+        add(&pool, &gone, input("Gone", "Away", "rogue", true))
+            .await
+            .unwrap();
+        assert!(
+            ranks::mismatches(&pool).await.unwrap().is_empty(),
+            "no upload yet"
+        );
+
+        apply(
+            &pool,
+            ey.id,
+            &roster(vec![
+                ranked("Eyl Gg", "Officer", 1),
+                ranked("Eyl Alt", "Officer Alt", 2),
+                ranked("Zx Main", "Member", 4),
+            ]),
+        )
+        .await
+        .unwrap();
+        let gg = super::super::find_by_slug(&pool, "eyl-gg")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            (
+                gg.guild.as_deref(),
+                gg.guild_rank.as_deref(),
+                gg.guild_rank_index
+            ),
+            (Some("BL"), Some("Officer"), Some(1))
+        );
+        let game = ranks::list(&pool).await.unwrap();
+        assert_eq!(
+            game.iter()
+                .map(|r| (r.name.as_str(), r.rank_index, r.site_rank, r.characters))
+                .collect::<Vec<_>>(),
+            [
+                ("Officer", 1, Some(Rank::Officer), 1),
+                ("Officer Alt", 2, None, 1),
+                ("Member", 4, Some(Rank::Member), 1),
+            ]
+        );
+
+        // Ey is an officer in game but a raider on the site, and Gone is in the guild no more.
+        let found = ranks::mismatches(&pool).await.unwrap();
+        let who: Vec<_> = found
+            .iter()
+            .map(|m| (m.username.as_str(), m.rank, m.expected))
+            .collect();
+        assert!(who.contains(&("Ey", Rank::Raider, Some(Rank::Officer))));
+        assert!(who.contains(&("Gone", Rank::Trial, None)));
+        assert!(!who.iter().any(|(name, ..)| *name == "Zx"), "{who:?}");
+
+        // Officer counted as a raider, for a guild where officers raid: Ey matches.
+        ranks::set(&pool, "Officer", Some(Rank::Raider))
+            .await
+            .unwrap();
+        let found = ranks::mismatches(&pool).await.unwrap();
+        assert!(!found.iter().any(|m| m.username == "Ey"));
+        assert!(ranks::set(&pool, "Nobody", None).await.is_err());
+
+        // Another guild's roster is turned down until the settings name it, and then decides.
+        let mut other = roster(vec![ranked("Zx Main", "Peon", 3)]);
+        other.guild = "Other".into();
+        assert!(matches!(
+            apply(&pool, ey.id, &other).await,
+            Err(crate::Error::External(CharacterError::WrongGuild))
+        ));
+        let settings = crate::guild::settings(&pool).await.unwrap();
+        crate::guild::set_settings(
+            &pool,
+            &crate::guild::Settings {
+                guild_name: "Other".into(),
+                ..settings
+            },
+        )
+        .await
+        .unwrap();
+        let gg = super::super::find_by_slug(&pool, "eyl-gg")
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(gg.in_guild, "no upload of Other yet: as it was");
+        apply(&pool, ey.id, &other).await.unwrap();
+        let gg = super::super::find_by_slug(&pool, "eyl-gg")
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(!gg.in_guild && gg.guild.is_none() && gg.guild_rank.is_none());
     }
 
     #[sqlx::test]

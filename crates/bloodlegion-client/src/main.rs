@@ -4,7 +4,8 @@
 //! loopback port is free, as a native app does) and keeps the refresh token. `watch` then uploads
 //! the addon's SavedVariables file, for every account in the game folder, whenever the game
 //! rewrites it (on `/reload` and logout); `upload` does it once. Only an officer's sign-in can
-//! upload, and the site takes only Blood Legion's roster.
+//! upload. The addon keeps a roster for each guild the account's characters are in; the site
+//! takes the one of the guild in its settings and turns down the rest, which are skipped.
 
 mod lua;
 
@@ -434,6 +435,11 @@ struct Member {
     /// The game's GUID, by which the site finds the character's Battle.net id.
     #[serde(skip_serializing_if = "Option::is_none")]
     guid: Option<String>,
+    /// Its guild rank by name, and that rank's number (0 the guild master).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rank: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rank_index: Option<i64>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -463,17 +469,35 @@ struct Unmatched {
     class: Option<String>,
 }
 
-/// The roster in the addon's saved file (`BloodLegionDB.roster`), as the site takes it.
-fn read_roster(source: &str) -> anyhow::Result<Roster> {
+/// The rosters in the addon's saved file (`BloodLegionDB.rosters`, one for each guild, or an older
+/// version's `BloodLegionDB.roster`), as the site takes them.
+fn read_rosters(source: &str) -> anyhow::Result<Vec<Roster>> {
     let globals = lua::parse(source).context("reading the saved file")?;
-    let roster = globals
-        .get("BloodLegionDB")
-        .and_then(|db| db.get("roster"))
-        .context("no roster saved yet: log in on a character in the guild, then /reload")?;
+    let db = globals.get("BloodLegionDB");
+    let saved = db
+        .and_then(|db| db.get("rosters"))
+        .and_then(lua::Value::as_table)
+        .into_iter()
+        .flat_map(|rosters| rosters.values())
+        .chain(db.and_then(|db| db.get("roster")));
+    let mut rosters: Vec<Roster> = Vec::new();
+    for roster in saved {
+        let roster = read_roster(roster)?;
+        if !rosters.iter().any(|r| r.guild == roster.guild) {
+            rosters.push(roster);
+        }
+    }
+    if rosters.is_empty() {
+        bail!("no roster saved yet: log in on a character in the guild, then /reload");
+    }
+    Ok(rosters)
+}
+
+fn read_roster(roster: &lua::Value) -> anyhow::Result<Roster> {
     let guild = roster
         .get("guild")
         .and_then(lua::Value::as_str)
-        .context("the roster names no guild")?
+        .context("a roster names no guild")?
         .to_string();
     let mut members = Vec::new();
     for (name, member) in roster
@@ -492,18 +516,23 @@ fn read_roster(source: &str) -> anyhow::Result<Roster> {
             ),
             None => None,
         };
+        let text = |key| {
+            member
+                .get(key)
+                .and_then(lua::Value::as_str)
+                .map(str::to_string)
+        };
         members.push(Member {
             name: name.clone(),
             level: level as i64,
-            class: member
-                .get("class")
-                .and_then(lua::Value::as_str)
-                .map(str::to_string),
+            class: text("class"),
             reached_60_at,
-            guid: member
-                .get("guid")
-                .and_then(lua::Value::as_str)
-                .map(str::to_string),
+            guid: text("guid"),
+            rank: text("rank"),
+            rank_index: member
+                .get("rankIndex")
+                .and_then(lua::Value::as_f64)
+                .map(|index| index as i64),
         });
     }
     Ok(Roster { guild, members })
@@ -511,25 +540,55 @@ fn read_roster(source: &str) -> anyhow::Result<Roster> {
 
 async fn upload(file: &Path) -> anyhow::Result<()> {
     let source = std::fs::read(file).with_context(|| format!("reading {}", file.display()))?;
-    let roster = read_roster(&String::from_utf8_lossy(&source))?;
+    let rosters = read_rosters(&String::from_utf8_lossy(&source))?;
     let mut login = load_login()?;
     let http = http();
     let token = access_token(&http, &mut login).await?;
-    let result: RosterResult = checked(
-        http.post(login.site.join("/api/characters/roster")?)
-            .bearer_auth(token)
-            .json(&roster)
+    let mut taken = 0;
+    for roster in &rosters {
+        let response = http
+            .post(login.site.join("/api/characters/roster")?)
+            .bearer_auth(&token)
+            .json(roster)
             .send()
             .await
-            .context("reaching the site")?,
-    )
-    .await?
-    .json()
-    .await
-    .context("reading the site's answer")?;
+            .context("reaching the site")?;
+        if response.status() == reqwest::StatusCode::UNPROCESSABLE_ENTITY {
+            let body: serde_json::Value = response.json().await.unwrap_or_default();
+            if body.get("title").and_then(|t| t.as_str()) == Some("Wrong Guild") {
+                println!(
+                    "{}: skipped the {} roster, which is not the site's guild.",
+                    file.display(),
+                    roster.guild
+                );
+                continue;
+            }
+            let reason = body.get("detail").and_then(|d| d.as_str());
+            bail!("the site said 422: {}", reason.unwrap_or("no reason given"));
+        }
+        let result: RosterResult = checked(response)
+            .await?
+            .json()
+            .await
+            .context("reading the site's answer")?;
+        taken += 1;
+        report(file, roster, &result);
+    }
+    if taken == 0 {
+        let guilds: Vec<_> = rosters.iter().map(|r| r.guild.as_str()).collect();
+        bail!(
+            "the site took none of the saved rosters ({}): log in on a character in the site's guild, then /reload",
+            guilds.join(", ")
+        );
+    }
+    Ok(())
+}
+
+fn report(file: &Path, roster: &Roster, result: &RosterResult) {
     println!(
-        "{}: uploaded {} members, {} matched characters on the site, {} changed, {} added.",
+        "{} ({}): uploaded {} members, {} matched characters on the site, {} changed, {} added.",
         file.display(),
+        roster.guild,
         roster.members.len(),
         result.matched,
         result.changed,
@@ -550,7 +609,6 @@ async fn upload(file: &Path) -> anyhow::Result<()> {
             println!("  {} ({class} {})", member.name, member.level);
         }
     }
-    Ok(())
 }
 
 async fn watch(files: &Files) -> anyhow::Result<()> {
@@ -592,10 +650,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn reads_the_addons_roster() {
+    fn reads_the_addons_rosters() {
         let source = r#"
 BloodLegionDB = {
-["roster"] = {
+["rosters"] = {
+["BL"] = {
 ["guild"] = "BL",
 ["members"] = {
 ["Garr Bonecrush"] = {
@@ -603,6 +662,8 @@ BloodLegionDB = {
 ["class"] = "Warrior",
 ["reached60"] = 1763608500,
 ["guid"] = "Player-6934-005096AC",
+["rank"] = "Officer",
+["rankIndex"] = 1,
 },
 ["Lira Moonwell"] = {
 ["level"] = 23,
@@ -611,30 +672,65 @@ BloodLegionDB = {
 },
 ["scannedAt"] = 1763608600,
 },
+["Other"] = {
+["guild"] = "Other",
+["members"] = {},
+},
+},
 }
 "#;
         assert_eq!(
-            read_roster(source).unwrap(),
-            Roster {
-                guild: "BL".into(),
-                members: vec![
-                    Member {
-                        name: "Garr Bonecrush".into(),
-                        level: 60,
-                        class: Some("Warrior".into()),
-                        reached_60_at: Some("2025-11-20T03:15:00Z".into()),
-                        guid: Some("Player-6934-005096AC".into()),
-                    },
-                    Member {
-                        name: "Lira Moonwell".into(),
-                        level: 23,
-                        class: Some("Priest".into()),
-                        reached_60_at: None,
-                        guid: None,
-                    },
-                ],
-            }
+            read_rosters(source).unwrap(),
+            [
+                Roster {
+                    guild: "BL".into(),
+                    members: vec![
+                        Member {
+                            name: "Garr Bonecrush".into(),
+                            level: 60,
+                            class: Some("Warrior".into()),
+                            reached_60_at: Some("2025-11-20T03:15:00Z".into()),
+                            guid: Some("Player-6934-005096AC".into()),
+                            rank: Some("Officer".into()),
+                            rank_index: Some(1),
+                        },
+                        Member {
+                            name: "Lira Moonwell".into(),
+                            level: 23,
+                            class: Some("Priest".into()),
+                            reached_60_at: None,
+                            guid: None,
+                            rank: None,
+                            rank_index: None,
+                        },
+                    ],
+                },
+                Roster {
+                    guild: "Other".into(),
+                    members: vec![],
+                },
+            ]
         );
-        assert!(read_roster("BloodLegionDB = {}").is_err());
+        assert!(read_rosters("BloodLegionDB = {}").is_err());
+    }
+
+    #[test]
+    fn reads_an_older_addons_roster() {
+        let source = r#"
+BloodLegionDB = {
+["roster"] = {
+["guild"] = "BL",
+["members"] = {
+["Lira Moonwell"] = {
+["level"] = 23,
+},
+},
+},
+}
+"#;
+        let rosters = read_rosters(source).unwrap();
+        assert_eq!(rosters.len(), 1);
+        assert_eq!(rosters[0].guild, "BL");
+        assert_eq!(rosters[0].members.len(), 1);
     }
 }

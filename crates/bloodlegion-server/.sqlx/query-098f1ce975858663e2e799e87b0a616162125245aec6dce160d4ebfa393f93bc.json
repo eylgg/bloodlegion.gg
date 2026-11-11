@@ -1,0 +1,110 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT u.id AS \"user_id: UserId\", u.username, u.guild_rank AS \"rank: Rank\",\n               c.first_name AS \"first_name?\", c.last_name AS \"last_name?\", c.class AS \"class?\",\n               c.guild_rank AS \"guild_rank?\", r.site_rank AS \"site_rank?: Rank\"\n        FROM users u\n        LEFT JOIN characters c ON c.user_id = u.id AND c.in_guild AND NOT c.is_hidden\n        LEFT JOIN guild_ranks r ON r.guild = c.guild AND r.name = c.guild_rank\n        WHERE u.disabled_at IS NULL\n        ORDER BY u.username_normalized, c.guild_rank_index NULLS LAST, c.name_normalized\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "rank: Rank",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "guild_rank"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "first_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "last_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "class?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "class"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "guild_rank?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "guild_rank"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "site_rank?: Rank",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "guild_ranks",
+            "name": "site_rank"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "098f1ce975858663e2e799e87b0a616162125245aec6dce160d4ebfa393f93bc"
+}

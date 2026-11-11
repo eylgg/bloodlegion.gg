@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT r.id, r.created_at, u.username AS \"username?\", r.members, r.matched\n        FROM roster_uploads r\n        LEFT JOIN users u ON u.id = r.user_id\n        WHERE r.records_members AND r.undone_at IS NULL\n        ORDER BY r.created_at DESC, r.id DESC\n        LIMIT 1\n        ",
+  "query": "\n        SELECT r.id, r.created_at, u.username AS \"username?\", r.members, r.matched\n        FROM roster_uploads r\n        LEFT JOIN users u ON u.id = r.user_id\n        WHERE r.records_members AND r.undone_at IS NULL\n          AND r.guild = (SELECT guild_name FROM guild_settings)\n        ORDER BY r.created_at DESC, r.id DESC\n        LIMIT 1\n        ",
   "describe": {
     "columns": [
       {
@@ -70,5 +70,5 @@
       false
     ]
   },
-  "hash": "9a9f3cfe512bf67575d497684463e97032f8651a28c97f2d3e2f007e354872f3"
+  "hash": "bc6748a2617b3e132b1e4ef798864d3df9ae7c69fb1f711a7c5c565c85bae7bf"
 }

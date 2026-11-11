@@ -1,14 +1,15 @@
 -- Saves the guild roster for the Blood Legion client, for the site's race to 60. On login, on
--- /reload, and whenever the game refreshes the guild list, each member's level is saved in
--- `BloodLegionDB.roster`, with the first time this addon saw them at 60 (`reached60`, Unix
--- seconds). WoW writes the file on /reload and logout, and the Blood Legion client
--- (`crates/bloodlegion-client`) sends it to the site. Members are never dropped, so someone who
--- left keeps their last level; the site only ever raises levels anyway.
+-- /reload, and whenever the game refreshes the guild list, each member's level and guild rank are
+-- saved in `BloodLegionDB.rosters[guild]`, with the first time this addon saw them at 60
+-- (`reached60`, Unix seconds). WoW writes the file on /reload and logout, and the Blood Legion
+-- client (`crates/bloodlegion-client`) sends it to the site. A scan that named every member drops
+-- the ones who left.
 --
--- Only Blood Legion's roster, "BL" in game: WoW gives addons a guild's name, not an id, and the
--- site checks it too (`characters::roster::GUILD_NAME`). Each member keeps its GUID
--- (`Player-6934-005096AC`), whose last part is the character's Battle.net id in hex, which the
--- site matches characters by before their names ("Eyl Gg", as the roster shows them).
+-- One roster per guild the account's characters are in, by name: WoW gives addons a guild's name,
+-- not an id. The site takes the one named in its settings (`BL`) and turns down the rest. Each
+-- member keeps its GUID (`Player-6934-005096AC`), whose last part is the character's Battle.net id
+-- in hex, which the site matches characters by before their names ("Eyl Gg", as the roster shows
+-- them), and its rank by name ("Officer") and number (`rankIndex`, 0 the guild master).
 
 -- The claws (`Claws.tga`, from the site's `claws-512.png`) before the name, at the text's height.
 local PREFIX = "|TInterface\\AddOns\\BloodLegion\\Claws:0|t |cffc41e3aBlood Legion|r: "
@@ -17,7 +18,6 @@ local function say(message)
 	DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. message)
 end
 
-local GUILD = "BL"
 local MAX_LEVEL = 60
 
 local function requestRoster()
@@ -35,22 +35,33 @@ local function requestRoster()
 	end
 end
 
+-- The saved rosters by guild, the one an older version kept (`BloodLegionDB.roster`) among them.
+local function savedRosters()
+	BloodLegionDB = BloodLegionDB or {}
+	local rosters = BloodLegionDB.rosters or {}
+	BloodLegionDB.rosters = rosters
+	local old = BloodLegionDB.roster
+	if old and old.guild and not rosters[old.guild] then
+		rosters[old.guild] = old
+	end
+	BloodLegionDB.roster = nil
+	return rosters
+end
+
 local function scanRoster()
-	-- The name is nil until the game has it, and another guild's roster is none of ours.
-	if not IsInGuild() or GetGuildInfo("player") ~= GUILD then
+	-- The name is nil until the game has it.
+	local guild = IsInGuild() and GetGuildInfo("player")
+	if not guild then
 		return
 	end
-	BloodLegionDB = BloodLegionDB or {}
-	local roster = BloodLegionDB.roster
-	if not roster or roster.guild ~= GUILD then
-		roster = { guild = GUILD, members = {} }
-		BloodLegionDB.roster = roster
-	end
+	local rosters = savedRosters()
+	local roster = rosters[guild] or { guild = guild, members = {} }
+	rosters[guild] = roster
 	local now = time()
 	local total = GetNumGuildMembers() or 0
 	local named, seen = 0, {}
 	for i = 1, total do
-		local name, _, _, level, class, _, _, _, _, _, _, _, _, _, _, _, guid =
+		local name, rank, rankIndex, level, class, _, _, _, _, _, _, _, _, _, _, _, guid =
 			GetGuildRosterInfo(i)
 		if name then
 			named = named + 1
@@ -61,6 +72,8 @@ local function scanRoster()
 			member.level = math.max(member.level or 0, level)
 			member.class = class
 			member.guid = guid or member.guid
+			member.rank = rank
+			member.rankIndex = rankIndex
 			if member.level >= MAX_LEVEL and not member.reached60 then
 				member.reached60 = now
 			end
@@ -91,9 +104,14 @@ events:SetScript("OnEvent", function(_, event)
 end)
 
 local function rosterStatus()
-	local roster = BloodLegionDB and BloodLegionDB.roster
+	local guild = IsInGuild() and GetGuildInfo("player")
+	if not guild then
+		say("Not in a guild on this character: log in on one in the guild.")
+		return
+	end
+	local roster = savedRosters()[guild]
 	if not roster or not roster.scannedAt then
-		say("No " .. GUILD .. " roster saved yet: log in on a character in the guild.")
+		say("No " .. guild .. " roster saved yet: open the guild list or /reload.")
 		return
 	end
 	local members, capped = 0, 0
@@ -103,7 +121,8 @@ local function rosterStatus()
 			capped = capped + 1
 		end
 	end
-	say(("Roster: %d members, %d at %d, last seen %s. /reload to save it for the client."):format(
+	say(("%s roster: %d members, %d at %d, last seen %s. /reload to save it for the client."):format(
+		guild,
 		members,
 		capped,
 		MAX_LEVEL,
@@ -224,12 +243,19 @@ local function debug()
 	end
 end
 
+-- For the sub-addons (BloodLegion_GCD, ...), which load after this one: `say`, and
+-- `commands[name] = function(rest)` to add `/bl name ...`.
+BloodLegion = { say = say, commands = {} }
+
 SLASH_BLOODLEGION1 = "/bl"
 SLASH_BLOODLEGION2 = "/bloodlegion"
 SlashCmdList.BLOODLEGION = function(message)
-	local command = (message or ""):match("^%s*(%S*)"):lower()
+	local command, rest = (message or ""):match("^%s*(%S*)%s*(.-)%s*$")
+	command = command:lower()
 	if command == "debug" then
 		debug()
+	elseif BloodLegion.commands[command] then
+		BloodLegion.commands[command](rest)
 	else
 		requestRoster()
 		rosterStatus()
