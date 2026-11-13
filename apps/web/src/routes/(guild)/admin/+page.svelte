@@ -6,6 +6,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import DiscordSettings from '$lib/components/guild/DiscordSettings.svelte';
+	import GuildRanks from '$lib/components/guild/GuildRanks.svelte';
 	import type { GuildSettings } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -125,6 +126,10 @@
 	</div>
 </form>
 
+{#key data.settings.guild_name}
+	<GuildRanks ranks={data.ranks} guild={data.settings.guild_name} />
+{/key}
+
 <DiscordSettings settings={data.discord} />
 
 <section class="panel">
@@ -134,6 +139,16 @@
 	</div>
 	<p class="muted">
 		Every account, with the Battle.net and Discord accounts it signed in with, and a rename.
+	</p>
+</section>
+
+<section class="panel">
+	<div class="head">
+		<h2>Characters</h2>
+		<Button href={resolve('/admin/characters')} variant="secondary" size="small">View</Button>
+	</div>
+	<p class="muted">
+		Every character on the site, guilded or not, with who plays it and its rank in game.
 	</p>
 </section>
 
@@ -173,8 +188,8 @@
 		<Button href={resolve('/admin/battlenet')} variant="secondary" size="small">View</Button>
 	</div>
 	<p class="muted">
-		The Forever characters on members' Battle.net accounts, read at each sign-in: those already on
-		the site, and the hidden rest.
+		The Forever characters on members' Battle.net accounts, read at each sign-in, and whether each
+		is in the guild.
 	</p>
 </section>
 

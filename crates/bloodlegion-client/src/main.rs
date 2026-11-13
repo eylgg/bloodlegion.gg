@@ -458,7 +458,9 @@ struct RosterResult {
 struct Added {
     first_name: String,
     last_name: String,
-    /// A hidden character from a Battle.net sign-in, brought onto the roster.
+    /// A hidden character from a Battle.net sign-in, brought onto the roster: only sites from
+    /// before characters stopped being hidden say so.
+    #[serde(default)]
     revealed: bool,
 }
 

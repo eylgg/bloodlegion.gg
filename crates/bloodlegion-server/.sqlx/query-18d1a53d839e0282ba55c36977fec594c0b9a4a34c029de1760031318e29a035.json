@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE characters SET is_main = true\n             WHERE id = (\n                 SELECT id FROM characters WHERE user_id = $1\n                 ORDER BY in_guild(guild) DESC, level DESC, id LIMIT 1\n             )\n             AND NOT EXISTS (SELECT 1 FROM characters WHERE user_id = $1 AND is_main)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "18d1a53d839e0282ba55c36977fec594c0b9a4a34c029de1760031318e29a035"
+}

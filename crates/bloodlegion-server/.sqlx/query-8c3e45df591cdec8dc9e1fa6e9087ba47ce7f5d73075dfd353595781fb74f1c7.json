@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH latest AS (\n            SELECT r.id, r.guild FROM roster_uploads r\n            WHERE r.records_members AND r.records_ranks AND r.undone_at IS NULL\n              AND r.guild = (SELECT guild_name FROM guild_settings)\n            ORDER BY r.created_at DESC, r.id DESC\n            LIMIT 1\n        ), named AS (\n            SELECT c.id,\n                   CASE WHEN m.character_id IS NOT NULL THEN latest.guild END AS guild,\n                   m.rank\n            FROM characters c\n            CROSS JOIN latest\n            LEFT JOIN roster_members m ON m.upload_id = latest.id AND m.character_id = c.id\n        )\n        UPDATE characters c\n        SET guild = named.guild,\n            guild_rank = named.rank\n        FROM named\n        WHERE c.id = named.id\n          AND (c.guild, c.guild_rank) IS DISTINCT FROM (named.guild, named.rank)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8c3e45df591cdec8dc9e1fa6e9087ba47ce7f5d73075dfd353595781fb74f1c7"
+}

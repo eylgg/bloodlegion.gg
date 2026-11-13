@@ -1,8 +1,4 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
-	import { api, errorMessage } from '$lib/api';
-	import Alert from '$lib/components/Alert.svelte';
-	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import { formatDateTime, playerPath, rulesetLabel } from '$lib/guild';
 	import { classIcon } from '$lib/wow/icons';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
@@ -24,26 +20,6 @@
 		return groups;
 	});
 
-	let unhiding = $state<number | null>(null);
-	let error = $state('');
-	let done = $state('');
-
-	/** Brings a hidden character onto the roster, as its member's. */
-	async function unhide(character: BattlenetCharacter) {
-		unhiding = character.id;
-		error = '';
-		done = '';
-		try {
-			await api.post(`/api/admin/battlenet-characters/${character.id}/unhide`);
-			done = `${character.first_name} ${character.last_name} is on the roster now.`;
-			await invalidateAll();
-		} catch (err) {
-			error = errorMessage(err, 'Unhiding it failed. Please try again.');
-		} finally {
-			unhiding = null;
-		}
-	}
-
 	const findClass = (slug: string) => data.classes.find((c) => c.slug === slug);
 	const findRace = (slug: string | null) => data.races.find((r) => r.slug === slug);
 </script>
@@ -61,10 +37,10 @@
 
 <p class="muted intro">
 	The WoW: Forever characters on members' Battle.net accounts, read at each sign-in. One already on
-	the site is linked to it, and goes to the member if nobody plays it yet. The rest are hidden: only
-	superusers see them here, until an officer adds a character of the same name, which brings the
-	hidden one onto the roster, or until a superuser unhides it here. Once on the roster it is the
-	member's like any other character, and sign-ins no longer change it.
+	the site is linked to it, and goes to the member if nobody plays it yet; the rest are added as the
+	member's. Either way it is on the roster only while it is in the guild (Guilded: the latest roster
+	upload named it). One the account stops listing loses the link, and is removed if no roster upload
+	ever named it and it never raided or won loot.
 </p>
 <p class="muted intro">
 	A sign-in is the only way the site learns which Battle.net account a character is on, so a guild
@@ -72,9 +48,6 @@
 	the roster uploads. Read characters on the Users page reads a member's account without waiting for
 	their next sign-in.
 </p>
-
-{#if error}<Alert variant="error">{error}</Alert>{/if}
-{#if done}<Alert variant="success">{done}</Alert>{/if}
 
 {#each accounts as account (account.key)}
 	<section class="panel">
@@ -97,24 +70,20 @@
 						<th>Class</th>
 						<th>Race</th>
 						<th>Ruleset</th>
-						<th>On the site</th>
+						<th>In the guild</th>
 						<th>Read at sign-in</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each account.characters as character (character.id)}
 						{@const wowClass = findClass(character.class)}
-						<tr class:hidden={character.is_hidden}>
+						<tr>
 							<td>
-								{#if character.is_hidden}
-									{character.first_name} {character.last_name}
-								{:else}
-									<CharacterLink
-										firstName={character.first_name}
-										lastName={character.last_name}
-										cls={character.class}
-									/>
-								{/if}
+								<CharacterLink
+									firstName={character.first_name}
+									lastName={character.last_name}
+									cls={character.class}
+								/>
 							</td>
 							<td class="number">{character.level}</td>
 							<td>
@@ -126,24 +95,10 @@
 							<td>{findRace(character.race)?.name ?? '—'}</td>
 							<td>{rulesetLabel(character.ruleset)}</td>
 							<td>
-								{#if character.is_hidden}
-									<span class="unhide">
-										<span class="tag">Hidden</span>
-										<ConfirmButton
-											size="small"
-											question={character.username
-												? `Put it on the roster as ${character.username}'s?`
-												: 'Put it on the roster, unclaimed?'}
-											confirmLabel="Unhide"
-											confirmVariant="primary"
-											disabled={unhiding !== null}
-											onconfirm={() => unhide(character)}
-										>
-											{unhiding === character.id ? 'Unhiding...' : 'Unhide'}
-										</ConfirmButton>
-									</span>
+								{#if character.in_guild}
+									<span class="tag guild">Guilded</span>
 								{:else}
-									On the roster
+									<span class="muted">Not in the guild</span>
 								{/if}
 							</td>
 							<td class="muted">
@@ -185,22 +140,17 @@
 		border-radius: var(--radius-sm);
 	}
 
-	.unhide {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	tr.hidden td:first-child {
-		color: var(--grey-text);
-	}
-
 	.tag {
 		padding: 0 6px;
 		color: var(--grey-text);
 		font-size: var(--text-xs);
 		border: 1px solid var(--grey-surface);
 		border-radius: var(--radius-sm);
+	}
+
+	.tag.guild {
+		color: var(--green-text);
+		border-color: currentColor;
 	}
 
 	/* On a phone the table scrolls sideways rather than squeezing its columns. */

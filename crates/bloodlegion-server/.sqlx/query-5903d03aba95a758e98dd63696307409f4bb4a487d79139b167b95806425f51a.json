@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO characters (user_id, first_name, last_name, class, level, battlenet_id)\n             VALUES ($1, 'Eyl', 'Shm', 'shaman', 10, 5479164) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5903d03aba95a758e98dd63696307409f4bb4a487d79139b167b95806425f51a"
+}

@@ -1,0 +1,119 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            u.id AS \"id: UserId\",\n            u.username,\n            u.first_name,\n            u.last_name,\n            u.guild_rank AS \"guild_rank: Rank\",\n            u.is_superuser,\n            (u.disabled_at IS NOT NULL) AS \"disabled!\",\n            COALESCE(\n                (SELECT jsonb_agg(\n                     jsonb_build_object(\n                         'first_name', ch.first_name,\n                         'last_name', ch.last_name,\n                         'class', ch.class,\n                         'level', ch.level,\n                         'is_main', ch.is_main,\n                         'in_guild', in_guild(ch.guild)\n                     ) ORDER BY ch.is_main DESC, in_guild(ch.guild) DESC, ch.level DESC, ch.name_normalized\n                 )\n                 FROM characters ch\n                 WHERE ch.user_id = u.id),\n                '[]'::jsonb\n            ) AS \"characters!: sqlx::types::Json<Vec<AccountCharacter>>\",\n            COALESCE(\n                (SELECT jsonb_agg(\n                     jsonb_build_object(\n                         'provider', p.slug,\n                         'provider_name', p.name,\n                         'subject', c.subject,\n                         'userinfo', c.raw_userinfo,\n                         'disconnected_at', c.disconnected_at\n                     ) ORDER BY c.disconnected_at NULLS FIRST, p.name\n                 )\n                 FROM auth_oauth2_provider_credentials c\n                 JOIN auth_providers p ON p.id = c.provider_id\n                 WHERE c.user_id = u.id),\n                '[]'::jsonb\n            ) AS \"connections!: sqlx::types::Json<Vec<RawConnection>>\",\n            u.created_at\n        FROM users u\n        ORDER BY u.username_normalized\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: UserId",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "last_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "guild_rank: Rank",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "guild_rank"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_superuser",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "is_superuser"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "disabled!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "characters!: sqlx::types::Json<Vec<AccountCharacter>>",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "connections!: sqlx::types::Json<Vec<RawConnection>>",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      null,
+      null,
+      null,
+      false
+    ]
+  },
+  "hash": "89e3115a5dac4e55fc2c21f7fb437507c9e921bcba9fea30715a9b7fd77187f5"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE characters SET guild = 'BL' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1497af0eeefb1b5be7b73be83507936e5e6d94058f5de8bcb3bb75b81f1c12ad"
+}

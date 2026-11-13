@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO roster_members (upload_id, character_id, rank) VALUES ($1, $2, 4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e7cf882491be8a5b5b2b10873e82e5add3376eb9a6224359600110ffc4d59d9d"
+}

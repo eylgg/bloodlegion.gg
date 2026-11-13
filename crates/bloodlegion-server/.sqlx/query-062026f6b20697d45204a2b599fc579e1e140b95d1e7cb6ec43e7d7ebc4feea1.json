@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM characters c\n         WHERE c.battlenet_provider_id = $1 AND c.battlenet_subject = $2\n           AND NOT (c.battlenet_id = ANY($3))\n           AND NOT in_guild(c.guild)\n           AND NOT EXISTS (SELECT 1 FROM roster_members m WHERE m.character_id = c.id)\n           AND NOT EXISTS (SELECT 1 FROM raid_attendees r WHERE r.character_id = c.id)\n           AND NOT EXISTS (SELECT 1 FROM loot l WHERE l.character_id = c.id)\n           AND NOT EXISTS (SELECT 1 FROM loot_priority_characters p WHERE p.character_id = c.id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "062026f6b20697d45204a2b599fc579e1e140b95d1e7cb6ec43e7d7ebc4feea1"
+}

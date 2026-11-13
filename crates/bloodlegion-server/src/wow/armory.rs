@@ -171,7 +171,7 @@ pub struct Difference {
     pub armory: String,
 }
 
-/// Looks up every character on the site (not the hidden ones) in the armory, and compares them.
+/// Looks up every character on the site in the armory, and compares them.
 /// With `fill`, takes from the armory what the site lacks, has wrong, or has lower: a race not
 /// recorded, the sex (most recorded before sexes were optional are a default, not a choice), and a
 /// level below the armory's (as a roster would raise it). Anything else that differs (a class, a

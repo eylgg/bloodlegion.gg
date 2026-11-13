@@ -1,0 +1,79 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH old AS (\n            SELECT id, level, reached_60_at\n            FROM characters\n            WHERE CASE\n                    -- The character Battle.net says it is, when the site has it linked.\n                    WHEN EXISTS (\n                        SELECT 1 FROM characters WHERE battlenet_id = $4\n                    ) THEN battlenet_id = $4\n                    ELSE name_normalized = $1 OR replace(name_normalized, ' ', '') = $1\n                END\n            FOR UPDATE\n        ), new AS (\n            UPDATE characters c\n            SET level = GREATEST(c.level, $2),\n                reached_60_at = CASE WHEN GREATEST(c.level, $2) = 60\n                                     THEN LEAST(c.reached_60_at, COALESCE($3, now())) END\n            FROM old\n            WHERE c.id = old.id\n            RETURNING c.id, c.level, c.reached_60_at\n        )\n        SELECT old.id AS \"character_id!\", old.level AS \"old_level!\",\n               old.reached_60_at AS old_reached_60_at,\n               new.level AS \"new_level!\", new.reached_60_at AS new_reached_60_at\n        FROM old\n        JOIN new ON new.id = old.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "character_id!",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "old_level!",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "level"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "old_reached_60_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "reached_60_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "new_level!",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "level"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "new_reached_60_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "characters",
+            "name": "reached_60_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int2",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "bf4d03612cf92602726c1043fbf99261281667c0bc5411b86bed6e7acfa6cd24"
+}

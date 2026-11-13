@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { api, errorMessage } from '$lib/api';
-	import { RANKS, RANK_LABEL, formatDateTime } from '$lib/guild';
+	import { formatDateTime } from '$lib/guild';
 	import Alert from '$lib/components/Alert.svelte';
 	import ConfirmButton from '$lib/components/ConfirmButton.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
-	import type { GameRank, Rank, RosterUpload } from '$lib/types';
+	import type { RosterUpload } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -34,23 +34,6 @@
 			error = errorMessage(err, 'Undoing it failed. Please try again.');
 		} finally {
 			undoing = null;
-		}
-	}
-
-	// svelte-ignore state_referenced_locally
-	let ranks = $state<GameRank[]>(data.ranks);
-	let rankError = $state('');
-
-	/** Says which site rank a rank in game stands for, or none to leave it out. */
-	async function setRank(rank: GameRank, value: string) {
-		rankError = '';
-		try {
-			ranks = await api.put<GameRank[]>(
-				`/api/admin/rosters/ranks?name=${encodeURIComponent(rank.name)}`,
-				{ site_rank: value === '' ? null : (value as Rank) }
-			);
-		} catch (err) {
-			rankError = errorMessage(err, 'Saving the rank failed. Please try again.');
 		}
 	}
 
@@ -93,48 +76,6 @@
 			No roster upload has said who is in the guild yet ({data.standing.in_guild} of
 			{data.standing.characters} characters are marked in it from older uploads). The next upload decides.
 		</p>
-	{/if}
-</section>
-
-<section class="panel">
-	<h2>Ranks in game</h2>
-	<p class="muted">
-		The guild's ranks as the roster uploads saw them, and the site rank each stands for. A member
-		whose site rank is not the highest of their characters' in the guild is pointed out on the
-		roster page; a rank left out (an alt rank) is not compared. Each new rank is matched the first
-		time an upload sees it: the guild master is the leader, a rank named exactly as one of the
-		site's is that rank, and any other is not compared.
-	</p>
-	{#if rankError}<Alert variant="error">{rankError}</Alert>{/if}
-	{#if ranks.length > 0}
-		<table class="ranks">
-			<thead>
-				<tr><th>#</th><th>In game</th><th>Characters</th><th>On the site</th></tr>
-			</thead>
-			<tbody>
-				{#each ranks as rank (rank.name)}
-					<tr>
-						<td class="muted">{rank.rank_index}</td>
-						<td>{rank.name}</td>
-						<td>{rank.characters}</td>
-						<td>
-							<select
-								aria-label="Site rank for {rank.name}"
-								value={rank.site_rank ?? ''}
-								onchange={(event) => setRank(rank, event.currentTarget.value)}
-							>
-								<option value="">Not compared</option>
-								{#each RANKS as value (value)}
-									<option {value}>{RANK_LABEL[value]}</option>
-								{/each}
-							</select>
-						</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	{:else}
-		<p class="muted">No upload has sent the guild's ranks yet: they come with addon 0.5.0.</p>
 	{/if}
 </section>
 

@@ -12,6 +12,15 @@ export const characterPath = (firstName: string, lastName: string) =>
 	resolve('/(guild)/roster/[name]', { name: characterSlug(firstName, lastName) });
 
 /** A player's page: `/@eyl`, the username lowercase, as it is unique. */
+/** A rank in game by number as Blizzard's armory shows it: the game counts from 0 (the guild
+ * master), the armory from 1. Only for display: the site stores and sends the game's number. */
+export const gameRankNumber = (rank: number) => `Rank ${rank + 1}`;
+
+/** A rank in game as the site shows it: the guild's name for it, else its number as the armory
+ * shows it; null for no guild. */
+export const gameRankLabel = (rank: number | null, name: string | null) =>
+	rank === null ? null : (name ?? gameRankNumber(rank));
+
 /** The lowest level Blizzard's armory shows a character at: below it, it has no page. */
 export const ARMORY_MIN_LEVEL = 10;
 

@@ -40,7 +40,7 @@ pub struct Account {
     pub guild_rank: Rank,
     pub is_superuser: bool,
     pub disabled: bool,
-    /// Every character linked to them, main first, hidden ones last.
+    /// Every character linked to them, main first.
     pub characters: Vec<AccountCharacter>,
     /// Every sign-in account ever linked, connected ones first.
     pub connections: Vec<Connection>,
@@ -58,8 +58,6 @@ pub struct AccountCharacter {
     pub is_main: bool,
     /// Named by the latest roster upload of the guild.
     pub in_guild: bool,
-    /// Kept off the roster (a Battle.net listing's character never brought onto it).
-    pub is_hidden: bool,
 }
 
 /// A connection row as the query gives it: the label still to read from the userinfo.
@@ -108,9 +106,8 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Account>> {
                          'class', ch.class,
                          'level', ch.level,
                          'is_main', ch.is_main,
-                         'in_guild', ch.in_guild,
-                         'is_hidden', ch.is_hidden
-                     ) ORDER BY ch.is_hidden, ch.is_main DESC, ch.level DESC, ch.name_normalized
+                         'in_guild', in_guild(ch.guild)
+                     ) ORDER BY ch.is_main DESC, in_guild(ch.guild) DESC, ch.level DESC, ch.name_normalized
                  )
                  FROM characters ch
                  WHERE ch.user_id = u.id),
@@ -213,12 +210,12 @@ mod tests {
         add(&pool, &ey, input("Eyl", "Gg", "warrior", true))
             .await
             .unwrap();
-        let hidden = add(&pool, &ey, input("Eyl", "Zz", "rogue", false))
+        let guilded = add(&pool, &ey, input("Eyl", "Zz", "rogue", false))
             .await
             .unwrap();
         sqlx::query!(
-            "UPDATE characters SET is_hidden = true, battlenet_id = 99, level = 30 WHERE id = $1",
-            hidden.id
+            "UPDATE characters SET guild = 'BL', guild_rank = 4 WHERE id = $1",
+            guilded.id
         )
         .execute(&pool)
         .await
@@ -231,14 +228,14 @@ mod tests {
         assert_eq!(
             ey.characters
                 .iter()
-                .map(|c| (c.last_name.as_str(), c.is_main, c.is_hidden, c.in_guild))
+                .map(|c| (c.last_name.as_str(), c.is_main, c.in_guild))
                 .collect::<Vec<_>>(),
             [
-                ("Gg", true, false, false),
-                ("Alt", false, false, false),
-                ("Zz", false, true, false)
+                ("Gg", true, false),
+                ("Zz", false, true),
+                ("Alt", false, false)
             ],
-            "main first, hidden ones last"
+            "main first, then guilded ones"
         );
         assert!(
             accounts

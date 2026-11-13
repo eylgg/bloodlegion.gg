@@ -9,7 +9,7 @@
 
 use anyhow::Context;
 use axum::extract::Path;
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use sqlx::PgPool;
 use time::{OffsetDateTime, serde::iso8601};
@@ -85,7 +85,8 @@ pub struct AddedMember {
     pub first_name: String,
     pub last_name: String,
     pub class: String,
-    /// A hidden character from a Battle.net listing brought out, rather than one made.
+    /// A hidden character from a Battle.net listing brought out, rather than one made: only uploads
+    /// from before characters stopped being hidden did.
     pub revealed: bool,
 }
 
@@ -135,6 +136,13 @@ pub async fn apply(
     if input.members.iter().any(|m| !(1..=60).contains(&m.level)) {
         return external(CharacterError::InvalidLevel);
     }
+    // Every member's rank (the game has ten, 0 the guild master): an older addon sends none.
+    if input.members.iter().any(|m| {
+        m.rank.as_deref().is_none_or(|rank| rank.trim().is_empty())
+            || !m.rank_index.is_some_and(|index| (0..=9).contains(&index))
+    }) {
+        return external(CharacterError::RosterWithoutRanks);
+    }
     let mut tx = pool.begin().await?;
     let mut matched = 0;
     let mut unmatched = Vec::new();
@@ -144,17 +152,18 @@ pub async fn apply(
     let mut named: Vec<super::db::Named> = Vec::new();
     for member in &input.members {
         let battlenet_id = member.guid.as_deref().and_then(battlenet_id);
-        let rank = member
+        // Checked above: every member has both.
+        let rank = member.rank_index.unwrap_or_default();
+        let rank_name = member
             .rank
             .as_deref()
-            .map(str::trim)
-            .filter(|rank| !rank.is_empty())
-            .map(str::to_string);
-        let rank_index = member.rank_index.filter(|index| *index >= 0);
+            .unwrap_or_default()
+            .trim()
+            .to_string();
         let named_as = |character_id| super::db::Named {
             character_id,
-            rank: rank.clone(),
-            rank_index,
+            rank,
+            rank_name: rank_name.clone(),
         };
         let found = super::db::raise_level(
             &mut tx,
@@ -197,7 +206,7 @@ pub async fn apply(
                 first_name: first.to_string(),
                 last_name: last.to_string(),
                 class: class.to_string(),
-                revealed: made.revealed,
+                revealed: false,
             });
         } else {
             unmatched.push(UnmatchedMember {
@@ -221,7 +230,6 @@ pub async fn apply(
             .iter()
             .map(|a| super::db::Added {
                 character_id: a.character_id,
-                revealed: a.revealed,
             })
             .collect::<Vec<_>>(),
     )
@@ -376,7 +384,7 @@ pub async fn undo(pool: &PgPool, id: i64, by: UserId) -> Result<Undone, Characte
 pub struct Standing {
     /// The latest upload that decides who is in the guild; `None` before any did.
     pub latest: Option<LatestUpload>,
-    /// Characters on the site in the guild, and on the site at all (hidden ones left out).
+    /// Characters on the site in the guild, and on the site at all.
     pub in_guild: i64,
     pub characters: i64,
 }
@@ -403,8 +411,8 @@ pub async fn standing(pool: &PgPool) -> Result<Standing> {
             matched: row.matched,
         });
     let counts = sqlx::query!(
-        r#"SELECT count(*) FILTER (WHERE in_guild) AS "in_guild!", count(*) AS "characters!"
-           FROM characters WHERE NOT is_hidden"#
+        r#"SELECT count(*) FILTER (WHERE in_guild(guild)) AS "in_guild!", count(*) AS "characters!"
+           FROM characters"#
     )
     .fetch_one(pool)
     .await?;
@@ -446,10 +454,8 @@ pub fn admin_router() -> Router<State> {
         .route("/rosters", get(list_uploads))
         .route("/rosters/not-added", get(list_not_added))
         .route("/rosters/standing", get(get_standing))
-        .route(
-            "/rosters/ranks",
-            get(super::ranks::list_ranks).put(super::ranks::set_rank),
-        )
+        .route("/rosters/ranks", get(super::ranks::list_ranks))
+        .route("/rosters/ranks/{rank}", put(super::ranks::set_rank))
         .route(
             "/rosters/rank-mismatches",
             get(super::ranks::list_mismatches),
@@ -480,8 +486,8 @@ mod tests {
             class: Some("Warrior".into()),
             reached_60_at,
             guid: None,
-            rank: None,
-            rank_index: None,
+            rank: Some("Member".into()),
+            rank_index: Some(4),
         }
     }
 
@@ -503,7 +509,7 @@ mod tests {
             let pool = pool.clone();
             async move {
                 sqlx::query_scalar!(
-                    "SELECT in_guild FROM characters WHERE name_normalized = $1",
+                    r#"SELECT in_guild(guild) AS "in_guild!" FROM characters WHERE name_normalized = $1"#,
                     name
                 )
                 .fetch_one(&pool)
@@ -552,6 +558,33 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn every_member_needs_a_rank(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Officer).await;
+        let unranked = RosterMember {
+            rank: None,
+            rank_index: None,
+            ..seen("Eyl Gg", 10, None)
+        };
+        let too_low = ranked("Eyl Gg", "Peon", 10);
+        for bad in [unranked, too_low] {
+            assert!(matches!(
+                apply(&pool, ey.id, &roster(vec![bad])).await,
+                Err(crate::Error::External(CharacterError::RosterWithoutRanks))
+            ));
+        }
+        // A guild without a rank cannot be stored.
+        let gg = add(&pool, &ey, input("Eyl", "Gg", "warrior", true))
+            .await
+            .unwrap();
+        assert!(
+            sqlx::query!("UPDATE characters SET guild = 'BL' WHERE id = $1", gg.id)
+                .execute(&pool)
+                .await
+                .is_err()
+        );
+    }
+
+    #[sqlx::test]
     async fn ranks_in_game_point_out_site_ranks_that_differ(pool: PgPool) {
         use crate::characters::ranks;
         let ey = member(&pool, "Ey", Rank::Raider).await;
@@ -592,20 +625,20 @@ mod tests {
         assert_eq!(
             (
                 gg.guild.as_deref(),
-                gg.guild_rank.as_deref(),
-                gg.guild_rank_index
+                gg.guild_rank,
+                gg.guild_rank_name.as_deref()
             ),
-            (Some("BL"), Some("Officer"), Some(1))
+            (Some("BL"), Some(1), Some("Officer"))
         );
         let game = ranks::list(&pool).await.unwrap();
         assert_eq!(
             game.iter()
-                .map(|r| (r.name.as_str(), r.rank_index, r.site_rank, r.characters))
+                .map(|r| (r.rank, r.name.as_deref(), r.site_rank, r.characters))
                 .collect::<Vec<_>>(),
             [
-                ("Officer", 1, Some(Rank::Officer), 1),
-                ("Officer Alt", 2, None, 1),
-                ("Member", 4, Some(Rank::Member), 1),
+                (1, Some("Officer"), Some(Rank::Officer), 1),
+                (2, Some("Officer Alt"), None, 1),
+                (4, Some("Member"), Some(Rank::Member), 1),
             ]
         );
 
@@ -620,12 +653,28 @@ mod tests {
         assert!(!who.iter().any(|(name, ..)| *name == "Zx"), "{who:?}");
 
         // Officer counted as a raider, for a guild where officers raid: Ey matches.
-        ranks::set(&pool, "Officer", Some(Rank::Raider))
-            .await
-            .unwrap();
+        ranks::set(&pool, 1, Some(Rank::Raider)).await.unwrap();
         let found = ranks::mismatches(&pool).await.unwrap();
         assert!(!found.iter().any(|m| m.username == "Ey"));
-        assert!(ranks::set(&pool, "Nobody", None).await.is_err());
+        assert!(ranks::set(&pool, 7, None).await.is_err(), "no rank 7 seen");
+
+        // Rank 1 renamed in game: the new name, and still a raider here.
+        apply(
+            &pool,
+            ey.id,
+            &roster(vec![
+                ranked("Eyl Gg", "Lieutenant", 1),
+                ranked("Eyl Alt", "Officer Alt", 2),
+                ranked("Zx Main", "Member", 4),
+            ]),
+        )
+        .await
+        .unwrap();
+        let first = &ranks::list(&pool).await.unwrap()[0];
+        assert_eq!(
+            (first.rank, first.name.as_deref(), first.site_rank),
+            (1, Some("Lieutenant"), Some(Rank::Raider))
+        );
 
         // Another guild's roster is turned down until the settings name it, and then decides.
         let mut other = roster(vec![ranked("Zx Main", "Peon", 3)]);
@@ -648,7 +697,10 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert!(gg.in_guild, "no upload of Other yet: as it was");
+        assert!(
+            !gg.in_guild && gg.guild.as_deref() == Some("BL"),
+            "no upload of Other yet: nobody is in it, and BL's stay as BL's"
+        );
         apply(&pool, ey.id, &other).await.unwrap();
         let gg = super::super::find_by_slug(&pool, "eyl-gg")
             .await
@@ -790,14 +842,13 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn adds_strangers_and_brings_out_hidden_ones(pool: PgPool) {
+    async fn adds_strangers_and_matches_battlenet_listed_ones(pool: PgPool) {
         let ey = member(&pool, "Ey", Rank::Officer).await;
         let admin = member(&pool, "Admin", Rank::Leader).await;
-        // A hidden character from Ey's Battle.net listing.
-        let hidden = sqlx::query_scalar!(
-            "INSERT INTO characters (user_id, first_name, last_name, class, level, is_hidden,
-                                     battlenet_id)
-             VALUES ($1, 'Eyl', 'Shm', 'shaman', 10, true, 5479164) RETURNING id",
+        // A character from Ey's Battle.net listing, not in the guild yet.
+        let listed = sqlx::query_scalar!(
+            "INSERT INTO characters (user_id, first_name, last_name, class, level, battlenet_id)
+             VALUES ($1, 'Eyl', 'Shm', 'shaman', 10, 5479164) RETURNING id",
             ey.id.0,
         )
         .fetch_one(&pool)
@@ -814,20 +865,19 @@ mod tests {
         let result = apply(&pool, ey.id, &roster(vec![shm, capped, unknown]))
             .await
             .unwrap();
-        assert_eq!(result.matched, 0);
-        assert_eq!(result.added.len(), 2);
+        assert_eq!(result.matched, 1);
+        assert_eq!(result.added.len(), 1);
         assert_eq!(result.unmatched.len(), 1, "a class the site does not know");
 
-        let revealed = &result.added[0];
-        assert_eq!((revealed.character_id, revealed.revealed), (hidden, true));
-        let shown = crate::characters::find(&pool, hidden)
+        let shm = crate::characters::find(&pool, listed)
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(shown.level, 12);
-        assert_eq!(shown.user_id, Some(ey.id), "it keeps its player");
+        assert_eq!(shm.level, 12);
+        assert!(shm.in_guild);
+        assert_eq!(shm.user_id, Some(ey.id), "it keeps its player");
 
-        let made = &result.added[1];
+        let made = &result.added[0];
         assert!(!made.revealed);
         let bank = crate::characters::find(&pool, made.character_id)
             .await
@@ -865,7 +915,7 @@ mod tests {
         .unwrap();
         assert_eq!(battlenet_id, Some(0x006C36F7));
 
-        // Undoing removes the one it made, and keeps the one it brought out.
+        // Undoing removes the one it made, and keeps the one it matched.
         let undone = undo(&pool, result.upload_id, admin.id).await.unwrap();
         assert_eq!(undone.removed, 1);
         assert!(
@@ -875,7 +925,7 @@ mod tests {
                 .is_none()
         );
         assert!(
-            crate::characters::find(&pool, hidden)
+            crate::characters::find(&pool, listed)
                 .await
                 .unwrap()
                 .is_some()

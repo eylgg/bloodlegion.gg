@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) FILTER (WHERE in_guild(guild)) AS \"in_guild!\", count(*) AS \"characters!\"\n           FROM characters",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "in_guild!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "characters!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "9a914a342c65cf226229d42dca781772b4e5ab6293c0908f466c03e7b8c6d720"
+}

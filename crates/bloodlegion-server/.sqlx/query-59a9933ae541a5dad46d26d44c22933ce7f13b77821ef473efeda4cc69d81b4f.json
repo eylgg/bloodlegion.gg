@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE guild_ranks SET site_rank = $2\n           WHERE guild = (SELECT guild_name FROM guild_settings) AND rank = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int2",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "59a9933ae541a5dad46d26d44c22933ce7f13b77821ef473efeda4cc69d81b4f"
+}

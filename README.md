@@ -212,17 +212,18 @@ the changes.
   officers (the planner's Notes tab, `/planner/notes`).
 - **Battle.net characters**: every Battle.net sign-in (or link) reads the account's Forever
   characters from the profile API (`profile-forever-us`), in the background so a sign-in never
-  waits on it, into the same characters. One with a site character's name is linked to it, which
-  goes to the account's member when nobody plays it yet (becoming their main if they have none);
-  one another member plays stays theirs. Any other is added **hidden** (`characters.is_hidden`):
-  only superusers see it (`/admin/battlenet`), it is in no list, page, raid, or loot, and it follows
-  Battle.net (level, class, race, player) until Battle.net stops listing it, which removes it. An
-  officer adding a character of its name brings the hidden one out instead of making another, and
-  so does a superuser's Unhide there (`wow::battlenet`). **A sign-in is the only way the site
+  waits on it, into the same characters. One with a site character's Battle.net id or name is
+  linked to it (its level raised, and a race and sex nobody recorded filled in), which goes to the
+  account's member when nobody plays it yet (becoming their main if they have none: their highest
+  in the guild, else their highest); one another member plays stays theirs. Any other is added as
+  the member's: on their page, and **on the roster only once a roster upload names it** (Guilded),
+  like every character (`wow::battlenet`). One Battle.net stops listing is unlinked from the account
+  (keeping the game's id), and removed if no roster upload ever named it and it never raided or won
+  loot. Superusers see them all under Battle.net characters (`/admin/battlenet`), each marked
+  Guilded or not. **A sign-in is the only way the site
   learns a character's Battle.net account** (`battlenet_subject`, with `battlenet_seen_at` the time
   it was last read): a roster upload knows only the character's own id (from its GUID), and an
-  officer giving a character to a member is the site's say. The page lists only characters a
-  sign-in linked; one Battle.net stops listing is unlinked from the account but keeps its id.
+  officer giving a character to a member is the site's say.
   Superusers can also read a member's characters without waiting for a sign-in (Users → Read
   characters, `POST /api/admin/users/{id}/battlenet-sync`), with the token from their last
   sign-in, which Battle.net keeps good for about a day. Members who signed in before the read went
@@ -230,11 +231,19 @@ the changes.
   sessions so their next visit is a fresh Battle.net sign-in that reads them.
 - **Users**: superusers see every account (Administration → Users, `/admin/users`;
   `GET /api/admin/users`) with the Battle.net and Discord accounts it signed in with (a BattleTag,
-  a Discord username) and its characters (in their class colors, each linking to its page),
-  filtered to those with no Battle.net or no Discord. They rename an account there
-  (`PUT /api/admin/users/{id}/username`), under signup's rules (`users::admin`).
+  a Discord username) and every character linked to it (in their class colors, each linking to
+  its page, with its level and Main and Guilded badges), filtered to those with no
+  Battle.net or no Discord. They rename an account there (`PUT /api/admin/users/{id}/username`),
+  under signup's rules (`users::admin`).
+- **Characters**: superusers see every character (Administration → Characters,
+  `/admin/characters`; `GET /api/admin/characters`, `characters::admin`), guilded or not and
+  played or not, with its player, its rank in game, when a Battle.net sign-in last listed it, and
+  Main and Guilded badges, filtered to those guilded, not guilded, or nobody's. The roster page and
+  the race to 60 show only the guild's characters.
 - **The armory**: each character's page links to its page in Blizzard's armory
-  (`worldofwarcraft.blizzard.com/en-us/forever/us/armory/character/eyl-gg`, its name lowercase).
+  (`worldofwarcraft.blizzard.com/en-us/forever/us/armory/character/eyl-gg`, its name lowercase),
+  from level 10: the armory has no character below it (the API answers "not found"), so the page
+  shows no link and the check lists those apart, under "Below level 10".
   The same profile is in the API (`/profile/wow/character/eyl-gg`, `profile-forever-us`), read with
   the site's own token from the `battlenet` sign-in client (client credentials): level, class,
   race, sex, ruleset, and guild. Superusers check every character on the roster against it
@@ -347,32 +356,41 @@ the client keep them current:
    that character linked (a GUID, `Player-6934-005096AC`, ends in the id in hex), else by name (the
    roster shows `First Last`; any `-Realm` dropped, or the two names run together:
    `characters::roster`). It only ever raises a level, keeps the earliest time anyone saw a
-   character reach 60, and leaves hidden characters alone. It takes only the roster of the guild
+   character reach 60. It takes only the roster of the guild
    named in Administration's settings ("Name in game", `guild_settings.guild_name`, `BL` by
    default), so the site works for another guild by its name. A member
-   no character matches is **added**: a hidden character Battle.net listed under its id or name is
-   brought onto the roster (keeping its player), or else a new one is made with its name, class,
+   no character matches is **added**: a new one is made with its name, class,
    level, and Battle.net id, on the guild's ruleset, nobody playing it until someone claims it or a
    Battle.net sign-in links it (no race or sex until someone records them: the roster has neither). The
    client lists what it added, and any member it could not (a name or class the site does not
    take); those are also on the roster page for superusers ("Not added from the roster", from
    `GET /api/admin/rosters/not-added`), each with an Add that fills in the character form, until a
-   character of that name is on the site. **Only roster uploads say who is in the guild**
-   (`characters.in_guild`): the latest upload marks every character it named, matched or added,
-   and clears every other (`roster_members`, `db::sync_in_guild`), and gives each the guild and
-   rank in game the upload saw (`characters.guild`, `guild_rank`, `guild_rank_index`), shown on
-   the roster's "In game" column. Only uploads of the guild in the settings count, so renaming it
-   there leaves things as they are until an upload of the new name. A character in the guild shows
-   on the roster for everyone, as a member's main, and races to 60 as a member's, even while
-   nobody plays it on the site. A character an officer records for no one (a pug) is not, and
-   stays the administrator's, under Unclaimed; one a member plays that the latest upload did not
-   name is listed for superusers on the roster under "Not in the guild". Neither an officer
+   character of that name is on the site. **Only roster uploads say who is in the guild**: the
+   latest upload gives every character it named, matched or added, the guild and rank in game it
+   saw them with (`characters.guild`, and `guild_rank`: the game's number for the rank, 0 the
+   guild master, as the armory has it; shown on the roster's "In game" column by the rank's name),
+   and clears them on every other (`roster_members`, `db::sync_in_guild`). A
+   character is in the guild when its guild is the one in the settings (`in_guild(guild)` in SQL;
+   there is no column of its own). Only uploads of that guild count, so renaming it there takes
+   everyone out of the guild until an upload of the new name. A character's guild always comes
+   with its rank: both are set or both null (`characters_guild_rank_check`; the armory names a
+   character's guild, or leaves it out for one in none, but not its rank, which only Blizzard's
+   guild roster has, by number, so only uploads set them). The site turns down a roster without every member's rank (Roster Without
+   Ranks: the addon from 0.5.0 and its client send them), and only uploads that sent ranks
+   (`roster_uploads.records_ranks`) say who is in the guild. **The roster is the guild's
+   characters**: one in the guild shows there for everyone, as a member's main, and races to 60 as
+   a member's, even while nobody plays it on the site. Any other (a member's alt out of the guild,
+   a pug an officer recorded) is on its player's page, and superusers find them all under
+   Administration → Characters. Neither an officer
    adding a character nor a Battle.net sign-in changes it. **Ranks in game are matched to the
-   site's** (`guild_ranks`, `characters::ranks`): each rank an upload sees is matched the first
-   time (rank 0 the leader; a rank named exactly as a site rank, "Officer" or "Raider" in any case,
-   that rank; anything else, "Raider Alt" or "Core" among them, not compared), and superusers
-   change it under Roster
-   uploads → Ranks in game. The roster then lists for superusers, under "Rank not as in game"
+   site's** (`guild_ranks`, `characters::ranks`), one row per guild and rank number, with the
+   guild's name for it (only the game shows the names, so the addon sends them) and the site rank
+   it stands for: the rank a member of it holds on the site, which decides what they can do there.
+   The site shows the numbers as the armory does, from 1 ("Rank 1" is the guild master, game rank
+   0), and a rank with no name yet by that number; it stores and sends the game's own. Superusers
+   see and match the guild's ranks on Administration ("BL's ranks in game"). Each rank is matched the first time an upload sees it (rank 0 the leader; a rank
+   named exactly as a site rank, "Officer" or "Raider" in any case, that rank; anything else, "Raider
+   Alt" or "Core" among them, not compared), and superusers change it there. Renaming a rank in game keeps its site rank. The roster then lists for superusers, under "Rank not as in game"
    (`GET /api/admin/rosters/rank-mismatches`), every member whose site rank is not the highest
    their characters in the guild stand for, and every member with a rank but no character in the
    guild. The site rank stays the account's and an officer changes it; nothing changes it on its

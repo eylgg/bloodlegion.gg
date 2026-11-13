@@ -3,6 +3,7 @@
 //! Officers add and edit them, including a character no account claims (a pug who won loot); a
 //! player writes only their character's notes. Each member has at most one main.
 
+pub mod admin;
 pub mod api;
 mod db;
 pub mod ranks;
@@ -42,11 +43,13 @@ pub struct Character {
     /// Named by the guild's roster (an upload from the addon): shown and racing like a member's
     /// even while nobody plays it on the site.
     pub in_guild: bool,
-    /// The guild the latest roster upload of the guild saw it in (the guild's own name), with its
-    /// rank there by name and number (0 the guild master); `None` while no upload named it.
+    /// The guild the latest roster upload of the guild saw it in (the guild's own name), and its
+    /// rank there: the game's number for it, 0 the guild master, as the armory gives it. Both or
+    /// neither: `None` while no upload named it.
     pub guild: Option<String>,
-    pub guild_rank: Option<String>,
-    pub guild_rank_index: Option<i16>,
+    pub guild_rank: Option<i16>,
+    /// That rank's name in game ("Officer"), from `guild_ranks`, when an upload has sent it.
+    pub guild_rank_name: Option<String>,
     /// The specs it plays, its main (if it has one) first, then in the catalog's order.
     pub specs: sqlx::types::Json<Vec<CharacterSpec>>,
     #[serde(with = "iso8601")]
@@ -220,6 +223,13 @@ pub enum CharacterError {
         detail = "A roster names at most 1,000 members."
     )]
     RosterTooLong,
+    #[error("roster without ranks")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Roster Without Ranks",
+        detail = "The roster has no guild rank for every member: update the Blood Legion addon (0.5.0 or later) and the client, then /reload in game."
+    )]
+    RosterWithoutRanks,
     #[error("upload not found")]
     #[problem(
         status = NOT_FOUND,
@@ -353,8 +363,7 @@ pub async fn find_by_slug(pool: &PgPool, slug: &str) -> sqlx::Result<Option<Char
 }
 
 /// Adds a character (officers only). A member's first character becomes their main whether or
-/// not they asked; declaring another main moves the title. A hidden character of the same name
-/// (from a Battle.net listing) is brought out instead, keeping its player unless `input` names one.
+/// not they asked; declaring another main moves the title.
 pub async fn create(
     pool: &PgPool,
     actor: &User,
@@ -364,9 +373,7 @@ pub async fn create(
         return external(CharacterError::OfficersOnly);
     }
     let mut tx = pool.begin().await?;
-    let full_name = format!("{} {}", input.first_name.trim(), input.last_name.trim());
-    let hidden = db::lock_hidden_by_name(&mut tx, &full_name).await?;
-    let valid = validate(actor, input, hidden.map(|(_, owner)| owner))?;
+    let valid = validate(actor, input, None)?;
     let mut is_main = valid.is_main;
     if let Some(owner) = valid.user_id {
         is_main |= db::count_owned(&mut tx, owner).await? == 0;
@@ -374,19 +381,9 @@ pub async fn create(
             db::clear_main(&mut tx, owner, None).await?;
         }
     }
-    let id = match hidden {
-        Some((id, _)) => {
-            db::reveal(&mut tx, id).await?;
-            db::clear_specs_unless_class(&mut tx, id, valid.class).await?;
-            db::update(&mut tx, id, &Valid { is_main, ..valid })
-                .await
-                .map_err(classify)?;
-            id
-        }
-        None => db::insert(&mut tx, &valid, is_main)
-            .await
-            .map_err(classify)?,
-    };
+    let id = db::insert(&mut tx, &valid, is_main)
+        .await
+        .map_err(classify)?;
     tx.commit().await?;
     Ok(db::find(pool, id)
         .await?

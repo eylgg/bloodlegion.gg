@@ -61,7 +61,7 @@ export type AdminAccount = {
 	guild_rank: Rank;
 	is_superuser: boolean;
 	disabled: boolean;
-	/** Every character linked to them, main first, hidden ones last. */
+	/** Every character linked to them, main first, then guilded ones. */
 	characters: {
 		first_name: string;
 		last_name: string;
@@ -70,8 +70,6 @@ export type AdminAccount = {
 		is_main: boolean;
 		/** Named by the latest roster upload of the guild. */
 		in_guild: boolean;
-		/** Kept off the roster: a Battle.net listing's character nobody brought onto it. */
-		is_hidden: boolean;
 	}[];
 	/** Every sign-in account ever linked, connected ones first. */
 	connections: Connection[];
@@ -81,8 +79,10 @@ export type AdminAccount = {
 /** The guild as the latest roster upload saw it. */
 /** A rank in game as roster uploads saw it, and the site rank it stands for (null: not compared). */
 export type GameRank = {
-	name: string;
-	rank_index: number;
+	/** The game's number for it: 0 is the guild master. */
+	rank: number;
+	/** Its name in game, from the latest upload that sent it. */
+	name: string | null;
 	site_rank: Rank | null;
 	characters: number;
 };
@@ -94,7 +94,35 @@ export type RankMismatch = {
 	rank: Rank;
 	/** The highest site rank their characters in the guild stand for; null when none is in it. */
 	expected: Rank | null;
-	characters: { first_name: string; last_name: string; class: string; guild_rank: string | null }[];
+	characters: {
+		first_name: string;
+		last_name: string;
+		class: string;
+		guild_rank: number | null;
+		guild_rank_name: string | null;
+	}[];
+};
+
+/** A character as the superusers' characters page shows it, guilded or not. */
+export type AdminCharacter = {
+	id: number;
+	first_name: string;
+	last_name: string;
+	class: string;
+	race: string | null;
+	level: number;
+	/** Who plays it; null for an unclaimed one. */
+	user_id: number | null;
+	username: string | null;
+	is_main: boolean;
+	/** Named by the latest roster upload of the guild. */
+	in_guild: boolean;
+	/** Its rank in the guild in game by number (0 the guild master), and that rank's name. */
+	guild_rank: number | null;
+	guild_rank_name: string | null;
+	/** When a Battle.net sign-in last listed it; null if none has. */
+	battlenet_seen_at: string | null;
+	created_at: string;
 };
 
 export type RosterStanding = {
@@ -117,7 +145,7 @@ export type BattlenetRead = {
 	synced: {
 		listed: number;
 		linked: number;
-		hidden: number;
+		added: number;
 		claimed: number;
 		removed: number;
 	} | null;
@@ -138,8 +166,8 @@ export type BattlenetCharacter = {
 	sex: Sex | null;
 	ruleset: Ruleset;
 	level: number;
-	/** Seen by superusers only, until an officer adds a character of its name. */
-	is_hidden: boolean;
+	/** Named by the guild's latest roster upload. */
+	in_guild: boolean;
 	/** When Battle.net last listed it; null once it stopped. */
 	seen_at: string | null;
 };
@@ -192,7 +220,8 @@ export type RosterUpload = {
 	unmatched: { name: string; level: number; class: string | null }[];
 	/** The characters it changed, by name. */
 	changes: RosterChange[];
-	/** The members it added as characters: made, or hidden ones brought out (`revealed`). */
+	/** The members it added as characters (`revealed`: a hidden one brought out, which only uploads
+	 * from before characters stopped being hidden did). */
 	added: {
 		character_id: number;
 		first_name: string;
@@ -461,11 +490,12 @@ export type GuildCharacter = {
 	is_main: boolean;
 	/** Named by the guild's roster (an addon upload): counts like a member's even while nobody plays it. */
 	in_guild: boolean;
-	/** The guild and rank in game the latest roster upload saw it with (rank 0 the guild master);
-	 * null while no upload of the guild named it. */
+	/** The guild and rank in game the latest roster upload saw it with: the game's number for the
+	 * rank (0 the guild master), as the armory has it. Both null while no upload of the guild named it. */
 	guild: string | null;
-	guild_rank: string | null;
-	guild_rank_index: number | null;
+	guild_rank: number | null;
+	/** That rank's name in game ("Officer"), when an upload has sent it. */
+	guild_rank_name: string | null;
 	/** The specs it plays, its main (if it has one) first. */
 	specs: CharacterSpec[];
 	created_at: string;

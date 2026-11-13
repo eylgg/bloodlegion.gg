@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO roster_uploads (user_id, guild, members, matched, unmatched,\n                                         records_members, records_ranks)\n             VALUES ($1, 'BL', 1, 1, '[]', true, true) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "roster_uploads",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3c9a1950ed13368364bd0334c1655715f99cfcd3e0907320f15fcb99a5134e88"
+}

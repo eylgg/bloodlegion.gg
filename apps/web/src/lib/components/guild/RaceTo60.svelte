@@ -7,7 +7,8 @@
 
 	/**
 	 * The launch's race to 60, for as long as it runs: the two highest of each class, and anyone
-	 * tied with the second, in one table. Only raiders, trials, and members race (a character the
+	 * tied with the second, in one table. Only the guild's characters race, and of those only
+	 * raiders', trials', and members' (a character the
 	 * guild's roster named that nobody plays yet races as a member's): the leader and officers show
 	 * when they are up there with them, marked as not counting, and the public not at all.
 	 */
@@ -22,9 +23,10 @@
 	const rankOf = $derived(new Map(ranks.map((m) => [m.id, m.guild_rank])));
 	const RACING: Rank[] = ['raider', 'trial', 'member'];
 	const STAFF: Rank[] = ['leader', 'officer'];
-	/** The rank a character races under: its player's, or a member's for the roster's unplayed. */
+	/** The rank a guild character races under: its player's, or a member's for one nobody plays.
+	 * Characters out of the guild (members' other alts, pugs) do not race. */
 	const rankFor = (c: GuildCharacter): Rank | undefined =>
-		c.user_id === null ? (c.in_guild ? 'member' : undefined) : rankOf.get(c.user_id);
+		!c.in_guild ? undefined : c.user_id === null ? 'member' : rankOf.get(c.user_id);
 	const counts = (c: GuildCharacter) => RACING.includes(rankFor(c) ?? 'public');
 
 	// Members' characters only (the admin also sees pugs), past level 1, and not the public's.

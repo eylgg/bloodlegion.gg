@@ -1,13 +1,12 @@
 //! The WoW: Forever characters on each member's Battle.net accounts, read from the profile API at
-//! every sign-in into the site's own characters. A listed character with a site character's name is
-//! linked to it, which goes to the account's member when nobody plays it yet; any other is added
-//! hidden, for superusers only, until an officer adds a character of that name (which brings it out:
-//! `characters::create`) or a superuser [`unhide`]s it. Hidden ones follow Battle.net (its level, class, race, player) and go when
-//! it stops listing them; the site's own characters only gain the link.
+//! every sign-in into the site's own characters. A listed character with a site character's
+//! Battle.net id or name is linked to it, which goes to the account's member when nobody plays it
+//! yet; any other is added as the member's. Either way it is on the roster only once a roster
+//! upload names it (in the guild). Characters the account no longer lists are unlinked, and removed
+//! when no roster upload ever named them and they have no raid or loot.
 
 use anyhow::Context;
 use axum::extract::Path;
-use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use sqlx::{PgConnection, PgPool};
@@ -15,7 +14,7 @@ use time::{OffsetDateTime, serde::iso8601};
 
 use super::{Character, Ruleset};
 use crate::auth::providers::ProviderId;
-use crate::characters::{CharacterError, Sex};
+use crate::characters::Sex;
 use crate::extract::{Admin, SameOrigin};
 use crate::users::UserId;
 use crate::{Result, State};
@@ -39,7 +38,7 @@ pub fn spawn_sync(state: State, provider_id: ProviderId, subject: String, access
             Ok(synced) => tracing::info!(
                 listed = synced.listed,
                 linked = synced.linked,
-                hidden = synced.hidden,
+                added = synced.added,
                 claimed = synced.claimed,
                 removed = synced.removed,
                 "synced the Battle.net characters"
@@ -59,11 +58,11 @@ pub struct Synced {
     pub listed: usize,
     /// Of those, the ones on the site (linked to its character of that name).
     pub linked: usize,
-    /// Of those, the ones kept hidden.
-    pub hidden: usize,
+    /// Of those, the ones the site did not have, added as the member's.
+    pub added: usize,
     /// Characters that went to the account's member.
     pub claimed: u64,
-    /// Hidden characters removed, no longer listed.
+    /// Characters removed, no longer listed: never named by a roster upload, with no raid or loot.
     pub removed: u64,
 }
 
@@ -127,9 +126,11 @@ fn map(character: &Character) -> Option<Mapped<'_>> {
 }
 
 /// Applies the account's listing: links each character to the site's of the same Battle.net id or
-/// name, adds the rest hidden, removes hidden ones no longer listed (and unlinks site ones from the
-/// account, keeping the character's own id, which is the game's), then
-/// gives the account's characters nobody plays to its member ([`claim`]).
+/// name (raising its level, and filling in a race and sex nobody recorded), adds the rest, removes
+/// the ones no longer listed that no roster upload ever named and that have no raid or loot (and
+/// unlinks the rest
+/// from the account, keeping the character's own id, which is the game's), then gives the
+/// account's characters nobody plays to its member ([`claim`]).
 pub async fn apply(
     pool: &PgPool,
     provider_id: ProviderId,
@@ -146,9 +147,9 @@ pub async fn apply(
     for character in characters.iter().filter_map(map) {
         ids.push(character.battlenet_id);
         let full_name = format!("{} {}", character.first_name, character.last_name);
-        // Its own row first (a hidden one, or one linked before), else the site's of its name.
-        let found = sqlx::query!(
-            r#"SELECT id, is_hidden FROM characters
+        // Its own row first (one linked before), else the site's of its name.
+        let found = sqlx::query_scalar!(
+            r#"SELECT id FROM characters
                WHERE battlenet_id = $1 OR name_normalized = lower($2)
                ORDER BY battlenet_id = $1 DESC NULLS LAST
                LIMIT 1
@@ -159,64 +160,37 @@ pub async fn apply(
         .fetch_optional(&mut *tx)
         .await?;
         match found {
-            Some(row) => {
+            Some(id) => {
+                synced.linked += 1;
                 sqlx::query!(
                     "UPDATE characters
                      SET battlenet_id = $2, battlenet_provider_id = $3, battlenet_subject = $4,
-                         battlenet_seen_at = now()
+                         battlenet_seen_at = now(),
+                         race = COALESCE(race, $5), sex = COALESCE(sex, $6),
+                         level = GREATEST(level, $7::smallint),
+                         reached_60_at = CASE WHEN GREATEST(level, $7::smallint) = 60
+                                              THEN COALESCE(reached_60_at, now()) END
                      WHERE id = $1",
-                    row.id,
+                    id,
                     character.battlenet_id,
                     provider_id.0,
                     subject,
+                    character.race,
+                    character.sex as Sex,
+                    character.level,
                 )
                 .execute(&mut *tx)
                 .await?;
-                if row.is_hidden {
-                    synced.hidden += 1;
-                    // A hidden character is Battle.net's: it follows the listing, and its
-                    // account's member. A rename onto a name the site has keeps the old name.
-                    sqlx::query!(
-                        "UPDATE characters c
-                         SET class = $2, race = $3, sex = $4, level = $5::smallint,
-                             reached_60_at = CASE WHEN $5::smallint = 60
-                                                  THEN COALESCE(c.reached_60_at, now()) END,
-                             user_id = $6,
-                             first_name = CASE WHEN EXISTS (
-                                     SELECT 1 FROM characters t
-                                     WHERE t.name_normalized = lower($7 || ' ' || $8)
-                                         AND t.id <> c.id
-                                 ) THEN c.first_name ELSE $7 END,
-                             last_name = CASE WHEN EXISTS (
-                                     SELECT 1 FROM characters t
-                                     WHERE t.name_normalized = lower($7 || ' ' || $8)
-                                         AND t.id <> c.id
-                                 ) THEN c.last_name ELSE $8 END
-                         WHERE c.id = $1",
-                        row.id,
-                        character.class,
-                        character.race,
-                        character.sex as Sex,
-                        character.level,
-                        owner.map(|id| id.0),
-                        character.first_name,
-                        character.last_name,
-                    )
-                    .execute(&mut *tx)
-                    .await?;
-                } else {
-                    synced.linked += 1;
-                }
             }
             None => {
-                synced.hidden += 1;
+                synced.added += 1;
                 sqlx::query!(
                     "INSERT INTO characters
                          (user_id, first_name, last_name, class, race, sex, level, reached_60_at,
-                          ruleset, is_hidden, battlenet_id, battlenet_provider_id,
-                          battlenet_subject, battlenet_seen_at)
+                          ruleset, battlenet_id, battlenet_provider_id, battlenet_subject,
+                          battlenet_seen_at)
                      VALUES ($1, $2, $3, $4, $5, $6, $7::smallint, CASE WHEN $7::smallint = 60 THEN now() END,
-                             (SELECT ruleset FROM guild_settings), true, $8, $9, $10, now())",
+                             (SELECT ruleset FROM guild_settings), $8, $9, $10, now())",
                     owner.map(|id| id.0),
                     character.first_name,
                     character.last_name,
@@ -233,10 +207,17 @@ pub async fn apply(
             }
         }
     }
+    // Gone from the account (deleted or moved in game): never in the guild and with nothing to its
+    // name, it goes; anything else only loses the link.
     synced.removed = sqlx::query!(
-        "DELETE FROM characters
-         WHERE battlenet_provider_id = $1 AND battlenet_subject = $2 AND is_hidden
-           AND NOT (battlenet_id = ANY($3))",
+        "DELETE FROM characters c
+         WHERE c.battlenet_provider_id = $1 AND c.battlenet_subject = $2
+           AND NOT (c.battlenet_id = ANY($3))
+           AND NOT in_guild(c.guild)
+           AND NOT EXISTS (SELECT 1 FROM roster_members m WHERE m.character_id = c.id)
+           AND NOT EXISTS (SELECT 1 FROM raid_attendees r WHERE r.character_id = c.id)
+           AND NOT EXISTS (SELECT 1 FROM loot l WHERE l.character_id = c.id)
+           AND NOT EXISTS (SELECT 1 FROM loot_priority_characters p WHERE p.character_id = c.id)",
         provider_id.0,
         subject,
         &ids,
@@ -287,8 +268,8 @@ pub async fn claim(pool: &PgPool, provider_id: ProviderId, subject: &str) -> sql
     Ok(claimed)
 }
 
-/// [`claim`] in a transaction. A member left without a main gets the highest level of their
-/// characters on the site as one.
+/// [`claim`] in a transaction. A member left without a main gets one: their highest level in the
+/// guild, else their highest level.
 async fn claim_in(
     conn: &mut PgConnection,
     provider_id: ProviderId,
@@ -312,8 +293,8 @@ async fn claim_in(
         sqlx::query!(
             "UPDATE characters SET is_main = true
              WHERE id = (
-                 SELECT id FROM characters WHERE user_id = $1 AND NOT is_hidden
-                 ORDER BY level DESC, id LIMIT 1
+                 SELECT id FROM characters WHERE user_id = $1
+                 ORDER BY in_guild(guild) DESC, level DESC, id LIMIT 1
              )
              AND NOT EXISTS (SELECT 1 FROM characters WHERE user_id = $1 AND is_main)",
             owner.0,
@@ -341,8 +322,8 @@ pub struct Listed {
     pub sex: Option<Sex>,
     pub ruleset: Ruleset,
     pub level: i16,
-    /// Seen by superusers only, until an officer adds a character of its name.
-    pub is_hidden: bool,
+    /// Named by the guild's latest roster upload.
+    pub in_guild: bool,
     /// When Battle.net last listed it; `None` once it stopped.
     #[serde(with = "iso8601::option")]
     pub seen_at: Option<OffsetDateTime>,
@@ -352,13 +333,13 @@ pub struct Listed {
 pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Listed>> {
     let rows = sqlx::query!(
         r#"SELECT c.id, c.first_name, c.last_name, c.class, c.race, c.sex AS "sex: Sex",
-                  c.ruleset AS "ruleset: Ruleset", c.level, c.is_hidden, c.battlenet_seen_at,
+                  c.ruleset AS "ruleset: Ruleset", c.level, in_guild(c.guild) AS "in_guild!", c.battlenet_seen_at,
                   cr.raw_userinfo AS "raw_userinfo?", u.username AS "username?"
            FROM characters c
            LEFT JOIN auth_oauth2_provider_credentials cr
                ON cr.provider_id = c.battlenet_provider_id AND cr.subject = c.battlenet_subject
            LEFT JOIN users u ON u.id = c.user_id
-           WHERE c.battlenet_subject IS NOT NULL OR c.is_hidden
+           WHERE c.battlenet_subject IS NOT NULL
            ORDER BY u.username_normalized NULLS LAST, c.battlenet_subject, c.level DESC,
                     c.name_normalized"#
     )
@@ -380,59 +361,16 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Listed>> {
             sex: row.sex,
             ruleset: row.ruleset,
             level: row.level,
-            is_hidden: row.is_hidden,
+            in_guild: row.in_guild,
             seen_at: row.battlenet_seen_at,
         })
         .collect())
 }
 
-/// `GET /api/admin/battlenet-characters`: the characters Battle.net listings linked or added,
-/// hidden ones too. Superusers only.
+/// `GET /api/admin/battlenet-characters`: the characters Battle.net listings linked or added.
+/// Superusers only.
 async fn list_all(state: State, _admin: Admin) -> Result<Json<Vec<Listed>>> {
     Ok(Json(list(&state.pool).await?))
-}
-
-/// Brings a hidden character onto the roster, as its account's member's (their main when they
-/// have none). Battle.net stops updating it, as with any site character. Returns `false` when no
-/// hidden character has that id.
-pub async fn unhide(pool: &PgPool, id: i64) -> sqlx::Result<bool> {
-    let mut tx = pool.begin().await?;
-    let Some(owner) = sqlx::query_scalar!(
-        "UPDATE characters SET is_hidden = false WHERE id = $1 AND is_hidden RETURNING user_id",
-        id,
-    )
-    .fetch_optional(&mut *tx)
-    .await?
-    else {
-        return Ok(false);
-    };
-    if let Some(owner) = owner {
-        sqlx::query!(
-            "UPDATE characters SET is_main = true
-             WHERE id = $1
-               AND NOT EXISTS (SELECT 1 FROM characters WHERE user_id = $2 AND is_main)",
-            id,
-            owner,
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
-    tx.commit().await?;
-    Ok(true)
-}
-
-/// `POST /api/admin/battlenet-characters/{id}/unhide`. Superusers only.
-async fn unhide_one(
-    state: State,
-    _: SameOrigin,
-    _admin: Admin,
-    Path(id): Path<i64>,
-) -> Result<StatusCode, CharacterError> {
-    if unhide(&state.pool, id).await? {
-        Ok(StatusCode::NO_CONTENT)
-    } else {
-        Err(crate::Error::External(CharacterError::NotFound))
-    }
 }
 
 /// A member a Battle.net sign-in never read characters for, with their signed-in sessions.
@@ -577,7 +515,6 @@ pub fn admin_router() -> Router<State> {
     Router::new()
         .route("/battlenet-characters", get(list_all))
         .route("/users/{id}/battlenet-sync", post(sync_one))
-        .route("/battlenet-characters/{id}/unhide", post(unhide_one))
 }
 
 #[cfg(test)]
@@ -656,14 +593,13 @@ mod tests {
     struct Row {
         user_id: Option<i64>,
         is_main: bool,
-        is_hidden: bool,
         level: i16,
     }
 
     async fn row(pool: &PgPool, id: i64) -> Row {
         sqlx::query_as!(
             Row,
-            "SELECT user_id, is_main, is_hidden, level FROM characters WHERE id = $1",
+            "SELECT user_id, is_main, level FROM characters WHERE id = $1",
             id
         )
         .fetch_one(pool)
@@ -672,7 +608,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn links_the_sites_characters_and_hides_the_rest(pool: PgPool) {
+    async fn links_the_sites_characters_and_adds_the_rest(pool: PgPool) {
         let ey = member(&pool, "Ey", Rank::Raider).await;
         let other = member(&pool, "Other", Rank::Raider).await;
         let provider = account(&pool, "ey#1", Some(ey.id)).await;
@@ -693,46 +629,61 @@ mod tests {
             Synced {
                 listed: 4,
                 linked: 2,
-                hidden: 1,
+                added: 1,
                 // Gg; Shm is added already theirs.
                 claimed: 1,
                 removed: 0
             }
         );
 
-        // The unclaimed site character is now Ey's, and their main; it keeps its level.
+        // The unclaimed site character is now Ey's, their main, at Battle.net's level.
         let gg_row = row(&pool, gg).await;
         assert_eq!(gg_row.user_id, Some(ey.id.0));
-        assert!(gg_row.is_main && !gg_row.is_hidden);
-        assert_eq!(gg_row.level, 1);
+        assert!(gg_row.is_main);
+        assert_eq!(gg_row.level, 12);
         // Another member's stays theirs.
         assert_eq!(row(&pool, taken.id).await.user_id, Some(other.id.0));
 
-        // The new one is hidden: Ey's, but nowhere on the site.
+        // The new one is Ey's, on their page, and not in the guild until an upload names it.
         let all = list(&pool).await.unwrap();
         assert_eq!(all.len(), 3, "the bad name is skipped");
         let shm = all.iter().find(|c| c.last_name == "Shm").unwrap();
-        assert!(shm.is_hidden);
+        assert!(!shm.in_guild);
         assert_eq!(shm.username.as_deref(), Some("Ey"));
         assert_eq!(shm.race.as_deref(), Some("windshaper-skyborne"));
         assert_eq!(shm.sex, Some(Sex::Male));
         assert_eq!(shm.ruleset, Ruleset::Pvp);
         assert!(!row(&pool, shm.id).await.is_main);
-        let site = crate::characters::list(&pool).await.unwrap();
-        assert!(site.iter().all(|c| c.last_name != "Shm"));
-        assert!(
-            crate::characters::find_by_slug(&pool, "eyl-shm")
-                .await
-                .unwrap()
-                .is_none()
-        );
+        let page = crate::characters::find_by_slug(&pool, "eyl-shm")
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(!page.in_guild);
     }
 
     #[sqlx::test]
-    async fn a_new_listing_updates_and_removes_hidden_ones(pool: PgPool) {
+    async fn a_new_listing_unlinks_or_removes_the_ones_gone(pool: PgPool) {
         let ey = member(&pool, "Ey", Rank::Raider).await;
         let provider = account(&pool, "ey#1", Some(ey.id)).await;
         let gg = unowned(&pool, "Eyl", "Gg").await;
+        // Gg is in the guild: a roster upload named it.
+        let upload = sqlx::query_scalar!(
+            "INSERT INTO roster_uploads (user_id, guild, members, matched, unmatched,
+                                         records_members, records_ranks)
+             VALUES ($1, 'BL', 1, 1, '[]', true, true) RETURNING id",
+            ey.id.0,
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        sqlx::query!(
+            "INSERT INTO roster_members (upload_id, character_id, rank) VALUES ($1, $2, 4)",
+            upload,
+            gg,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
         apply(
             &pool,
             provider,
@@ -746,7 +697,11 @@ mod tests {
             .unwrap();
         assert_eq!(synced.removed, 0);
         let all = list(&pool).await.unwrap();
-        assert_eq!(all.len(), 1, "the site character is unlinked, not removed");
+        assert_eq!(
+            all.len(),
+            1,
+            "the roster's character is unlinked, not removed"
+        );
         let kept = sqlx::query_scalar!("SELECT battlenet_id FROM characters WHERE id = $1", gg)
             .fetch_one(&pool)
             .await
@@ -755,70 +710,16 @@ mod tests {
         assert_eq!(all[0].level, 60);
         assert!(row(&pool, gg).await.user_id.is_some());
 
+        // Old, never in the guild and with nothing to its name, goes.
         let synced = apply(&pool, provider, "ey#1", &[]).await.unwrap();
         assert_eq!(synced.removed, 1);
         assert!(list(&pool).await.unwrap().is_empty());
-    }
-
-    #[sqlx::test]
-    async fn an_officer_adding_the_name_brings_it_out(pool: PgPool) {
-        let ey = member(&pool, "Ey", Rank::Raider).await;
-        let provider = account(&pool, "ey#1", Some(ey.id)).await;
-        apply(&pool, provider, "ey#1", &[listed(1, "Eyl", "Shm", 10)])
-            .await
-            .unwrap();
-        let id = list(&pool).await.unwrap()[0].id;
-
-        let shown = add(&pool, &ey, input("eyl", "shm", "shaman", false))
-            .await
-            .unwrap();
-        assert_eq!(shown.id, id);
-        assert_eq!(shown.class, "shaman");
-        assert_eq!(shown.level, 10);
-        assert!(shown.is_main, "their first character on the site");
-        assert!(!list(&pool).await.unwrap()[0].is_hidden);
-    }
-
-    #[sqlx::test]
-    async fn unhiding_brings_it_onto_the_roster(pool: PgPool) {
-        let ey = member(&pool, "Ey", Rank::Raider).await;
-        let provider = account(&pool, "ey#1", Some(ey.id)).await;
-        apply(
-            &pool,
-            provider,
-            "ey#1",
-            &[listed(1, "Eyl", "Shm", 10), listed(2, "Eyl", "Two", 5)],
-        )
-        .await
-        .unwrap();
-        let all = list(&pool).await.unwrap();
-        let shm = all.iter().find(|c| c.last_name == "Shm").unwrap().id;
-        let two = all.iter().find(|c| c.last_name == "Two").unwrap().id;
-
-        assert!(unhide(&pool, shm).await.unwrap());
-        let shown = row(&pool, shm).await;
         assert!(
-            !shown.is_hidden && shown.is_main,
-            "their first, so their main"
-        );
-        assert_eq!(shown.user_id, Some(ey.id.0));
-        assert!(
-            crate::characters::find_by_slug(&pool, "eyl-shm")
+            crate::characters::find_by_slug(&pool, "eyl-old")
                 .await
                 .unwrap()
-                .is_some()
+                .is_none()
         );
-
-        assert!(unhide(&pool, two).await.unwrap());
-        assert!(!row(&pool, two).await.is_main, "the main stays");
-        assert!(!unhide(&pool, two).await.unwrap(), "already shown");
-
-        // The next sign-in keeps it: it is a site character now, only linked.
-        let synced = apply(&pool, provider, "ey#1", &[listed(1, "Eyl", "Shm", 12)])
-            .await
-            .unwrap();
-        assert_eq!((synced.linked, synced.hidden, synced.removed), (1, 0, 0));
-        assert!(!row(&pool, two).await.is_hidden);
     }
 
     #[sqlx::test]
@@ -837,37 +738,6 @@ mod tests {
         assert_eq!(
             list(&pool).await.unwrap()[0].username.as_deref(),
             Some("Ey")
-        );
-    }
-
-    #[sqlx::test]
-    async fn hidden_characters_never_raid(pool: PgPool) {
-        let ey = member(&pool, "Ey", Rank::Raider).await;
-        let provider = account(&pool, "ey#1", Some(ey.id)).await;
-        apply(&pool, provider, "ey#1", &[listed(1, "Eyl", "Shm", 10)])
-            .await
-            .unwrap();
-        let id = list(&pool).await.unwrap()[0].id;
-        let raid = sqlx::query_scalar!(
-            "INSERT INTO raids (zone, starts_local, time_zone)
-             VALUES ((SELECT slug FROM raid_zones LIMIT 1), now()::timestamp, 'America/New_York')
-             RETURNING id"
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-        let error = sqlx::query!(
-            "INSERT INTO raid_attendees (raid_id, character_id, group_number, slot)
-             VALUES ($1, $2, 1, 1)",
-            raid,
-            id,
-        )
-        .execute(&pool)
-        .await
-        .unwrap_err();
-        assert_eq!(
-            error.as_database_error().unwrap().constraint(),
-            Some("raid_attendees_character_id_fkey")
         );
     }
 

@@ -14,8 +14,10 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
                c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
-               c.is_main AS "is_main!", c.in_guild AS "in_guild!",
-               c.guild, c.guild_rank, c.guild_rank_index,
+               c.is_main AS "is_main!", in_guild(c.guild) AS "in_guild!",
+               c.guild, c.guild_rank,
+               (SELECT r.name FROM guild_ranks r WHERE r.guild = c.guild AND r.rank = c.guild_rank)
+                   AS guild_rank_name,
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -27,7 +29,6 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
                c.updated_at AS "updated_at!"
         FROM characters c
         LEFT JOIN users u ON u.id = c.user_id
-        WHERE NOT c.is_hidden
         ORDER BY c.name_normalized
         "#,
     )
@@ -45,7 +46,7 @@ fn ordered(mut character: Character) -> Character {
 /// The id of the character named `name` (`first last`), whatever its capitalization.
 pub async fn find_id_by_name(pool: &PgPool, name: &str) -> sqlx::Result<Option<i64>> {
     sqlx::query_scalar!(
-        "SELECT id FROM characters WHERE name_normalized = lower($1) AND NOT is_hidden",
+        "SELECT id FROM characters WHERE name_normalized = lower($1)",
         name,
     )
     .fetch_optional(pool)
@@ -59,8 +60,10 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
                c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
-               c.is_main AS "is_main!", c.in_guild AS "in_guild!",
-               c.guild, c.guild_rank, c.guild_rank_index,
+               c.is_main AS "is_main!", in_guild(c.guild) AS "in_guild!",
+               c.guild, c.guild_rank,
+               (SELECT r.name FROM guild_ranks r WHERE r.guild = c.guild AND r.rank = c.guild_rank)
+                   AS guild_rank_name,
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main
@@ -72,7 +75,7 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
                c.updated_at AS "updated_at!"
         FROM characters c
         LEFT JOIN users u ON u.id = c.user_id
-        WHERE c.id = $1 AND NOT c.is_hidden
+        WHERE c.id = $1
         "#,
         id,
     )
@@ -83,7 +86,7 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
 
 pub async fn count_owned(conn: &mut PgConnection, user_id: UserId) -> sqlx::Result<i64> {
     sqlx::query_scalar!(
-        r#"SELECT count(*) AS "count!" FROM characters WHERE user_id = $1 AND NOT is_hidden"#,
+        r#"SELECT count(*) AS "count!" FROM characters WHERE user_id = $1"#,
         user_id.0,
     )
     .fetch_one(&mut *conn)
@@ -148,35 +151,11 @@ pub(super) async fn insert(
 pub async fn lock_owner(conn: &mut PgConnection, id: i64) -> sqlx::Result<Option<Option<UserId>>> {
     sqlx::query_scalar!(
         r#"SELECT user_id AS "user_id: UserId" FROM characters
-           WHERE id = $1 AND NOT is_hidden FOR UPDATE"#,
+           WHERE id = $1 FOR UPDATE"#,
         id,
     )
     .fetch_optional(&mut *conn)
     .await
-}
-
-/// The hidden character named `name` (`first last`, any capitalization) and its owner, locked for
-/// bringing it out.
-pub async fn lock_hidden_by_name(
-    conn: &mut PgConnection,
-    name: &str,
-) -> sqlx::Result<Option<(i64, Option<UserId>)>> {
-    sqlx::query!(
-        r#"SELECT id, user_id AS "user_id: UserId" FROM characters
-           WHERE name_normalized = lower($1) AND is_hidden FOR UPDATE"#,
-        name,
-    )
-    .fetch_optional(&mut *conn)
-    .await
-    .map(|row| row.map(|row| (row.id, row.user_id)))
-}
-
-/// Brings a hidden character onto the site.
-pub async fn reveal(conn: &mut PgConnection, id: i64) -> sqlx::Result<()> {
-    sqlx::query!("UPDATE characters SET is_hidden = false WHERE id = $1", id)
-        .execute(&mut *conn)
-        .await?;
-    Ok(())
 }
 
 pub(super) async fn update(
@@ -238,18 +217,17 @@ pub async fn raise_level(
         WITH old AS (
             SELECT id, level, reached_60_at
             FROM characters
-            WHERE NOT is_hidden
-                AND CASE
+            WHERE CASE
                     -- The character Battle.net says it is, when the site has it linked.
                     WHEN EXISTS (
-                        SELECT 1 FROM characters WHERE battlenet_id = $4 AND NOT is_hidden
+                        SELECT 1 FROM characters WHERE battlenet_id = $4
                     ) THEN battlenet_id = $4
                     ELSE name_normalized = $1 OR replace(name_normalized, ' ', '') = $1
                 END
             FOR UPDATE
         ), new AS (
             UPDATE characters c
-            SET in_guild = true, level = GREATEST(c.level, $2),
+            SET level = GREATEST(c.level, $2),
                 reached_60_at = CASE WHEN GREATEST(c.level, $2) = 60
                                      THEN LEAST(c.reached_60_at, COALESCE($3, now())) END
             FROM old
@@ -286,8 +264,9 @@ pub async fn record_upload(
 ) -> sqlx::Result<i64> {
     let id = sqlx::query_scalar!(
         r#"
-        INSERT INTO roster_uploads (user_id, guild, members, matched, unmatched, records_members)
-        VALUES ($1, $2, $3, $4, $5, true)
+        INSERT INTO roster_uploads
+            (user_id, guild, members, matched, unmatched, records_members, records_ranks)
+        VALUES ($1, $2, $3, $4, $5, true, true)
         RETURNING id
         "#,
         user_id as UserId,
@@ -299,42 +278,38 @@ pub async fn record_upload(
     .fetch_one(&mut *conn)
     .await?;
     let ids: Vec<i64> = named.iter().map(|n| n.character_id).collect();
-    let rank_names: Vec<Option<String>> = named.iter().map(|n| n.rank.clone()).collect();
-    let rank_indexes: Vec<Option<i16>> = named.iter().map(|n| n.rank_index).collect();
+    let ranks: Vec<i16> = named.iter().map(|n| n.rank).collect();
     // A character named twice: the first naming's rank.
     sqlx::query!(
-        r#"INSERT INTO roster_members (upload_id, character_id, rank_name, rank_index)
-           SELECT $1, n.id, n.rank_name, n.rank_index
-           FROM unnest($2::bigint[], $3::text[], $4::smallint[])
-                WITH ORDINALITY AS n(id, rank_name, rank_index, i)
+        r#"INSERT INTO roster_members (upload_id, character_id, rank)
+           SELECT $1, n.id, n.rank
+           FROM unnest($2::bigint[], $3::smallint[]) WITH ORDINALITY AS n(id, rank, i)
            ORDER BY n.i
            ON CONFLICT DO NOTHING"#,
         id,
         &ids,
-        &rank_names as &[Option<String>],
-        &rank_indexes as &[Option<i16>],
+        &ranks,
     )
     .execute(&mut *conn)
     .await?;
-    // The ranks it saw, each matched to the site's by its name the first time.
-    let mut seen: Vec<(&str, i16)> = Vec::new();
+    // The ranks it saw, by number with their names now; a new one is matched to the site's the
+    // first time, and a renamed one keeps its site rank.
+    let mut seen: Vec<(i16, &str)> = Vec::new();
     for n in named {
-        if let (Some(name), Some(index)) = (n.rank.as_deref(), n.rank_index)
-            && !seen.iter().any(|(seen, _)| *seen == name)
-        {
-            seen.push((name, index));
+        if !seen.iter().any(|(rank, _)| *rank == n.rank) {
+            seen.push((n.rank, &n.rank_name));
         }
     }
-    for (name, index) in seen {
+    for (rank, name) in seen {
         sqlx::query!(
-            r#"INSERT INTO guild_ranks (guild, name, rank_index, site_rank)
+            r#"INSERT INTO guild_ranks (guild, rank, name, site_rank)
                VALUES ($1, $2, $3, $4)
-               ON CONFLICT (guild, name)
-               DO UPDATE SET rank_index = EXCLUDED.rank_index, seen_at = now()"#,
+               ON CONFLICT (guild, rank)
+               DO UPDATE SET name = EXCLUDED.name, seen_at = now()"#,
             guild,
+            rank,
             name,
-            index,
-            super::ranks::guess(name, index).map(crate::guild::Rank::slug),
+            super::ranks::guess(name, rank).map(crate::guild::Rank::slug),
         )
         .execute(&mut *conn)
         .await?;
@@ -358,10 +333,9 @@ pub async fn record_upload(
     }
     for added in added {
         sqlx::query!(
-            "INSERT INTO roster_added (upload_id, character_id, revealed) VALUES ($1, $2, $3)",
+            "INSERT INTO roster_added (upload_id, character_id, revealed) VALUES ($1, $2, false)",
             id,
             added.character_id,
-            added.revealed,
         )
         .execute(&mut *conn)
         .await?;
@@ -389,9 +363,8 @@ pub async fn not_added(pool: &PgPool) -> sqlx::Result<Vec<NotAddedRow>> {
         WHERE r.undone_at IS NULL
           AND NOT EXISTS (
               SELECT 1 FROM characters c
-              WHERE NOT c.is_hidden
-                AND (c.name_normalized = lower(m->>'name')
-                     OR replace(c.name_normalized, ' ', '') = lower(m->>'name'))
+              WHERE c.name_normalized = lower(m->>'name')
+                 OR replace(c.name_normalized, ' ', '') = lower(m->>'name')
           )
         ORDER BY lower(m->>'name'), r.created_at DESC, r.id DESC
         "#
@@ -400,16 +373,15 @@ pub async fn not_added(pool: &PgPool) -> sqlx::Result<Vec<NotAddedRow>> {
     .await
 }
 
-/// A character a roster upload added: made, or a hidden one brought out (`revealed`).
+/// A character a roster upload made. (`roster_added.revealed` is for the uploads before characters
+/// stopped being hidden, which brought a hidden one out rather than making one.)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Added {
     pub character_id: i64,
-    pub revealed: bool,
 }
 
-/// Adds a roster member no character on the site matched: brings out the hidden character
-/// Battle.net listed under its id or name, raising its level as [`raise_level`] would, or else
-/// makes one nobody plays yet, on the guild's ruleset.
+/// Adds a roster member no character on the site matched: one nobody plays yet, on the guild's
+/// ruleset.
 pub async fn add_from_roster(
     conn: &mut PgConnection,
     battlenet_id: Option<i64>,
@@ -419,43 +391,12 @@ pub async fn add_from_roster(
     level: i16,
     reached_60_at: Option<OffsetDateTime>,
 ) -> sqlx::Result<Added> {
-    let hidden = sqlx::query_scalar!(
-        r#"SELECT id FROM characters
-           WHERE is_hidden
-             AND (battlenet_id = $1 OR name_normalized = lower($2 || ' ' || $3))
-           ORDER BY battlenet_id = $1 DESC NULLS LAST
-           LIMIT 1
-           FOR UPDATE"#,
-        battlenet_id,
-        first_name,
-        last_name,
-    )
-    .fetch_optional(&mut *conn)
-    .await?;
-    if let Some(id) = hidden {
-        sqlx::query!(
-            r#"UPDATE characters
-               SET is_hidden = false, in_guild = true, level = GREATEST(level, $2),
-                   reached_60_at = CASE WHEN GREATEST(level, $2) = 60
-                                        THEN LEAST(reached_60_at, COALESCE($3, now())) END
-               WHERE id = $1"#,
-            id,
-            level,
-            reached_60_at,
-        )
-        .execute(&mut *conn)
-        .await?;
-        return Ok(Added {
-            character_id: id,
-            revealed: true,
-        });
-    }
     let id = sqlx::query_scalar!(
         r#"INSERT INTO characters
-               (first_name, last_name, class, level, reached_60_at, ruleset, battlenet_id, in_guild)
+               (first_name, last_name, class, level, reached_60_at, ruleset, battlenet_id)
            VALUES ($1, $2, $3, $4::smallint,
                    CASE WHEN $4::smallint = 60 THEN COALESCE($5, now()) END,
-                   (SELECT ruleset FROM guild_settings), $6, true)
+                   (SELECT ruleset FROM guild_settings), $6)
            RETURNING id"#,
         first_name,
         last_name,
@@ -466,10 +407,7 @@ pub async fn add_from_roster(
     )
     .fetch_one(&mut *conn)
     .await?;
-    Ok(Added {
-        character_id: id,
-        revealed: false,
-    })
+    Ok(Added { character_id: id })
 }
 
 pub struct AddedRow {
@@ -498,11 +436,12 @@ pub async fn added(pool: &PgPool, ids: &[i64]) -> sqlx::Result<Vec<AddedRow>> {
     .await
 }
 
-/// A character a roster upload named, with its rank in game when the addon saw it.
+/// A character a roster upload named, with its rank in game when the addon saw it: the game's
+/// number for it (0 the guild master) and the guild's name for it.
 pub struct Named {
     pub character_id: i64,
-    pub rank: Option<String>,
-    pub rank_index: Option<i16>,
+    pub rank: i16,
+    pub rank_name: String,
 }
 
 pub struct UploadRow {
@@ -569,33 +508,33 @@ pub async fn changes(pool: &PgPool, ids: &[i64]) -> sqlx::Result<Vec<ChangeRow>>
     .await
 }
 
-/// Sets `in_guild` from the latest upload that recorded its members and is not undone: the
-/// characters it named are in the guild, and no others. Leaves it alone while there is none.
-/// How many characters changed.
+/// Sets each character's guild and rank in game from the latest upload of the guild in the
+/// settings that recorded its members and is not undone: the characters it named have them, and
+/// no others. Leaves them alone while there is none. A character is in the guild when its guild
+/// is the settings' (`in_guild(guild)` in SQL). How many characters changed.
 pub async fn sync_in_guild(conn: &mut PgConnection) -> sqlx::Result<u64> {
     Ok(sqlx::query!(
         r#"
         WITH latest AS (
             SELECT r.id, r.guild FROM roster_uploads r
-            WHERE r.records_members AND r.undone_at IS NULL
+            WHERE r.records_members AND r.records_ranks AND r.undone_at IS NULL
               AND r.guild = (SELECT guild_name FROM guild_settings)
             ORDER BY r.created_at DESC, r.id DESC
             LIMIT 1
         ), named AS (
-            SELECT c.id, m.character_id IS NOT NULL AS in_guild,
+            SELECT c.id,
                    CASE WHEN m.character_id IS NOT NULL THEN latest.guild END AS guild,
-                   m.rank_name, m.rank_index
+                   m.rank
             FROM characters c
             CROSS JOIN latest
             LEFT JOIN roster_members m ON m.upload_id = latest.id AND m.character_id = c.id
         )
         UPDATE characters c
-        SET in_guild = named.in_guild, guild = named.guild,
-            guild_rank = named.rank_name, guild_rank_index = named.rank_index
+        SET guild = named.guild,
+            guild_rank = named.rank
         FROM named
         WHERE c.id = named.id
-          AND (c.in_guild, c.guild, c.guild_rank, c.guild_rank_index)
-              IS DISTINCT FROM (named.in_guild, named.guild, named.rank_name, named.rank_index)
+          AND (c.guild, c.guild_rank) IS DISTINCT FROM (named.guild, named.rank)
         "#
     )
     .execute(&mut *conn)
@@ -620,7 +559,7 @@ pub async fn latest_upload(pool: &sqlx::PgPool) -> sqlx::Result<Option<LatestUpl
         SELECT r.id, r.created_at, u.username AS "username?", r.members, r.matched
         FROM roster_uploads r
         LEFT JOIN users u ON u.id = r.user_id
-        WHERE r.records_members AND r.undone_at IS NULL
+        WHERE r.records_members AND r.records_ranks AND r.undone_at IS NULL
           AND r.guild = (SELECT guild_name FROM guild_settings)
         ORDER BY r.created_at DESC, r.id DESC
         LIMIT 1

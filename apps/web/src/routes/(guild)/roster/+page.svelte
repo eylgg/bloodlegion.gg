@@ -10,6 +10,7 @@
 		RANK_GROUP,
 		RANK_LABEL,
 		formatDateTime,
+		gameRankLabel,
 		playerPath,
 		rulesetLabel
 	} from '$lib/guild';
@@ -31,9 +32,10 @@
 		level: number;
 	} | null>(null);
 
-	// Which characters the chart and the table count: by default every ranked member's main. One
-	// the guild's roster named that nobody plays yet counts as a member's main (it is all the site
-	// knows of them); an unclaimed character an officer recorded (a pug) never counts.
+	// The roster is the guild: the characters the latest roster upload named (Guilded). The chart and
+	// the table count, by default, every ranked member's main; one nobody plays yet counts as a
+	// member's main (it is all the site knows of them). Characters out of the guild (members' other
+	// alts, pugs) are on Administration → Characters.
 	let mains = $state(true);
 	let alts = $state(false);
 	let ranks = $state<Record<Rank, boolean>>({
@@ -55,9 +57,10 @@
 	// The public are the sign-ups waiting for a rank: only officers filter by them.
 	const rankFilters = $derived(RANKS.filter((rank) => rank !== 'public' || data.officer));
 
-	/** The rank a character counts under: its player's, or a member's for the roster's unplayed. */
+	/** The rank a guild character counts under: its player's, or a member's for one nobody plays;
+	 * null for one out of the guild. */
 	const countsAs = (c: GuildCharacter): Rank | null =>
-		rankOf(c) ?? (c.user_id === null && c.in_guild ? 'member' : null);
+		c.in_guild ? (rankOf(c) ?? (c.user_id === null ? 'member' : null)) : null;
 
 	const counted = $derived(
 		characters.filter((c) => {
@@ -124,8 +127,7 @@
 			return rank === null ? undefined : String(RANKS.indexOf(rank));
 		},
 		// The guild master first, as the game numbers its ranks.
-		game: (c) =>
-			c.guild_rank_index === null ? undefined : String(c.guild_rank_index).padStart(2, '0'),
+		game: (c) => (c.guild_rank === null ? undefined : String(c.guild_rank).padStart(2, '0')),
 		// Mains first.
 		main: (c) => (c.is_main ? '0' : '1')
 	};
@@ -152,26 +154,6 @@
 
 	const claimed = $derived(characters.filter((c) => countsAs(c) !== null).length);
 	const shown = $derived(sorted(counted.filter(matches)));
-	// Characters no account claims and the guild's roster never named (pugs), apart from the
-	// guild's and for the admin's eyes only.
-	const isPug = (c: GuildCharacter) => c.user_id === null && !c.in_guild;
-	const unclaimed = $derived(
-		data.user.is_superuser ? sorted(characters.filter((c) => isPug(c) && matches(c))) : []
-	);
-	const anyUnclaimed = $derived(data.user.is_superuser && characters.some(isPug));
-	// Characters members play that the latest roster upload did not name: not in the guild in the
-	// game (left, never invited, or another guild's), for the administrator's eyes only. Only once
-	// an upload has said who is in the guild.
-	const notInGuild = $derived(
-		data.user.is_superuser && data.standing?.latest
-			? sorted(characters.filter((c) => c.user_id !== null && !c.in_guild && matches(c)))
-			: []
-	);
-	const anyNotInGuild = $derived(
-		data.user.is_superuser &&
-			!!data.standing?.latest &&
-			characters.some((c) => c.user_id !== null && !c.in_guild)
-	);
 
 	// Accounts with no characters yet (mostly new sign-ups), for the administrator to rank.
 	const withoutCharacters = $derived(
@@ -289,8 +271,8 @@
 							{/if}
 						</td>
 						<td>
-							{#if character.guild_rank}
-								{character.guild_rank}
+							{#if character.guild_rank !== null}
+								{gameRankLabel(character.guild_rank, character.guild_rank_name)}
 							{:else}
 								<span class="muted">—</span>
 							{/if}
@@ -392,25 +374,20 @@
 	</label>
 </div>
 
-<p class="muted">{shown.length} of {claimed}</p>
+<p class="muted">
+	{shown.length} of {claimed}{#if data.user.is_superuser}&nbsp;· characters out of the guild are on
+		<a href={resolve('/admin/characters')}>Characters</a>{/if}
+</p>
 
 {@render table(shown)}
-
-{#if anyUnclaimed}
-	<section>
-		<h2>Unclaimed <span class="count">{unclaimed.length}</span></h2>
-		{@render table(unclaimed)}
-	</section>
-{/if}
 
 {#if data.mismatches.length > 0}
 	<section>
 		<h2>Rank not as in game <span class="count">{data.mismatches.length}</span></h2>
 		<p class="muted">
 			Members whose rank here is not the highest their characters have in the guild in game (as the
-			ranks in game stand for the site's, on <a href={resolve('/admin/rosters')}>Roster uploads</a
-			>), or who have a rank but no character in the guild. Change it on their page. Only you see
-			this.
+			ranks in game stand for the site's, on <a href={resolve('/admin')}>Administration</a>), or who
+			have a rank but no character in the guild. Change it on their page. Only you see this.
 		</p>
 		<div class="scroll">
 			<table>
@@ -443,8 +420,10 @@
 											cls={character.class}
 											icon={false}
 										/>
-										{#if character.guild_rank}
-											<span class="muted">{character.guild_rank}</span>
+										{#if character.guild_rank !== null}
+											<span class="muted"
+												>{gameRankLabel(character.guild_rank, character.guild_rank_name)}</span
+											>
 										{/if}
 									</div>
 								{:else}
@@ -456,18 +435,6 @@
 				</tbody>
 			</table>
 		</div>
-	</section>
-{/if}
-
-{#if anyNotInGuild && data.standing?.latest}
-	<section>
-		<h2>Not in the guild <span class="count">{notInGuild.length}</span></h2>
-		<p class="muted">
-			Characters members play on the site that the latest roster upload ({formatDateTime(
-				data.standing.latest.created_at
-			)}) did not name, so they are not in the guild in the game. Only you see this.
-		</p>
-		{@render table(notInGuild)}
 	</section>
 {/if}
 
