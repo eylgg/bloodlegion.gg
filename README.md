@@ -238,8 +238,9 @@ the changes.
 - **Characters**: superusers see every character (Administration → Characters,
   `/admin/characters`; `GET /api/admin/characters`, `characters::admin`), guilded or not and
   played or not, with its player, its rank in game, when a Battle.net sign-in last listed it, and
-  Main and Guilded badges, filtered to those guilded, not guilded, or nobody's. The roster page and
-  the race to 60 show only the guild's characters.
+  Main and Guilded badges, filtered to those guilded, not guilded, or nobody's. The roster page
+  lists every character in the guild, mains and alts, with its player and its rank in game (not
+  the player's site rank), and the race to 60 races only the guild's characters.
 - **The armory**: each character's page links to its page in Blizzard's armory
   (`worldofwarcraft.blizzard.com/en-us/forever/us/armory/character/eyl-gg`, its name lowercase),
   from level 10: the armory has no character below it (the API answers "not found"), so the page
@@ -368,7 +369,7 @@ the client keep them current:
    character of that name is on the site. **Only roster uploads say who is in the guild**: the
    latest upload gives every character it named, matched or added, the guild and rank in game it
    saw them with (`characters.guild`, and `guild_rank`: the game's number for the rank, 0 the
-   guild master, as the armory has it; shown on the roster's "In game" column by the rank's name),
+   guild master, as the armory has it; shown on the roster's "Rank" column by the rank's name),
    and clears them on every other (`roster_members`, `db::sync_in_guild`). A
    character is in the guild when its guild is the one in the settings (`in_guild(guild)` in SQL;
    there is no column of its own). Only uploads of that guild count, so renaming it there takes
@@ -388,9 +389,10 @@ the client keep them current:
    it stands for: the rank a member of it holds on the site, which decides what they can do there.
    The site shows the numbers as the armory does, from 1 ("Rank 1" is the guild master, game rank
    0), and a rank with no name yet by that number; it stores and sends the game's own. Superusers
-   see and match the guild's ranks on Administration ("BL's ranks in game"). Each rank is matched the first time an upload sees it (rank 0 the leader; a rank
+   see the guild's ranks on Administration, under the guild ("Ranks in game": each rank's number
+   and name, read-only, and what site rank it counts as, which several ranks can share). Each rank is matched the first time an upload sees it (rank 0 the leader; a rank
    named exactly as a site rank, "Officer" or "Raider" in any case, that rank; anything else, "Raider
-   Alt" or "Core" among them, not compared), and superusers change it there. Renaming a rank in game keeps its site rank. The roster then lists for superusers, under "Rank not as in game"
+   Alt" or "Core" among them, not compared), and superusers change it there. Renaming a rank in game keeps its site rank. Administration then lists, under "Rank not as in game"
    (`GET /api/admin/rosters/rank-mismatches`), every member whose site rank is not the highest
    their characters in the guild stand for, and every member with a rank but no character in the
    guild. The site rank stays the account's and an officer changes it; nothing changes it on its

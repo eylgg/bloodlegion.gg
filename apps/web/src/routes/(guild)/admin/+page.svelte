@@ -7,6 +7,7 @@
 	import Alert from '$lib/components/Alert.svelte';
 	import DiscordSettings from '$lib/components/guild/DiscordSettings.svelte';
 	import GuildRanks from '$lib/components/guild/GuildRanks.svelte';
+	import RankMismatches from '$lib/components/guild/RankMismatches.svelte';
 	import type { GuildSettings } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -84,6 +85,9 @@
 			<input bind:value={guildName} required maxlength="24" autocomplete="off" />
 		</label>
 	</div>
+	{#key data.settings.guild_name}
+		<GuildRanks ranks={data.ranks} guild={data.settings.guild_name} />
+	{/key}
 	<div class="row">
 		<label class="field">
 			Time zone
@@ -126,9 +130,7 @@
 	</div>
 </form>
 
-{#key data.settings.guild_name}
-	<GuildRanks ranks={data.ranks} guild={data.settings.guild_name} />
-{/key}
+<RankMismatches mismatches={data.mismatches} />
 
 <DiscordSettings settings={data.discord} />
 

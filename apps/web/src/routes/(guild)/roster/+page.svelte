@@ -5,16 +5,8 @@
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import CharacterSpecs from '$lib/components/guild/CharacterSpecs.svelte';
-	import {
-		RANKS,
-		RANK_GROUP,
-		RANK_LABEL,
-		formatDateTime,
-		gameRankLabel,
-		playerPath,
-		rulesetLabel
-	} from '$lib/guild';
-	import type { GuildCharacter, NotAddedMember, Rank } from '$lib/types';
+	import { RANK_LABEL, formatDateTime, gameRankLabel, playerPath, rulesetLabel } from '$lib/guild';
+	import type { GuildCharacter, NotAddedMember } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -32,56 +24,24 @@
 		level: number;
 	} | null>(null);
 
-	// The roster is the guild: the characters the latest roster upload named (Guilded). The chart and
-	// the table count, by default, every ranked member's main; one nobody plays yet counts as a
-	// member's main (it is all the site knows of them). Characters out of the guild (members' other
-	// alts, pugs) are on Administration → Characters.
-	let mains = $state(true);
-	let alts = $state(false);
-	let ranks = $state<Record<Rank, boolean>>({
-		leader: true,
-		officer: true,
-		raider: true,
-		trial: true,
-		member: true,
-		public: false
-	});
-
-	// A rank is the player's (the account's), changed on their page.
-	const ranksById = $derived(new Map(data.members.map((m) => [m.id, m.guild_rank])));
-
-	/** Its player's rank, or null for an unclaimed character. */
-	const rankOf = (c: GuildCharacter): Rank | null =>
-		c.user_id === null ? null : (ranksById.get(c.user_id) ?? null);
-
-	// The public are the sign-ups waiting for a rank: only officers filter by them.
-	const rankFilters = $derived(RANKS.filter((rank) => rank !== 'public' || data.officer));
-
-	/** The rank a guild character counts under: its player's, or a member's for one nobody plays;
-	 * null for one out of the guild. */
-	const countsAs = (c: GuildCharacter): Rank | null =>
-		c.in_guild ? (rankOf(c) ?? (c.user_id === null ? 'member' : null)) : null;
-
-	const counted = $derived(
-		characters.filter((c) => {
-			const rank = countsAs(c);
-			const main = c.is_main || c.user_id === null;
-			return (main ? mains : alts) && rank !== null && ranks[rank];
-		})
-	);
+	// The roster is the guild: every character the latest roster upload named (Guilded), mains and
+	// alts, whoever plays them. Characters out of the guild (members' other alts, pugs) are on
+	// Administration → Characters, and players whose rank here is not their characters' in game on
+	// Administration.
+	const guilded = $derived(characters.filter((c) => c.in_guild));
 
 	// How many of each class, in the catalog's order; a bar picks its class for the table.
 	const spread = $derived(
 		data.classes.map((wowClass) => ({
 			wowClass,
-			count: counted.filter((c) => c.class === wowClass.slug).length
+			count: guilded.filter((c) => c.class === wowClass.slug).length
 		}))
 	);
 	const most = $derived(Math.max(1, ...spread.map((s) => s.count)));
 
 	// Like the guild list in game: a column to sort by, clicked again to turn it around.
 	type Column =
-		'name' | 'level' | 'race' | 'class' | 'ruleset' | 'spec' | 'player' | 'rank' | 'game' | 'main';
+		'name' | 'level' | 'race' | 'class' | 'ruleset' | 'spec' | 'player' | 'game' | 'main';
 	const COLUMNS: { key: Column; label: string }[] = [
 		{ key: 'name', label: 'Name' },
 		{ key: 'level', label: 'Level' },
@@ -90,8 +50,7 @@
 		{ key: 'ruleset', label: 'Ruleset' },
 		{ key: 'spec', label: 'Specs' },
 		{ key: 'player', label: 'Player' },
-		{ key: 'rank', label: 'Rank' },
-		{ key: 'game', label: 'In game' },
+		{ key: 'game', label: 'Rank' },
 		{ key: 'main', label: 'Main' }
 	];
 	let sort = $state<{ column: Column; descending: boolean }>({ column: 'name', descending: false });
@@ -121,11 +80,6 @@
 		ruleset: (c) => rulesetLabel(c.ruleset),
 		spec: mainSpec,
 		player: (c) => c.username ?? undefined,
-		// Highest first, as the ranks go.
-		rank: (c) => {
-			const rank = rankOf(c);
-			return rank === null ? undefined : String(RANKS.indexOf(rank));
-		},
 		// The guild master first, as the game numbers its ranks.
 		game: (c) => (c.guild_rank === null ? undefined : String(c.guild_rank).padStart(2, '0')),
 		// Mains first.
@@ -152,8 +106,7 @@
 		});
 	}
 
-	const claimed = $derived(characters.filter((c) => countsAs(c) !== null).length);
-	const shown = $derived(sorted(counted.filter(matches)));
+	const shown = $derived(sorted(guilded.filter(matches)));
 
 	// Accounts with no characters yet (mostly new sign-ups), for the administrator to rank.
 	const withoutCharacters = $derived(
@@ -223,7 +176,6 @@
 				{#each rows as character (character.id)}
 					{@const race = findRace(character.race)}
 					{@const wowClass = findClass(character.class)}
-					{@const rank = rankOf(character)}
 					<tr>
 						<td>
 							<CharacterLink
@@ -259,13 +211,6 @@
 						<td>
 							{#if character.username}
 								<a href={playerPath(character.username)}>{character.username}</a>
-							{:else}
-								<span class="muted">—</span>
-							{/if}
-						</td>
-						<td>
-							{#if rank}
-								{RANK_LABEL[rank]}
 							{:else}
 								<span class="muted">—</span>
 							{/if}
@@ -315,28 +260,6 @@
 {/if}
 
 <section class="panel" aria-label="Characters by class">
-	<div class="toggles">
-		<div class="filter" role="group" aria-labelledby="filter-characters">
-			<span class="label" id="filter-characters">Characters</span>
-			<div class="group">
-				<button type="button" aria-pressed={mains} onclick={() => (mains = !mains)}>Mains</button>
-				<button type="button" aria-pressed={alts} onclick={() => (alts = !alts)}>Alts</button>
-			</div>
-		</div>
-		<div class="filter" role="group" aria-labelledby="filter-ranks">
-			<span class="label" id="filter-ranks">Guild rank</span>
-			<div class="group">
-				{#each rankFilters as rank (rank)}
-					<button
-						type="button"
-						aria-pressed={ranks[rank]}
-						onclick={() => (ranks[rank] = !ranks[rank])}>{RANK_GROUP[rank]}</button
-					>
-				{/each}
-			</div>
-		</div>
-	</div>
-
 	<ul class="bars">
 		{#each spread as { wowClass, count } (wowClass.slug)}
 			<li style:--class-color={wowClass.color}>
@@ -375,68 +298,12 @@
 </div>
 
 <p class="muted">
-	{shown.length} of {claimed}{#if data.user.is_superuser}&nbsp;· characters out of the guild are on
-		<a href={resolve('/admin/characters')}>Characters</a>{/if}
+	{shown.length} of {guilded.length}{#if data.user.is_superuser}&nbsp;· characters out of the guild
+		are on <a href={resolve('/admin/characters')}>Characters</a>, and players whose rank is not
+		their characters' in game on <a href={resolve('/admin')}>Administration</a>{/if}
 </p>
 
 {@render table(shown)}
-
-{#if data.mismatches.length > 0}
-	<section>
-		<h2>Rank not as in game <span class="count">{data.mismatches.length}</span></h2>
-		<p class="muted">
-			Members whose rank here is not the highest their characters have in the guild in game (as the
-			ranks in game stand for the site's, on <a href={resolve('/admin')}>Administration</a>), or who
-			have a rank but no character in the guild. Change it on their page. Only you see this.
-		</p>
-		<div class="scroll">
-			<table>
-				<thead>
-					<tr>
-						<th class="plain">Player</th>
-						<th class="plain">Rank here</th>
-						<th class="plain">In game</th>
-						<th class="plain">Characters in the guild</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each data.mismatches as mismatch (mismatch.user_id)}
-						<tr>
-							<td><a href={playerPath(mismatch.username)}>{mismatch.username}</a></td>
-							<td>{RANK_LABEL[mismatch.rank]}</td>
-							<td>
-								{#if mismatch.expected}
-									{RANK_LABEL[mismatch.expected]}
-								{:else}
-									<span class="muted">Not in the guild</span>
-								{/if}
-							</td>
-							<td>
-								{#each mismatch.characters as character (character.first_name + ' ' + character.last_name)}
-									<div>
-										<CharacterLink
-											firstName={character.first_name}
-											lastName={character.last_name}
-											cls={character.class}
-											icon={false}
-										/>
-										{#if character.guild_rank !== null}
-											<span class="muted"
-												>{gameRankLabel(character.guild_rank, character.guild_rank_name)}</span
-											>
-										{/if}
-									</div>
-								{:else}
-									<span class="muted">—</span>
-								{/each}
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-	</section>
-{/if}
 
 {#if notAdded.length > 0}
 	<section>
@@ -500,74 +367,6 @@
 {/if}
 
 <style>
-	/* Two filters, each under its own name, with a rule between them: beside each other on a
-	   wide screen, one above the other on a phone. */
-	.toggles {
-		display: flex;
-		gap: var(--space-6);
-	}
-
-	.filter {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-
-	.filter + .filter {
-		padding-left: var(--space-6);
-		border-left: 1px solid var(--grey-surface);
-	}
-
-	@media (max-width: 40rem) {
-		.toggles {
-			flex-direction: column;
-			gap: var(--space-4);
-		}
-
-		.filter + .filter {
-			padding-top: var(--space-4);
-			padding-left: 0;
-			border-top: 1px solid var(--grey-surface);
-			border-left: 0;
-		}
-	}
-
-	.label {
-		color: var(--grey-text);
-		font-size: var(--text-xs);
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-	}
-
-	.group {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-1);
-	}
-
-	.group button {
-		padding: var(--space-1) var(--space-3);
-		color: var(--grey-text);
-		font: inherit;
-		font-size: var(--text-sm);
-		font-weight: 500;
-		background: none;
-		border: 1px solid var(--grey-soft);
-		border-radius: 999px;
-		cursor: pointer;
-	}
-
-	.group button:hover {
-		color: var(--foreground);
-	}
-
-	.group button[aria-pressed='true'] {
-		color: var(--foreground);
-		background-color: var(--red-bg);
-		border-color: var(--red-solid);
-	}
-
 	/* A column a class: its bar up from a shared baseline, its icon under it, and its count under that. */
 	.bars {
 		display: grid;

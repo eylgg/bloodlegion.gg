@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import { api, errorMessage } from '$lib/api';
 	import { RANKS, RANK_LABEL, gameRankLabel, gameRankNumber } from '$lib/guild';
 	import Alert from '$lib/components/Alert.svelte';
@@ -18,28 +19,31 @@
 			ranks = await api.put<GameRank[]>(`/api/admin/rosters/ranks/${rank.rank}`, {
 				site_rank: value === '' ? null : (value as Rank)
 			});
+			// Who is pointed out as not matching changes with it.
+			await invalidateAll();
 		} catch (err) {
 			error = errorMessage(err, 'Saving the rank failed. Please try again.');
 		}
 	}
 </script>
 
-<section class="panel">
-	<h2>{guild}'s ranks in game</h2>
+<div class="ranks">
+	<h3>Ranks in game</h3>
 	<p class="muted">
-		The guild's ranks as the roster uploads saw them, shown as the armory numbers them (Rank 1 is
-		the guild master), with the name the guild gives each in game. "On the site" is the rank a
-		member holds here (Leader, Officer, Raider, Trial, Member, or Public: what they can do on the
-		site). A member whose rank here is not the highest of their characters' in game is pointed out
-		on the roster page; a rank not compared (an alt rank) is left out. Each new rank is matched the
-		first time an upload sees it: the guild master is the leader, a rank named exactly as one of the
-		site's is that rank, and any other is not compared. Renaming a rank in game keeps its match.
+		{guild}'s ranks as the roster uploads saw them, numbered as the armory numbers them (Rank 1 is
+		the guild master), with the name the guild gives each in game; both come from the game and
+		change only with an upload. "Counts as" is the site rank a member with a character at that rank
+		should hold, for pointing out the players whose rank here differs (below): several ranks can
+		count as the same one, and a rank not compared (an alt rank) is left out. Each new rank is
+		matched the first time an upload sees it: the guild master is the leader, a rank named exactly
+		as one of the site's is that rank, and any other is not compared. Renaming a rank in game keeps
+		its match.
 	</p>
 	{#if error}<Alert variant="error">{error}</Alert>{/if}
 	{#if ranks.length > 0}
 		<table>
 			<thead>
-				<tr><th>Rank</th><th>Name in game</th><th>Characters</th><th>On the site</th></tr>
+				<tr><th>Rank</th><th>Name in game</th><th>Characters</th><th>Counts as</th></tr>
 			</thead>
 			<tbody>
 				{#each ranks as rank (rank.rank)}
@@ -66,9 +70,18 @@
 	{:else}
 		<p class="muted">No upload has sent the guild's ranks yet: they come with addon 0.5.0.</p>
 	{/if}
-</section>
+</div>
 
 <style>
+	.ranks {
+		margin-top: var(--space-4);
+	}
+
+	h3 {
+		margin: 0 0 var(--space-2);
+		font-size: var(--text-md);
+	}
+
 	table {
 		width: 100%;
 		border-collapse: collapse;
