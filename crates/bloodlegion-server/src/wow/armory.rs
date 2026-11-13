@@ -9,6 +9,10 @@ use super::Ruleset;
 use crate::State;
 use crate::characters::Sex;
 
+/// The lowest level the armory shows: Blizzard's profile API answers "not found" for a character
+/// below it, so the site has nothing to check such a character against until it gets there.
+pub const MIN_LEVEL: i16 = 10;
+
 /// Battle.net's token endpoint, for the site's own (client credentials) token.
 const TOKEN_ENDPOINT: &str = "https://oauth.battle.net/token";
 
@@ -147,6 +151,8 @@ pub struct Checked {
     pub first_name: String,
     pub last_name: String,
     pub class: String,
+    /// Its level on the site: the armory shows no character below [`MIN_LEVEL`].
+    pub level: i16,
     /// Whether the armory has a character of its name; the rest is empty when it does not.
     pub found: bool,
     pub armory: Option<Armory>,
@@ -199,6 +205,7 @@ pub async fn check(state: &State, fill: bool) -> anyhow::Result<Vec<Checked>> {
             first_name: character.first_name.clone(),
             last_name: character.last_name.clone(),
             class: character.class.clone(),
+            level: character.level,
             found: false,
             armory: None,
             differences: Vec::new(),

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { api, errorMessage } from '$lib/api';
-	import { armoryUrl } from '$lib/guild';
+	import { ARMORY_MIN_LEVEL, armoryUrl } from '$lib/guild';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
@@ -40,6 +40,9 @@
 			[]
 	);
 	const missing = $derived(checked?.filter((c) => !c.found && !c.error) ?? []);
+	// The armory shows no character below its lowest level: those are not missing, just too low.
+	const tooLow = $derived(missing.filter((c) => c.level < ARMORY_MIN_LEVEL));
+	const notFound = $derived(missing.filter((c) => c.level >= ARMORY_MIN_LEVEL));
 	const failed = $derived(checked?.filter((c) => c.error) ?? []);
 </script>
 
@@ -152,18 +155,41 @@
 		{/if}
 	</section>
 
-	{#if missing.length > 0}
+	{#if notFound.length > 0}
 		<section class="panel">
-			<h2>Not in the armory <span class="count">{missing.length}</span></h2>
+			<h2>Not in the armory <span class="count">{notFound.length}</span></h2>
 			<p class="muted">No character of the name: a typo, a rename, or a pug from elsewhere.</p>
 			<ul>
-				{#each missing as character (character.id)}
+				{#each notFound as character (character.id)}
 					<li>
 						<CharacterLink
 							firstName={character.first_name}
 							lastName={character.last_name}
 							cls={character.class}
 						/>
+					</li>
+				{/each}
+			</ul>
+		</section>
+	{/if}
+
+	{#if tooLow.length > 0}
+		<section class="panel">
+			<h2>Below level {ARMORY_MIN_LEVEL} <span class="count">{tooLow.length}</span></h2>
+			<p class="muted">
+				Blizzard's armory shows no character below level {ARMORY_MIN_LEVEL}, so there is nothing to
+				check these against yet (unless one is higher in game than here). A Battle.net sign-in still
+				reads their race, sex, and level from the member's account.
+			</p>
+			<ul>
+				{#each tooLow as character (character.id)}
+					<li>
+						<CharacterLink
+							firstName={character.first_name}
+							lastName={character.last_name}
+							cls={character.class}
+						/>
+						<span class="muted">level {character.level}</span>
 					</li>
 				{/each}
 			</ul>

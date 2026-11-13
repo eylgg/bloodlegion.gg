@@ -61,8 +61,18 @@ export type AdminAccount = {
 	guild_rank: Rank;
 	is_superuser: boolean;
 	disabled: boolean;
-	/** Their characters on the site, main first, hidden ones left out. */
-	characters: { first_name: string; last_name: string; class: string; is_main: boolean }[];
+	/** Every character linked to them, main first, hidden ones last. */
+	characters: {
+		first_name: string;
+		last_name: string;
+		class: string;
+		level: number;
+		is_main: boolean;
+		/** Named by the latest roster upload of the guild. */
+		in_guild: boolean;
+		/** Kept off the roster: a Battle.net listing's character nobody brought onto it. */
+		is_hidden: boolean;
+	}[];
 	/** Every sign-in account ever linked, connected ones first. */
 	connections: Connection[];
 	created_at: string;
@@ -151,6 +161,8 @@ export type ArmoryChecked = {
 	first_name: string;
 	last_name: string;
 	class: string;
+	/** Its level on the site: the armory shows no character below `ARMORY_MIN_LEVEL`. */
+	level: number;
 	/** Whether the armory has a character of its name. */
 	found: boolean;
 	armory: {

@@ -613,6 +613,11 @@ pub async fn characters_armory_check(fill: bool) -> Result<()> {
         let name = format!("{} {}", character.first_name, character.last_name);
         if let Some(error) = &character.error {
             println!("{name}: lookup failed: {error}");
+        } else if !character.found && character.level < crate::wow::armory::MIN_LEVEL {
+            println!(
+                "{name}: not in the armory, which shows no character below level {}",
+                crate::wow::armory::MIN_LEVEL
+            );
         } else if !character.found {
             println!("{name}: not in the armory");
         } else {

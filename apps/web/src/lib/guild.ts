@@ -12,6 +12,9 @@ export const characterPath = (firstName: string, lastName: string) =>
 	resolve('/(guild)/roster/[name]', { name: characterSlug(firstName, lastName) });
 
 /** A player's page: `/@eyl`, the username lowercase, as it is unique. */
+/** The lowest level Blizzard's armory shows a character at: below it, it has no page. */
+export const ARMORY_MIN_LEVEL = 10;
+
 /** The character's armory page at Blizzard: its name lowercase, like its page here. */
 export const armoryUrl = (firstName: string, lastName: string) =>
 	`https://worldofwarcraft.blizzard.com/en-us/forever/us/armory/character/${encodeURIComponent(

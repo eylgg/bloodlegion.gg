@@ -125,11 +125,13 @@
 </div>
 
 <p class="muted intro">
-	Every account on the site, with the Battle.net and Discord accounts its member signed in with. An
-	account made by an admin, or by a password sign-in, has none until its member connects one from
-	their profile. Read characters reads a member's Battle.net characters now, as a sign-in does, with
-	the token from their last sign-in; it lasts about a day, after which they need to sign in again. A
-	rename follows the same rules as signing up.
+	Every account on the site, with the Battle.net and Discord accounts its member signed in with, and
+	every character linked to it: In guild for those the latest roster upload named, Hidden for those
+	a Battle.net sign-in listed that are kept off the roster. An account made by an admin, or by a
+	password sign-in, has none until its member connects one from their profile. Read characters reads
+	a member's Battle.net characters now, as a sign-in does, with the token from their last sign-in;
+	it lasts about a day, after which they need to sign in again. A rename follows the same rules as
+	signing up.
 </p>
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
@@ -240,13 +242,21 @@
 						<td>{@render sign_in(connected(account, 'discord'))}</td>
 						<td>
 							{#each account.characters as character (character.first_name + ' ' + character.last_name)}
-								<div>
-									<CharacterLink
-										firstName={character.first_name}
-										lastName={character.last_name}
-										cls={character.class}
-										icon={false}
-									/>
+								<div class="character" class:hidden={character.is_hidden}>
+									{#if character.is_hidden}
+										<!-- A hidden character has no page: it is not on the roster. -->
+										<span class="name">{character.first_name} {character.last_name}</span>
+									{:else}
+										<CharacterLink
+											firstName={character.first_name}
+											lastName={character.last_name}
+											cls={character.class}
+											icon={false}
+										/>
+									{/if}
+									<span class="muted small">{character.level}</span>
+									{#if character.in_guild}<span class="tag guild">In guild</span>{/if}
+									{#if character.is_hidden}<span class="tag">Hidden</span>{/if}
 								</div>
 							{:else}
 								<span class="none">None</span>
@@ -352,6 +362,21 @@
 
 	.none {
 		color: var(--grey-text);
+	}
+
+	.character {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.character.hidden .name {
+		color: var(--grey-text);
+	}
+
+	.tag.guild {
+		color: var(--green-text);
+		border-color: currentColor;
 	}
 
 	.small {
