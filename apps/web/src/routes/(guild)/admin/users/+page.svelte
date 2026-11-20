@@ -362,6 +362,14 @@
 		width: 10rem;
 	}
 
+	/* The site's selects fill their container, which in a table cell that sizes to its content
+	   comes to nothing: size this one to its longest option instead. */
+	td select {
+		width: auto;
+		padding-top: var(--space-1);
+		padding-bottom: var(--space-1);
+	}
+
 	.link {
 		padding: 0;
 		color: var(--grey-text);
