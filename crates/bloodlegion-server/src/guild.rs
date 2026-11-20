@@ -33,17 +33,21 @@ pub enum Rank {
     Raider,
     Trial,
     Member,
+    /// A friend of the guild, not in it: they see the guild's pages, as everyone but the public
+    /// does.
+    Friend,
     /// A new account, until an officer gives it a rank: anyone can sign in.
     Public,
 }
 
 impl Rank {
-    pub const ALL: [Rank; 6] = [
+    pub const ALL: [Rank; 7] = [
         Rank::Leader,
         Rank::Officer,
         Rank::Raider,
         Rank::Trial,
         Rank::Member,
+        Rank::Friend,
         Rank::Public,
     ];
 
@@ -58,6 +62,7 @@ impl Rank {
             Rank::Raider => "raider",
             Rank::Trial => "trial",
             Rank::Member => "member",
+            Rank::Friend => "friend",
             Rank::Public => "public",
         }
     }
@@ -333,7 +338,8 @@ pub(crate) mod tests {
         assert!(
             Rank::Leader < Rank::Officer
                 && Rank::Trial < Rank::Member
-                && Rank::Member < Rank::Public
+                && Rank::Member < Rank::Friend
+                && Rank::Friend < Rank::Public
         );
         assert!(Rank::Officer.is_officer() && !Rank::Raider.is_officer());
     }

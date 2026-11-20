@@ -455,7 +455,7 @@ export type Ruleset = 'normal' | 'pvp' | 'roleplay' | 'roleplay-pvp' | 'hardcore
 /* --- the guild --- */
 
 /** A guild rank, highest first (see `RANKS`). Leaders and officers run the guild's records. */
-export type Rank = 'leader' | 'officer' | 'raider' | 'trial' | 'member' | 'public';
+export type Rank = 'leader' | 'officer' | 'raider' | 'trial' | 'member' | 'friend' | 'public';
 
 /** One account at a provider linked to the signed-in member, from `GET /api/auth/linked-accounts`. */
 export type LinkedAccount = {

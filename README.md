@@ -192,8 +192,9 @@ The loot tracker from the old site (Project Blood Legion, a Django app for a Cla
 for WoW: Forever. Every page needs a signed-in member; leaders and officers (and superusers) make
 the changes.
 
-- **Ranks**: leader, officer, raider, trial, member, public. Anyone can sign in, so new accounts are
-  public until an officer gives them a rank (the Discord bot keeps no role for the public).
+- **Ranks**: leader, officer, raider, trial, member, friend, public. Anyone can sign in, so new
+  accounts are public until an officer gives them a rank (the Discord bot keeps no role for the
+  public). A friend of the guild sees its pages, as everyone but the public does.
   Officers set ranks on a player's page (`/@username`, the username lowercase, which any other
   capitalization redirects to for good; linked from the roster: the player's rank and characters,
   for members); only the leader makes or unmakes officers, and only a superuser
@@ -414,13 +415,13 @@ the client keep them current:
 ## The Discord server
 
 The guild's Discord server is kept by a bot, the same Discord application members link (step 4
-above). It keeps a role for each access level (Leader, Officer, Raider, Trial, Member; none for
-the public) and four categories that follow the levels, each open to its level and those above it,
+above). It keeps a role for each access level (Leader, Officer, Raider, Trial, Member, Friend; none for
+the public) and five categories that follow the levels, each open to its level and those above it,
 top to bottom: Officers (leader and officers), Raiders (leader, officers, raiders, trials), Members
-(every role), and Public (everyone). It keeps three announcements channels
+(every role but Friend), Friends (every role: everyone but the public), and Public (everyone). It keeps three announcements channels
 besides, at the top of the channel list in no category, where only the leader and officers post,
 top to bottom: #raider-announcements, for the leader, officers, raiders, and trials;
-#member-announcements, for every role; and #public-announcements, which everyone reads and whose
+#member-announcements, for every role but Friend; and #public-announcements, which everyone reads and whose
 posts show on the front page under the poster's site account (kept in step as they are edited or
 deleted; a post by someone whose Discord account is not linked to the site is not shown). It also
 checks #wowhead-news, made by hand and found by its name, wherever it is: everyone reads it and
@@ -446,7 +447,7 @@ server's people and bots, how many members linked Discord and are in it, and the
 holders against the linked members whose rank calls for it, each category with its channels), and
 whether they stand top to bottom as the site has them; the announcements channels, and whether they
 are at the top under their own names and in order; the bot's permission entries on its categories and announcements channels, and whose are missing or
-set otherwise (checked once the server has all five roles); channels in the bot's categories not
+set otherwise (checked once the server has all six roles); channels in the bot's categories not
 synced with them (with
 permissions of their own); linked members not in the server, without their rank's role, or holding
 another of the bot's roles besides; people holding one of the bot's roles who have not linked

@@ -1,6 +1,7 @@
 //! What the bot keeps in the server, as the site has it: a role for each access level (the leader,
-//! officers, raiders, trials, members; the public have none), and four categories that follow the levels, each open to
-//! its level and the ones above it. Three channels besides, at the top of the list in no category,
+//! officers, raiders, trials, members, friends; the public have none), and five categories that
+//! follow the levels, each open to its level and the ones above it: Friends to everyone but the
+//! public, Members to everyone but the public and the friends. Three channels besides, at the top of the list in no category,
 //! where only the leader and officers post:
 //! #public-announcements, which everyone reads (and the site shows), #member-announcements, and
 //! #raider-announcements, for the raiding roster. And #wowhead-news, made by hand, which everyone
@@ -16,8 +17,7 @@ use serenity::all::{
 
 use crate::guild::Rank;
 
-/// An access level, and the Discord role for it, highest first. A server once had a Friend role
-/// too: the bot no longer keeps it, and leaves it to be removed by hand.
+/// An access level, and the Discord role for it, highest first.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Access {
     Leader,
@@ -25,6 +25,7 @@ pub enum Access {
     Raider,
     Trial,
     Member,
+    Friend,
 }
 
 impl Access {
@@ -46,15 +47,17 @@ impl Access {
             Access::Raider => 0xC41F3B,  // Blood red
             Access::Trial => 0x0070DD,   // Rare blue
             Access::Member => 0x1EFF00,  // Uncommon green
+            Access::Friend => 0xFFFFFF,  // Common white
         }
     }
 
-    pub const ALL: [Access; 5] = [
+    pub const ALL: [Access; 6] = [
         Access::Leader,
         Access::Officer,
         Access::Raider,
         Access::Trial,
         Access::Member,
+        Access::Friend,
     ];
 
     /// The level a rank has; none for the public, who see what everyone does (`@everyone`).
@@ -65,6 +68,7 @@ impl Access {
             Rank::Raider => Some(Access::Raider),
             Rank::Trial => Some(Access::Trial),
             Rank::Member => Some(Access::Member),
+            Rank::Friend => Some(Access::Friend),
             Rank::Public => None,
         }
     }
@@ -77,6 +81,7 @@ impl Access {
             Access::Raider => "role:raider",
             Access::Trial => "role:trial",
             Access::Member => "role:member",
+            Access::Friend => "role:friend",
         }
     }
 
@@ -88,13 +93,14 @@ impl Access {
             Access::Raider => "Raider",
             Access::Trial => "Trial",
             Access::Member => "Member",
+            Access::Friend => "Friend",
         }
     }
 }
 
 /// The ids of the roles, one per [`Access`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Roles(pub [RoleId; 5]);
+pub struct Roles(pub [RoleId; 6]);
 
 impl Roles {
     pub fn get(&self, access: Access) -> RoleId {
@@ -120,7 +126,7 @@ pub struct Category {
 
 /// The bot's categories, top to bottom, the most closed first; made in this order, so they line up
 /// that way in Discord.
-pub const CATEGORIES: [Category; 4] = [
+pub const CATEGORIES: [Category; 5] = [
     Category {
         key: "category:officers",
         name: "Officers",
@@ -135,6 +141,11 @@ pub const CATEGORIES: [Category; 4] = [
         key: "category:members",
         name: "Members",
         audience: Audience::AtLeast(Access::Member),
+    },
+    Category {
+        key: "category:friends",
+        name: "Friends",
+        audience: Audience::AtLeast(Access::Friend),
     },
     Category {
         key: "category:public",
@@ -299,7 +310,8 @@ mod tests {
     const RAIDER: RoleId = RoleId::new(3);
     const TRIAL: RoleId = RoleId::new(4);
     const MEMBER: RoleId = RoleId::new(5);
-    const ROLES: Roles = Roles([LEADER, OFFICER, RAIDER, TRIAL, MEMBER]);
+    const FRIEND: RoleId = RoleId::new(6);
+    const ROLES: Roles = Roles([LEADER, OFFICER, RAIDER, TRIAL, MEMBER, FRIEND]);
     const EVERYONE: RoleId = RoleId::new(100);
     const BOT: UserId = UserId::new(200);
 
@@ -310,6 +322,7 @@ mod tests {
         assert_eq!(Access::of(Rank::Raider), Some(Access::Raider));
         assert_eq!(Access::of(Rank::Trial), Some(Access::Trial));
         assert_eq!(Access::of(Rank::Member), Some(Access::Member));
+        assert_eq!(Access::of(Rank::Friend), Some(Access::Friend));
         assert_eq!(Access::of(Rank::Public), None);
         for (n, access) in Access::ALL.into_iter().enumerate() {
             assert_eq!(ROLES.get(access), ROLES.0[n]);
@@ -355,6 +368,25 @@ mod tests {
                 Role(RAIDER),
                 Role(TRIAL),
                 Role(MEMBER)
+            ]
+        );
+
+        // Everyone but the public; the friends see it, and not Members above.
+        let friends = category_overwrites(audience("category:friends"), &ROLES, EVERYONE);
+        assert!(
+            friends
+                .iter()
+                .any(|o| o.kind == Role(EVERYONE) && o.deny.contains(Permissions::VIEW_CHANNEL))
+        );
+        assert_eq!(
+            viewers(&friends),
+            vec![
+                Role(LEADER),
+                Role(OFFICER),
+                Role(RAIDER),
+                Role(TRIAL),
+                Role(MEMBER),
+                Role(FRIEND)
             ]
         );
     }
@@ -418,6 +450,7 @@ mod tests {
         assert!(trial.allow.contains(Permissions::VIEW_CHANNEL));
         assert!(trial.deny.contains(Permissions::SEND_MESSAGES));
         assert_eq!(entry(&raider, MEMBER), None);
+        assert_eq!(entry(&raider, FRIEND), None);
 
         let member = announcements_overwrites(MEMBER_ANNOUNCEMENTS.audience, &ROLES, EVERYONE);
         assert!(
@@ -426,6 +459,7 @@ mod tests {
                 .allow
                 .contains(Permissions::VIEW_CHANNEL)
         );
+        assert_eq!(entry(&member, FRIEND), None);
 
         let news = news_overwrites(EVERYONE);
         assert_eq!(news.len(), 1);

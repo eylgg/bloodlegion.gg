@@ -1021,35 +1021,62 @@ mod tests {
         }
     }
 
+    /// The id the bot's role for `access` has in [`server`]: 1 to 5 for Leader to Member, and 8
+    /// for Friend, past the roles the server keeps by hand.
+    fn role_id(access: Access) -> u64 {
+        match access {
+            Access::Friend => 8,
+            other => other as u64 + 1,
+        }
+    }
+
+    /// The bot's roles as [`server`] has them, for working out its permission entries.
+    fn server_roles() -> Roles {
+        Roles(Access::ALL.map(|access| RoleId::new(role_id(access))))
+    }
+
+    /// The id the category has in [`server`]: 101 to 104 for Officers, Raiders, Members, and
+    /// Public, and 105 for Friends.
+    fn category_id(key: &str) -> u64 {
+        match key {
+            "category:officers" => 101,
+            "category:raiders" => 102,
+            "category:members" => 103,
+            "category:public" => 104,
+            "category:friends" => 105,
+            other => panic!("no such category: {other}"),
+        }
+    }
+
     /// A server where the bot made everything: roles 1 to 5 (Leader to Member, with Raider renamed
-    /// by hand), categories 101 to 104 in order (Officers to Public), and #announcements (201) in
-    /// Public. Under the bot's
-    /// own role (99) and above the bot's roles, the server keeps Friend (6) and a booster role (7).
+    /// by hand) and 8 (Friend), categories 101 to 105 in order (Officers, Raiders, Members, Friends
+    /// at 105, Public at 104), and #announcements (201) in Public. Under the bot's own role (99)
+    /// and above the bot's roles, the server keeps Veteran (6) and a booster role (7).
     fn server(members: Vec<ServerMember>) -> Snapshot {
         let mut objects: HashMap<String, u64> = Access::ALL
             .into_iter()
-            .enumerate()
-            .map(|(n, access)| (access.key().to_string(), n as u64 + 1))
+            .map(|access| (access.key().to_string(), role_id(access)))
             .collect();
-        for (n, category) in CATEGORIES.iter().enumerate() {
-            objects.insert(category.key.to_string(), 101 + n as u64);
+        for category in &CATEGORIES {
+            objects.insert(category.key.to_string(), category_id(category.key));
         }
         objects.insert(PUBLIC_ANNOUNCEMENTS.key.to_string(), 201);
         let mut role_names: HashMap<RoleId, String> = Access::ALL
             .into_iter()
-            .enumerate()
-            .map(|(n, access)| (RoleId::new(n as u64 + 1), access.role_name().to_string()))
+            .map(|access| (RoleId::new(role_id(access)), access.role_name().to_string()))
             .collect();
         // Renamed by hand: the check uses the server's name.
         role_names.insert(RoleId::new(3), "Raiders".into());
-        // In order, Leader (1) at the top, under the bot's own role (99, at 10).
+        // In order, Leader (1) at the top, under the bot's own role (99, at 10), and Friend (8) at
+        // the bottom.
         let mut role_positions: HashMap<RoleId, u16> =
-            (1..=5).map(|id| (RoleId::new(id), 6 - id as u16)).collect();
+            (1..=5).map(|id| (RoleId::new(id), 7 - id as u16)).collect();
+        role_positions.insert(RoleId::new(8), 1);
         role_positions.insert(RoleId::new(99), 10);
         role_names.insert(RoleId::new(99), "Blood Legion bot".into());
-        role_positions.insert(RoleId::new(6), 7);
-        role_names.insert(RoleId::new(6), "Friend".into());
-        role_positions.insert(RoleId::new(7), 6);
+        role_positions.insert(RoleId::new(6), 8);
+        role_names.insert(RoleId::new(6), "Veteran".into());
+        role_positions.insert(RoleId::new(7), 7);
         role_names.insert(RoleId::new(7), "Server Booster".into());
         let mut members = members;
         members.push(ServerMember {
@@ -1075,10 +1102,12 @@ mod tests {
                 category(101, "Officers", 0),
                 category(102, "Raiders", 1),
                 category(103, "Members", 2),
-                category(104, "Public", 3),
+                category(104, "Public", 4),
                 text(201, "announcements", 104),
                 text(202, "general", 103),
                 text(203, "chat", 103),
+                // Last here, so the channels before it keep their places in this list.
+                category(105, "Friends", 3),
             ],
             objects,
         }
@@ -1227,6 +1256,7 @@ mod tests {
                 ("Officers", 0),
                 ("Raiders", 0),
                 ("Members", 2),
+                ("Friends", 0),
                 ("Public", 1)
             ]
         );
@@ -1258,7 +1288,13 @@ mod tests {
         let ids: Vec<_> = report.categories.iter().map(|c| c.id.as_deref()).collect();
         assert_eq!(
             ids,
-            vec![Some("101"), Some("102"), Some("103"), Some("104")]
+            vec![
+                Some("101"),
+                Some("102"),
+                Some("103"),
+                Some("105"),
+                Some("104")
+            ]
         );
 
         // Public dragged above Members.
@@ -1333,7 +1369,7 @@ mod tests {
             report.other_roles,
             vec![OtherRole {
                 id: "6".into(),
-                name: "Friend".into(),
+                name: "Veteran".into(),
                 holders: 2,
             }]
         );
@@ -1377,7 +1413,7 @@ mod tests {
     fn says_which_of_the_bots_permission_entries_differ() {
         let mut snapshot = server(vec![]);
         let bot = UserId::new(1000);
-        let roles = Roles([1, 2, 3, 4, 5].map(RoleId::new));
+        let roles = server_roles();
         // Officers (101) as the bot sets it, plus the entry the bot once kept for itself there;
         // Public (104) with nothing; the rest left out.
         snapshot.channels[0].overwrites =
@@ -1438,8 +1474,8 @@ mod tests {
                 discord_id: "10".into(),
                 discord_name: "Linked".into(),
                 username: Some("Ey".into()),
-                // Top first: Friend (at 7) stands above Member (at 1).
-                roles: vec!["Friend".into(), "Member".into()],
+                // Top first: Veteran (at 8) stands above Member (at 2).
+                roles: vec!["Veteran".into(), "Member".into()],
             }]
         );
         assert_eq!(names(&everyone.unlinked_ours), ["holder"]);
@@ -1453,11 +1489,8 @@ mod tests {
         let mut snapshot = server(vec![]);
         // In Public (104), with the category's entries: not the news channel's, but not reported
         // as unsynced either, since it keeps its own.
-        snapshot.channels[3].overwrites = category_overwrites(
-            CATEGORIES[3].audience,
-            &Roles([1, 2, 3, 4, 5].map(RoleId::new)),
-            RoleId::new(100),
-        );
+        snapshot.channels[3].overwrites =
+            category_overwrites(CATEGORIES[3].audience, &server_roles(), RoleId::new(100));
         let mut news = text(205, WOWHEAD_NEWS, 104);
         news.overwrites = snapshot.channels[3].overwrites.clone();
         snapshot.channels.push(news);

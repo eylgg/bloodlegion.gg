@@ -187,7 +187,7 @@ pub async fn users_battlenet_unread(sign_out: bool) -> Result<()> {
 pub async fn users_set_rank(username: String, rank: String) -> Result<()> {
     let Some(rank) = crate::guild::Rank::parse(&rank) else {
         return Err(anyhow::anyhow!(
-            "'{rank}' is not a rank: leader, officer, raider, trial, member, or public"
+            "'{rank}' is not a rank: leader, officer, raider, trial, member, friend, or public"
         )
         .into());
     };

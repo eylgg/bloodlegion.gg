@@ -47,7 +47,7 @@ export const FACTION_LABEL: Record<Faction, string> = { alliance: 'Alliance', ho
 export const rulesetLabel = (ruleset: Ruleset) =>
 	RULESETS.find((r) => r.ruleset === ruleset)?.label ?? ruleset;
 
-export const RANKS: Rank[] = ['leader', 'officer', 'raider', 'trial', 'member', 'public'];
+export const RANKS: Rank[] = ['leader', 'officer', 'raider', 'trial', 'member', 'friend', 'public'];
 
 export const RANK_LABEL: Record<Rank, string> = {
 	leader: 'Leader',
@@ -55,6 +55,7 @@ export const RANK_LABEL: Record<Rank, string> = {
 	raider: 'Raider',
 	trial: 'Trial',
 	member: 'Member',
+	friend: 'Friend',
 	public: 'Public'
 };
 
@@ -65,6 +66,7 @@ export const RANK_GROUP: Record<Rank, string> = {
 	raider: 'Raiders',
 	trial: 'Trials',
 	member: 'Members',
+	friend: 'Friends',
 	public: 'Public'
 };
 
