@@ -164,7 +164,8 @@ export type BattlenetCharacter = {
 	race: string | null;
 	/** Null while nobody has recorded it. */
 	sex: Sex | null;
-	ruleset: Ruleset;
+	/** Null while nobody knows it. */
+	ruleset: Ruleset | null;
 	level: number;
 	/** Named by the guild's latest roster upload. */
 	in_guild: boolean;
@@ -481,8 +482,9 @@ export type GuildCharacter = {
 	race: string | null;
 	/** Null while nobody has recorded it. */
 	sex: Sex | null;
-	/** The guild's unless an officer said otherwise. */
-	ruleset: Ruleset;
+	/** Null while nobody knows it: Battle.net does not say, so a character a sign-in added has
+	 * none until the armory does. */
+	ruleset: Ruleset | null;
 	/** 1 to 60, as an officer last recorded it. */
 	level: number;
 	/** When it reached 60, or null below it: of two at 60, the earlier got there first. */
@@ -516,7 +518,7 @@ export type GuildCharacterInput = {
 	race: string | null;
 	/** Null while nobody has recorded it. */
 	sex: Sex | null;
-	/** Omit to keep the one it has; a new character takes the guild's. */
+	/** Omit to keep the one it has; a new character without one has none (unknown). */
 	ruleset?: Ruleset;
 	/** 1 to 60. */
 	level: number;
@@ -640,9 +642,8 @@ export type GuildSettings = {
 	time_zone: string;
 	/** `20:00`. */
 	default_raid_time: string;
-	/** The faction and ruleset the guild plays: new characters take the ruleset. */
+	/** The faction the guild plays: its races come first when picking one. */
 	faction: Faction;
-	ruleset: Ruleset;
 	/** The guild's name in game, `BL`: roster uploads from a guild of another name are turned down. */
 	guild_name: string;
 };

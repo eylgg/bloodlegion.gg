@@ -64,10 +64,10 @@ pub struct Synced {
     pub claimed: u64,
     /// Characters removed, no longer listed: never named by a roster upload, with no raid or loot.
     pub removed: u64,
-    /// The added characters' names: Battle.net's listing has no ruleset, so they take the guild's
-    /// until the armory says ([`armory_rulesets`]).
+    /// The listed characters whose ruleset is unknown (all it added): Battle.net's listing has
+    /// none, so the armory is asked ([`armory_rulesets`]).
     #[serde(skip)]
-    pub added_names: Vec<String>,
+    pub without_ruleset: Vec<String>,
 }
 
 /// Reads the account's characters from Battle.net, then [`apply`]s them.
@@ -92,18 +92,19 @@ pub async fn sync(
     let synced = apply(&state.pool, provider_id, subject, &characters)
         .await
         .context("applying the Battle.net characters")?;
-    if !synced.added_names.is_empty() {
-        armory_rulesets(state, &synced.added_names).await;
+    if !synced.without_ruleset.is_empty() {
+        armory_rulesets(state, &synced.without_ruleset).await;
     }
     Ok(synced)
 }
 
-/// Sets each named character's ruleset from the armory, for the characters a sync added:
-/// Battle.net's listing has none (only names, class, race, sex, faction, and level), so the
-/// guild's was only a guess, and a character's ruleset never changes in game. One the armory does
-/// not have (below level 10) keeps the guild's until an armory check fills it; a failure is only
-/// logged, as the characters are already on the site.
-async fn armory_rulesets(state: &State, names: &[String]) {
+/// Sets each named character's ruleset from the armory, for characters with none (those a sync
+/// listed, or a roster upload added):
+/// Battle.net's listing has none (only names, class, race, sex, faction, and level), so they are
+/// added without one, and a character's ruleset never changes in game. One the armory does not
+/// have (below level 10) stays unknown until an armory fill; a failure is only logged, as the
+/// characters are already on the site.
+pub async fn armory_rulesets(state: &State, names: &[String]) {
     let token = match super::armory::app_token(state).await {
         Ok(token) => token,
         Err(error) => {
@@ -217,15 +218,16 @@ pub async fn apply(
         match found {
             Some(id) => {
                 synced.linked += 1;
-                sqlx::query!(
-                    "UPDATE characters
+                let unknown = sqlx::query_scalar!(
+                    r#"UPDATE characters
                      SET battlenet_id = $2, battlenet_provider_id = $3, battlenet_subject = $4,
                          battlenet_seen_at = now(),
                          race = COALESCE(race, $5), sex = COALESCE(sex, $6),
                          level = GREATEST(level, $7::smallint),
                          reached_60_at = CASE WHEN GREATEST(level, $7::smallint) = 60
                                               THEN COALESCE(reached_60_at, now()) END
-                     WHERE id = $1",
+                     WHERE id = $1
+                     RETURNING ruleset IS NULL AS "unknown!""#,
                     id,
                     character.battlenet_id,
                     provider_id.0,
@@ -234,18 +236,21 @@ pub async fn apply(
                     character.sex as Sex,
                     character.level,
                 )
-                .execute(&mut *tx)
+                .fetch_one(&mut *tx)
                 .await?;
+                if unknown {
+                    synced.without_ruleset.push(full_name);
+                }
             }
             None => {
                 synced.added += 1;
                 sqlx::query!(
                     "INSERT INTO characters
                          (user_id, first_name, last_name, class, race, sex, level, reached_60_at,
-                          ruleset, battlenet_id, battlenet_provider_id, battlenet_subject,
+                          battlenet_id, battlenet_provider_id, battlenet_subject,
                           battlenet_seen_at)
                      VALUES ($1, $2, $3, $4, $5, $6, $7::smallint, CASE WHEN $7::smallint = 60 THEN now() END,
-                             (SELECT ruleset FROM guild_settings), $8, $9, $10, now())",
+                             $8, $9, $10, now())",
                     owner.map(|id| id.0),
                     character.first_name,
                     character.last_name,
@@ -259,7 +264,7 @@ pub async fn apply(
                 )
                 .execute(&mut *tx)
                 .await?;
-                synced.added_names.push(full_name);
+                synced.without_ruleset.push(full_name);
             }
         }
     }
@@ -376,7 +381,7 @@ pub struct Listed {
     pub class: String,
     pub race: Option<String>,
     pub sex: Option<Sex>,
-    pub ruleset: Ruleset,
+    pub ruleset: Option<Ruleset>,
     pub level: i16,
     /// Named by the guild's latest roster upload.
     pub in_guild: bool,
@@ -689,8 +694,9 @@ mod tests {
                 // Gg; Shm is added already theirs.
                 claimed: 1,
                 removed: 0,
-                // Shm, whose ruleset the armory is asked for.
-                added_names: vec!["Eyl Shm".into()],
+                // None says its ruleset (added without one, or new), so the armory is asked,
+                // by the name as listed.
+                without_ruleset: vec!["Eyl Gg".into(), "EYL taken".into(), "Eyl Shm".into()],
             }
         );
 
@@ -710,7 +716,7 @@ mod tests {
         assert_eq!(shm.username.as_deref(), Some("Ey"));
         assert_eq!(shm.race.as_deref(), Some("windshaper-skyborne"));
         assert_eq!(shm.sex, Some(Sex::Male));
-        assert_eq!(shm.ruleset, Ruleset::Pvp);
+        assert_eq!(shm.ruleset, None, "Battle.net does not say");
         assert!(!row(&pool, shm.id).await.is_main);
         let page = crate::characters::find_by_slug(&pool, "eyl-shm")
             .await

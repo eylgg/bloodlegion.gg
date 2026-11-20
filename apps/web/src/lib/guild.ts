@@ -44,8 +44,10 @@ export const RULESETS: { ruleset: Ruleset; label: string }[] = [
 
 export const FACTION_LABEL: Record<Faction, string> = { alliance: 'Alliance', horde: 'Horde' };
 
-export const rulesetLabel = (ruleset: Ruleset) =>
-	RULESETS.find((r) => r.ruleset === ruleset)?.label ?? ruleset;
+export const rulesetLabel = (ruleset: Ruleset | null) =>
+	ruleset === null
+		? 'Ruleset unknown'
+		: (RULESETS.find((r) => r.ruleset === ruleset)?.label ?? ruleset);
 
 export const RANKS: Rank[] = ['leader', 'officer', 'raider', 'trial', 'member', 'friend', 'public'];
 

@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { api, errorMessage } from '$lib/api';
-	import { FACTION_LABEL, RULESETS, formatDateTime, formatInZone, zoneCity } from '$lib/guild';
+	import { FACTION_LABEL, formatDateTime, formatInZone, zoneCity } from '$lib/guild';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import DiscordSettings from '$lib/components/guild/DiscordSettings.svelte';
@@ -19,8 +19,6 @@
 	let defaultRaidTime = $state(data.settings.default_raid_time);
 	// svelte-ignore state_referenced_locally
 	let faction = $state(data.settings.faction);
-	// svelte-ignore state_referenced_locally
-	let ruleset = $state(data.settings.ruleset);
 	// svelte-ignore state_referenced_locally
 	let guildName = $state(data.settings.guild_name);
 	let saving = $state(false);
@@ -43,7 +41,6 @@
 				time_zone: timeZone,
 				default_raid_time: defaultRaidTime,
 				faction,
-				ruleset,
 				guild_name: guildName
 			});
 			// Every page under the guild layout reads the settings from its load.
@@ -73,9 +70,9 @@
 	<p class="muted">
 		Raids are scheduled on the guild's clock. A raid keeps the zone it was scheduled in, so changing
 		the zone here moves only raids scheduled from now on. Members see every raid in its own zone.
-		New characters take the guild's ruleset, and its faction's races come first when picking one.
-		The guild's name is its name in game: the site takes roster uploads only from a guild of that
-		name, and its latest upload says who is in the guild.
+		The guild's faction's races come first when picking one for a character. The guild's name is its
+		name in game: the site takes roster uploads only from a guild of that name, and its latest
+		upload says who is in the guild.
 	</p>
 	{#if error}<Alert variant="error">{error}</Alert>{/if}
 	{#if saved}<Alert variant="success">Saved.</Alert>{/if}
@@ -107,14 +104,6 @@
 			Faction
 			<select bind:value={faction}>
 				{#each Object.entries(FACTION_LABEL) as [value, label] (value)}
-					<option {value}>{label}</option>
-				{/each}
-			</select>
-		</label>
-		<label class="field">
-			Ruleset
-			<select bind:value={ruleset}>
-				{#each RULESETS as { ruleset: value, label } (value)}
 					<option {value}>{label}</option>
 				{/each}
 			</select>

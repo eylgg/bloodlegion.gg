@@ -163,15 +163,25 @@ async fn notes(state: State, _officer: Officer) -> Result<Json<Vec<NoteListing>>
 }
 
 /// `POST /api/characters/roster`: the Blood Legion client sends the guild roster the addon saw in game,
-/// which raises the levels of the characters it names. Officers only, by access token.
+/// which raises the levels of the characters it names. Officers only, by access token. The
+/// characters it adds have no ruleset (the roster has none): the armory is asked for theirs in the
+/// background.
 async fn roster(
     state: State,
     client: RosterClient,
     Json(input): Json<RosterInput>,
 ) -> Result<Json<RosterResult>, CharacterError> {
-    Ok(Json(
-        super::roster::apply(&state.pool, client.id, &input).await?,
-    ))
+    let result = super::roster::apply(&state.pool, client.id, &input).await?;
+    let names: Vec<String> = result
+        .added
+        .iter()
+        .map(|added| format!("{} {}", added.first_name, added.last_name))
+        .collect();
+    if !names.is_empty() {
+        let state = state.clone();
+        tokio::spawn(async move { crate::wow::battlenet::armory_rulesets(&state, &names).await });
+    }
+    Ok(Json(result))
 }
 
 pub fn router() -> Router<State> {

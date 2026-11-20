@@ -1,4 +1,3 @@
-use crate::wow::Ruleset;
 use crate::wow::catalog::Faction;
 use sqlx::{PgConnection, PgPool};
 
@@ -49,8 +48,7 @@ pub async fn set_rank(conn: &mut PgConnection, user_id: UserId, rank: Rank) -> s
 pub async fn settings(pool: &PgPool) -> sqlx::Result<Settings> {
     sqlx::query_as!(
         Settings,
-        r#"SELECT time_zone, default_raid_time, faction AS "faction: Faction",
-                  ruleset AS "ruleset: Ruleset", guild_name
+        r#"SELECT time_zone, default_raid_time, faction AS "faction: Faction", guild_name
            FROM guild_settings"#
     )
     .fetch_one(pool)
@@ -71,21 +69,18 @@ pub async fn set_settings(
     time_zone: &str,
     default_raid_time: time::Time,
     faction: Faction,
-    ruleset: Ruleset,
     guild_name: &str,
 ) -> sqlx::Result<Settings> {
     sqlx::query_as!(
         Settings,
         r#"
         UPDATE guild_settings
-        SET time_zone = $1, default_raid_time = $2, faction = $3, ruleset = $4, guild_name = $5
-        RETURNING time_zone, default_raid_time, faction AS "faction: Faction",
-                  ruleset AS "ruleset: Ruleset", guild_name
+        SET time_zone = $1, default_raid_time = $2, faction = $3, guild_name = $4
+        RETURNING time_zone, default_raid_time, faction AS "faction: Faction", guild_name
         "#,
         time_zone,
         default_raid_time,
         faction as Faction,
-        ruleset as Ruleset,
         guild_name,
     )
     .fetch_one(&mut *conn)

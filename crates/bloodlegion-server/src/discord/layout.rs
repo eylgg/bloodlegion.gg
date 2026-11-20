@@ -39,15 +39,16 @@ impl Access {
         matches!(self, Access::Leader | Access::Officer)
     }
 
-    /// The role's color, as `0xRRGGBB`: the game's item qualities, and blood red for the raiders.
+    /// The role's color, as `0xRRGGBB`: the game's item qualities, with blood red for the raiders
+    /// and a faded one for the trials. The public, with no role, show in Discord's default.
     pub fn color(self) -> u32 {
         match self {
             Access::Leader => 0xFF8000,  // Legendary orange
             Access::Officer => 0xA335EE, // Epic purple
             Access::Raider => 0xC41F3B,  // Blood red
-            Access::Trial => 0x0070DD,   // Rare blue
-            Access::Member => 0x1EFF00,  // Uncommon green
-            Access::Friend => 0xFFFFFF,  // Common white
+            Access::Trial => 0xDB7A88,   // Faded blood red
+            Access::Member => 0x0070DD,  // Rare blue
+            Access::Friend => 0x1EFF00,  // Uncommon green
         }
     }
 

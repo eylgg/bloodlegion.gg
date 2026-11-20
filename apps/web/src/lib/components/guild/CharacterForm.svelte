@@ -66,7 +66,8 @@
 	// The sex, or '' for none recorded.
 	let sex = $state<Sex | ''>(character?.sex ?? '');
 	// svelte-ignore state_referenced_locally
-	let ruleset = $state<Ruleset>(character?.ruleset ?? settings?.ruleset ?? 'pvp');
+	// The ruleset, or '' while nobody knows it: the armory fills it in, or it is picked here.
+	let ruleset = $state<Ruleset | ''>(character?.ruleset ?? '');
 	// svelte-ignore state_referenced_locally
 	let level = $state(character?.level ?? draft?.level ?? 1);
 	// When it reached 60, as a `datetime-local` value in the reader's own time; '' for now.
@@ -114,7 +115,7 @@
 			class: classSlug,
 			race: raceSlug || null,
 			sex: sex || null,
-			ruleset,
+			ruleset: ruleset || undefined,
 			level,
 			reached_60_at: level === 60 && reached60 ? new Date(reached60).toISOString() : null,
 			is_main: isMain && (!owners || owner !== '')
@@ -175,6 +176,7 @@
 		<label class="field">
 			Ruleset
 			<select bind:value={ruleset}>
+				<option value="" disabled={!!character?.ruleset}>Unknown</option>
 				{#each RULESETS as { ruleset: value, label } (value)}
 					<option {value}>{label}</option>
 				{/each}

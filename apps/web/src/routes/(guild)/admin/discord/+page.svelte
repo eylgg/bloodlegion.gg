@@ -490,8 +490,8 @@
 				Settings, Roles, and Copy Role ID): it is not renamed, and the one it had stays as it is;
 				Rename gives it the bot's name. The leader's and officers' roles should have Discord's
 				Administrator permission: Give Administrator adds it, keeping whatever else they allow. Each
-				role has its level's color (the game's item qualities, and blood red for raiders): Fix
-				colors sets them.
+				role has its level's color (the game's item qualities, blood red for raiders, and a faded
+				red for trials): Fix colors sets them.
 			</p>
 			{#if fixed === 'roles'}<Alert variant="success">The roles are in order.</Alert>{/if}
 			{#if fixed?.startsWith('rename/')}<Alert variant="success">The role is renamed.</Alert>{/if}
@@ -649,7 +649,7 @@
 					{#if !report.roles_in_order}
 						<ConfirmButton
 							disabled={fixing !== null}
-							question="Put Leader, Officer, Raider, Trial, and Member in order, with Officer right under Leader? The server's other roles stay where they are, except any between Leader and Officer, which move to just below Officer."
+							question="Put the bot's roles in order, Leader at the top and Friend at the bottom, with Officer right under Leader? The server's other roles stay where they are, except any between Leader and Officer, which move to just below Officer."
 							confirmLabel="Fix"
 							confirmVariant="primary"
 							onconfirm={() => fix('roles')}

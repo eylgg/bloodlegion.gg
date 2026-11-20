@@ -33,7 +33,9 @@ pub struct Character {
     pub race: Option<String>,
     /// `None` while nobody has recorded it (a character a roster upload added).
     pub sex: Option<Sex>,
-    pub ruleset: Ruleset,
+    /// `None` while nobody knows it (a character a Battle.net sign-in added, until the armory
+    /// says).
+    pub ruleset: Option<Ruleset>,
     /// 1 to 60, as an officer last recorded it.
     pub level: i16,
     /// When it reached 60 (`None` below it): of two at 60, the earlier got there first.
@@ -70,7 +72,7 @@ pub struct CharacterInput {
     /// Absent or `null` for none recorded, like the race.
     #[serde(default)]
     pub sex: Option<Sex>,
-    /// Absent keeps the ruleset it has; a new character takes the guild's.
+    /// Absent keeps the ruleset it has; a new character without one has none (unknown).
     #[serde(default)]
     pub ruleset: Option<Ruleset>,
     /// 1 to 60; absent keeps the level it has (a new character starts at 1).
@@ -273,7 +275,7 @@ struct Valid {
     class: &'static str,
     race: Option<&'static str>,
     sex: Option<Sex>,
-    /// `None` keeps the ruleset it has (or is the guild's, for a new character).
+    /// `None` keeps the ruleset it has (or is unknown, for a new character).
     ruleset: Option<Ruleset>,
     /// `None` keeps the level it has.
     level: Option<i16>,

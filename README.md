@@ -200,7 +200,7 @@ the changes.
   for members); only the leader makes or unmakes officers, and only a superuser
   (or the CLI) makes or unmakes the leader or sets their own.
 - **Characters** have a first and a last name (2 to 24 letters each) and no realm: Forever has
-  rulesets instead, and the guild plays on one (PvP), so a full name is unique across the site, the
+  rulesets instead, and everyone on one plays together, so a full name is unique across the site, the
   database too, whatever its capitalization. A character's page is its name, lowercase:
   `/roster/garr-bonecrush` (names are letters only, so the hyphen is never part of one; another
   capitalization redirects there for good). Each
@@ -259,12 +259,12 @@ the changes.
   higher is left alone and not listed (the armory lags a roster upload); anything else that
   differs is only listed, for an officer to fix.
 - **Rulesets**: Forever has rulesets instead of realms (Normal, PvP, Roleplay, RP-PvP, Hardcore).
-  The guild's faction and ruleset are settings on the Administration page, Horde and PvP to start.
-  A character records its ruleset, the guild's unless an officer picks another (its faction is its
-  race's); the guild's faction's races come first when picking one. Battle.net's listing of an
-  account's characters has no ruleset (nor a realm), so a character a sign-in adds takes the
-  guild's, and is looked up in the armory right after for its own (`battlenet::armory_rulesets`);
-  one the armory does not have yet (below level 10) keeps the guild's until an armory fill.
+  A character's ruleset is null until someone knows it; nothing takes a guild's (there is no such
+  setting, only the guild's faction, whose races come first when picking one). Battle.net's
+  listing of an account's characters has no ruleset (nor a realm), nor does the addon's roster, so
+  the characters a sign-in lists without one and those an upload adds are looked up in the armory
+  right after (`battlenet::armory_rulesets`); one the armory does not have yet (below level 10)
+  stays unknown until an armory fill, or an officer picks it.
 - **Raids** are one night in a zone, with the characters who came and the loot they won. The zones,
   their sizes, and their bosses are a file in the repository
   (`crates/bloodlegion-server/data/raids.json`): Barrow Deeps (10), Hyjal Summit (20), and Onyxia's
@@ -367,7 +367,7 @@ the client keep them current:
    named in Administration's settings ("Name in game", `guild_settings.guild_name`, `BL` by
    default), so the site works for another guild by its name. A member
    no character matches is **added**: a new one is made with its name, class,
-   level, and Battle.net id, on the guild's ruleset, nobody playing it until someone claims it or a
+   level, and Battle.net id, its ruleset unknown until the armory says, nobody playing it until someone claims it or a
    Battle.net sign-in links it (no race or sex until someone records them: the roster has neither). The
    client lists what it added, and any member it could not (a name or class the site does not
    take); those are also on the roster page for superusers ("Not added from the roster", from
@@ -469,8 +469,9 @@ button that gives it the bot's name), and the one it replaces stays as it is. Th
 officers' roles should have Discord's **Administrator** permission; **Give Administrator** adds it,
 keeping what else they allow, which needs the bot to have Administrator itself. Each role has its
 level's color, shown beside it: Leader legendary orange (`#FF8000`), Officer epic purple
-(`#A335EE`), Raider blood red (`#C41F3B`), Trial rare blue (`#0070DD`), and Member uncommon green
-(`#1EFF00`); **Fix colors** sets any that differ, and **Create missing** makes roles with them. The page also checks the bot's own highest
+(`#A335EE`), Raider blood red (`#C41F3B`), Trial a faded blood red (`#DB7A88`), Member rare blue
+(`#0070DD`), and Friend uncommon green (`#1EFF00`); the public, with no role, show in Discord's
+default; **Fix colors** sets any that differ, and **Create missing** makes roles with them. The page also checks the bot's own highest
 role: it should be the server's top role, since Discord lets the bot move only roles below it and
 lets no one raise their own (if not, someone above it drags it to the top in Server Settings, Roles),
 shown separately in the member list, and not mentionable by anyone; for the same reason these are

@@ -112,9 +112,6 @@ pub struct Settings {
     /// The faction the guild plays.
     #[serde(default)]
     pub faction: crate::wow::catalog::Faction,
-    /// The ruleset the guild plays on, which new characters take.
-    #[serde(default)]
-    pub ruleset: crate::wow::Ruleset,
     /// The guild's name in game (`BL`): a roster upload is the guild's when the addon saw it in a
     /// guild of this name. WoW gives addons a guild's name, not an id.
     #[serde(default = "default_guild_name")]
@@ -146,7 +143,6 @@ pub async fn set_settings(pool: &PgPool, settings: &Settings) -> Result<Settings
         time_zone,
         settings.default_raid_time,
         settings.faction,
-        settings.ruleset,
         guild_name,
     )
     .await?;
@@ -299,7 +295,6 @@ pub(crate) mod tests {
                 "time_zone": "America/New_York",
                 "default_raid_time": "20:00",
                 "faction": "horde",
-                "ruleset": "pvp",
                 "guild_name": "BL"
             })
         );

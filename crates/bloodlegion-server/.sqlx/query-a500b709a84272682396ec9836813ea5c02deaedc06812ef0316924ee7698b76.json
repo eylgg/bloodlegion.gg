@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT time_zone, default_raid_time, faction AS \"faction: Faction\",\n                  ruleset AS \"ruleset: Ruleset\", guild_name\n           FROM guild_settings",
+  "query": "SELECT time_zone, default_raid_time, faction AS \"faction: Faction\", guild_name\n           FROM guild_settings",
   "describe": {
     "columns": [
       {
@@ -38,17 +38,6 @@
       },
       {
         "ordinal": 3,
-        "name": "ruleset: Ruleset",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "guild_settings",
-            "name": "ruleset"
-          }
-        }
-      },
-      {
-        "ordinal": 4,
         "name": "guild_name",
         "type_info": "Text",
         "origin": {
@@ -66,9 +55,8 @@
       false,
       false,
       false,
-      false,
       false
     ]
   },
-  "hash": "b0dc1af6c0641700011c65cfd164414e347a14b478510194d66ea7efd3ba468b"
+  "hash": "a500b709a84272682396ec9836813ea5c02deaedc06812ef0316924ee7698b76"
 }

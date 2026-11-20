@@ -161,8 +161,8 @@ pub struct Difference {
 /// Looks up every character on the site in the armory, and compares them.
 /// With `fill`, takes from the armory what the site lacks, has wrong, or has lower: a race not
 /// recorded, the sex (most recorded before sexes were optional are a default, not a choice), the
-/// ruleset (one a Battle.net sign-in added took the guild's as a guess, and a character's ruleset
-/// never changes in game), and a level below the armory's (as a roster would raise it). Anything
+/// ruleset (unknown for one a Battle.net sign-in added, and a character's ruleset never changes in
+/// game), and a level below the armory's (as a roster would raise it). Anything
 /// else that differs (a class, a race already recorded) is only reported, for an officer.
 pub async fn check(state: &State, fill: bool) -> anyhow::Result<Vec<Checked>> {
     let token = app_token(state).await?;
@@ -277,7 +277,7 @@ fn differences(character: &crate::characters::Character, armory: &Armory) -> Vec
     );
     differ(
         "ruleset",
-        Some(name(&character.ruleset)),
+        character.ruleset.map(|ruleset| name(&ruleset)),
         armory.ruleset.map(|ruleset| name(&ruleset)),
     );
     // Levels never count: the armory lags (a roster upload is ahead of it), and a higher one
@@ -304,7 +304,7 @@ async fn fill_in(
     let sex = armory.sex.filter(|sex| character.sex != Some(*sex));
     let ruleset = armory
         .ruleset
-        .filter(|ruleset| character.ruleset != *ruleset);
+        .filter(|ruleset| character.ruleset != Some(*ruleset));
     let level = armory
         .level
         .filter(|level| (1..=60).contains(level) && *level > character.level);

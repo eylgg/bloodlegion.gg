@@ -1239,7 +1239,7 @@ mod tests {
         assert_eq!(role("Leader").expected_color, "#ff8000");
         assert_eq!(role("Officer").color, None);
         assert_eq!(role("Officer").expected_color, "#a335ee");
-        assert_eq!(role("Member").expected_color, "#1eff00");
+        assert_eq!(role("Member").expected_color, "#0070dd");
     }
 
     #[test]

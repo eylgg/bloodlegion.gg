@@ -13,7 +13,7 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
+               c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset: Ruleset", c.level AS "level!", c.reached_60_at,
                c.is_main AS "is_main!", in_guild(c.guild) AS "in_guild!",
                c.guild, c.guild_rank,
                (SELECT r.name FROM guild_ranks r WHERE r.guild = c.guild AND r.rank = c.guild_rank)
@@ -59,7 +59,7 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
         r#"
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
-               c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset!: Ruleset", c.level AS "level!", c.reached_60_at,
+               c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset: Ruleset", c.level AS "level!", c.reached_60_at,
                c.is_main AS "is_main!", in_guild(c.guild) AS "in_guild!",
                c.guild, c.guild_rank,
                (SELECT r.name FROM guild_ranks r WHERE r.guild = c.guild AND r.rank = c.guild_rank)
@@ -127,7 +127,7 @@ pub(super) async fn insert(
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, COALESCE($8::smallint, 1),
             CASE WHEN $8::smallint = 60 THEN COALESCE($9, now()) END,
-            COALESCE($10::text, (SELECT ruleset FROM guild_settings))
+            $10::text
         )
         RETURNING id
         "#,
@@ -380,8 +380,8 @@ pub struct Added {
     pub character_id: i64,
 }
 
-/// Adds a roster member no character on the site matched: one nobody plays yet, on the guild's
-/// ruleset.
+/// Adds a roster member no character on the site matched: one nobody plays yet, its ruleset
+/// unknown (the roster has none) until the armory says.
 pub async fn add_from_roster(
     conn: &mut PgConnection,
     battlenet_id: Option<i64>,
@@ -393,10 +393,9 @@ pub async fn add_from_roster(
 ) -> sqlx::Result<Added> {
     let id = sqlx::query_scalar!(
         r#"INSERT INTO characters
-               (first_name, last_name, class, level, reached_60_at, ruleset, battlenet_id)
+               (first_name, last_name, class, level, reached_60_at, battlenet_id)
            VALUES ($1, $2, $3, $4::smallint,
-                   CASE WHEN $4::smallint = 60 THEN COALESCE($5, now()) END,
-                   (SELECT ruleset FROM guild_settings), $6)
+                   CASE WHEN $4::smallint = 60 THEN COALESCE($5, now()) END, $6)
            RETURNING id"#,
         first_name,
         last_name,

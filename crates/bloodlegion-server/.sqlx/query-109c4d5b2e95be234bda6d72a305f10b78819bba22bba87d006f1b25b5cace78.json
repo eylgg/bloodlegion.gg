@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO characters\n                         (user_id, first_name, last_name, class, race, sex, level, reached_60_at,\n                          battlenet_id, battlenet_provider_id, battlenet_subject,\n                          battlenet_seen_at)\n                     VALUES ($1, $2, $3, $4, $5, $6, $7::smallint, CASE WHEN $7::smallint = 60 THEN now() END,\n                             $8, $9, $10, now())",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int2",
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "109c4d5b2e95be234bda6d72a305f10b78819bba22bba87d006f1b25b5cace78"
+}

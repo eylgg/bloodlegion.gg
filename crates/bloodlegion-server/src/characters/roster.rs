@@ -905,7 +905,7 @@ mod tests {
             .unwrap();
         assert!(seen_by_raider.iter().any(|c| c.id == bank.id));
         assert!(seen_by_raider.iter().all(|c| c.last_name != "Pug"));
-        assert_eq!(bank.ruleset, crate::wow::Ruleset::Pvp);
+        assert_eq!(bank.ruleset, None, "the roster does not say");
         let battlenet_id = sqlx::query_scalar!(
             "SELECT battlenet_id FROM characters WHERE id = $1",
             made.character_id
