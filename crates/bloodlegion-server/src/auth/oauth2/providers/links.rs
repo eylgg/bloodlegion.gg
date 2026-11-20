@@ -98,6 +98,45 @@ pub(super) async fn link(
     Ok(Linked::New)
 }
 
+/// A superuser linking `subject` at the provider `slug` to a member by hand, for someone who has
+/// not linked it themselves: the same link as their own sign-in there makes (see [`link`]), with
+/// `userinfo` as the provider gives it for that account.
+pub(crate) async fn link_by_hand(
+    pool: &PgPool,
+    slug: &Slug,
+    user_id: UserId,
+    subject: &str,
+    userinfo: &serde_json::Value,
+) -> Result<Linked, ProviderError> {
+    let provider = db::find_provider_by_slug(pool, slug)
+        .await
+        .context("looking up the provider")?
+        .ok_or(Error::External(ProviderError::UnknownProvider))?;
+    link(pool, &provider, user_id, subject, userinfo).await
+}
+
+/// A superuser taking `subject` at the provider `slug` off whoever it is linked to. Unlike a
+/// member's own [`unlink`] it deletes the credential, so a link made to the wrong member can be
+/// made again to the right one. Returns whether it was linked (or had been) at all.
+pub(crate) async fn unlink_by_hand(
+    pool: &PgPool,
+    slug: &Slug,
+    subject: &str,
+) -> anyhow::Result<bool> {
+    let Some(provider) = db::find_provider_by_slug(pool, slug)
+        .await
+        .context("looking up the provider")?
+    else {
+        return Ok(false);
+    };
+    let mut tx = pool.begin().await.context("beginning the unlink")?;
+    let deleted = db::delete_credential(&mut tx, provider.id, subject)
+        .await
+        .context("deleting the provider credential")?;
+    tx.commit().await.context("committing the unlink")?;
+    Ok(deleted)
+}
+
 #[derive(Debug, thiserror::Error, Problem)]
 pub enum LinkError {
     #[error("linked account not found")]
@@ -489,6 +528,45 @@ mod tests {
                 .unwrap(),
             Linked::Existing
         );
+    }
+
+    #[sqlx::test]
+    async fn a_superuser_links_and_unlinks_by_hand(pool: PgPool) {
+        discord(&pool).await;
+        let slug = Slug::try_from("discord").unwrap();
+        let one = member(&pool, "One").await;
+        let two = member(&pool, "Two").await;
+        let discord_user = |id: &str| serde_json::json!({ "id": id, "username": "someone" });
+
+        assert_eq!(
+            link_by_hand(&pool, &slug, one, "1", &discord_user("1"))
+                .await
+                .unwrap(),
+            Linked::New
+        );
+        // It is on the member's profile like one they linked themselves.
+        let accounts = list(&pool, one).await.unwrap();
+        assert_eq!(accounts.len(), 1);
+        assert_eq!(accounts[0].provider_slug, slug);
+        // Linked to the wrong member: it cannot go to the right one until it is taken off...
+        assert!(matches!(
+            link_by_hand(&pool, &slug, two, "1", &discord_user("1")).await,
+            Err(Error::External(ProviderError::AlreadyLinked(_)))
+        ));
+        assert!(unlink_by_hand(&pool, &slug, "1").await.unwrap());
+        assert!(list(&pool, one).await.unwrap().is_empty());
+        // ...which leaves no tombstone, so it can.
+        assert_eq!(
+            link_by_hand(&pool, &slug, two, "1", &discord_user("1"))
+                .await
+                .unwrap(),
+            Linked::New
+        );
+        // One the member unlinked themselves is taken off the same way.
+        let theirs = list(&pool, two).await.unwrap()[0].id;
+        unlink(&pool, two, theirs).await.unwrap();
+        assert!(unlink_by_hand(&pool, &slug, "1").await.unwrap());
+        assert!(!unlink_by_hand(&pool, &slug, "1").await.unwrap());
     }
 
     #[sqlx::test]

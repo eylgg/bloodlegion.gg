@@ -629,6 +629,26 @@ pub async fn disconnect_credential(
     Ok(true)
 }
 
+/// Deletes the credential for `subject` at the provider outright, connected or not, with its
+/// tokens: unlike a member's own unlink it leaves no tombstone, so the identity is free for anyone
+/// to link. Returns whether there was one.
+pub async fn delete_credential(
+    conn: &mut PgConnection,
+    provider_id: ProviderId,
+    subject: &str,
+) -> sqlx::Result<bool> {
+    delete_tokens(conn, provider_id.0, subject).await?;
+    let deleted = sqlx::query!(
+        "DELETE FROM auth_oauth2_provider_credentials WHERE provider_id = $1 AND subject = $2",
+        provider_id.0,
+        subject,
+    )
+    .execute(&mut *conn)
+    .await?
+    .rows_affected();
+    Ok(deleted > 0)
+}
+
 async fn delete_tokens(
     conn: &mut PgConnection,
     provider_id: i64,

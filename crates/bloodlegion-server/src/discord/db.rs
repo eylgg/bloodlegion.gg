@@ -191,6 +191,34 @@ pub async fn linked_member(pool: &PgPool, discord_user: u64) -> sqlx::Result<Opt
     .await
 }
 
+/// Whether there is an account with that id.
+pub async fn member_exists(pool: &PgPool, user: UserId) -> sqlx::Result<bool> {
+    sqlx::query_scalar!(
+        r#"SELECT EXISTS (SELECT 1 FROM users WHERE id = $1) AS "exists!""#,
+        user.0,
+    )
+    .fetch_one(pool)
+    .await
+}
+
+/// The username of whoever the Discord account `discord_user` belongs to: linked now, or unlinked
+/// by them and so still theirs, whether or not their account is disabled.
+pub async fn account_owner(pool: &PgPool, discord_user: u64) -> sqlx::Result<Option<String>> {
+    sqlx::query_scalar!(
+        r#"
+        SELECT u.username
+        FROM auth_oauth2_provider_credentials c
+        JOIN auth_providers p ON p.id = c.provider_id
+        JOIN users u ON u.id = c.user_id
+        WHERE p.slug = $1 AND c.subject = $2
+        "#,
+        DISCORD_PROVIDER_SLUG,
+        discord_user.to_string(),
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 /// A post in #public-announcements, as the bot read it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Post {

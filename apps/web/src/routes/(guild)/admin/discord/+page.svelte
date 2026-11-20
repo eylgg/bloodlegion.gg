@@ -120,6 +120,57 @@
 		}
 	}
 
+	/** The site's accounts with no Discord account linked, which one can be linked to by hand. */
+	const linkable = $derived(
+		data.accounts.filter(
+			(a) =>
+				!a.disabled && !a.connections.some((c) => c.provider === 'discord' && !c.disconnected_at)
+		)
+	);
+	/** For each person in the server, the id of the account picked to link them to. */
+	let linkTo = $state<Record<string, string>>({});
+	let linkDone = $state<{ discord: string; username: string | null } | null>(null);
+	/** Shown by the lists the links are made from, which are far down the page. */
+	let linkError = $state('');
+
+	/** Links the Discord account to the account picked for it, as if they had linked it themselves. */
+	async function link(person: { discord_id: string; discord_name: string }) {
+		const account = linkable.find((a) => String(a.id) === linkTo[person.discord_id]);
+		if (!account) return;
+		fixing = `link/${person.discord_id}`;
+		linkError = '';
+		linkDone = null;
+		try {
+			await api.post('/api/admin/discord/links', {
+				discord_id: person.discord_id,
+				user_id: account.id
+			});
+			await invalidateAll();
+			delete linkTo[person.discord_id];
+			linkDone = { discord: person.discord_name, username: account.username };
+		} catch (err) {
+			linkError = errorMessage(err, 'That did not work. Please try again.');
+		} finally {
+			fixing = null;
+		}
+	}
+
+	/** Takes the Discord account off the account it is linked to, free to be linked again. */
+	async function unlink(person: { discord_id: string; discord_name: string }) {
+		fixing = `link/${person.discord_id}`;
+		linkError = '';
+		linkDone = null;
+		try {
+			await api.del(`/api/admin/discord/links/${person.discord_id}`);
+			await invalidateAll();
+			linkDone = { discord: person.discord_name, username: null };
+		} catch (err) {
+			linkError = errorMessage(err, 'That did not work. Please try again.');
+		} finally {
+			fixing = null;
+		}
+	}
+
 	/** The bot's roles that are in the server, which can be given. */
 	const givable = $derived(report?.roles.filter((r) => r.id) ?? []);
 
@@ -165,15 +216,63 @@
 	const groups = $derived(
 		report
 			? [
-					{ title: 'Linked to the site', people: report.everyone.linked },
-					{ title: "Not linked, with the bot's roles", people: report.everyone.unlinked_ours },
-					{ title: 'Not linked, with other roles only', people: report.everyone.unlinked_others },
-					{ title: 'No roles', people: report.everyone.no_roles },
-					{ title: 'Bots', people: report.everyone.bots }
+					{ title: 'Linked to the site', people: report.everyone.linked, bots: false },
+					{
+						title: "Not linked, with the bot's roles",
+						people: report.everyone.unlinked_ours,
+						bots: false
+					},
+					{
+						title: 'Not linked, with other roles only',
+						people: report.everyone.unlinked_others,
+						bots: false
+					},
+					{ title: 'No roles', people: report.everyone.no_roles, bots: false },
+					{ title: 'Bots', people: report.everyone.bots, bots: true }
 				]
 			: []
 	);
 </script>
+
+{#snippet linkPicker(person: { discord_id: string; discord_name: string })}
+	<div class="give">
+		<select
+			aria-label={`Account to link ${person.discord_name} to`}
+			value={linkTo[person.discord_id] ?? ''}
+			disabled={linkable.length === 0}
+			onchange={(event) => (linkTo[person.discord_id] = event.currentTarget.value)}
+		>
+			<option value=""
+				>{linkable.length === 0 ? 'No account without one' : 'Pick an account'}</option
+			>
+			{#each linkable as account (account.id)}
+				<option value={String(account.id)}>{account.username}</option>
+			{/each}
+		</select>
+		<Button
+			size="small"
+			variant="primary"
+			disabled={!linkTo[person.discord_id] || fixing !== null}
+			onclick={() => link(person)}
+		>
+			{fixing === `link/${person.discord_id}` ? 'Linking...' : 'Link'}
+		</Button>
+	</div>
+{/snippet}
+
+{#snippet linkOutcome()}
+	{#if linkError}<Alert variant="error">{linkError}</Alert>{/if}
+	{#if linkDone}
+		<Alert variant="success">
+			{#if linkDone.username}
+				Linked {linkDone.discord} to {linkDone.username}. It shows on their profile, where they can
+				unlink it.
+			{:else}
+				Unlinked {linkDone.discord}.
+			{/if}
+		</Alert>
+	{/if}
+{/snippet}
 
 {#snippet createMissing()}
 	<ConfirmButton
@@ -932,7 +1031,9 @@
 			</div>
 			<p class="muted">
 				People in the server holding one of the bot's roles who have not linked Discord on the site.
+				Link one to their account here, as if they had linked it themselves.
 			</p>
+			{@render linkOutcome()}
 			{#if report.unlinked.length > 0}
 				<ul class="list">
 					{#each report.unlinked as person (person.discord_id)}
@@ -943,6 +1044,7 @@
 									<span class="tag extra">{role}</span>
 								{/each}
 							</div>
+							{@render linkPicker(person)}
 						</li>
 					{/each}
 				</ul>
@@ -952,7 +1054,8 @@
 		<section>
 			<h2>Everyone in the server</h2>
 			<p class="muted">
-				Everyone in the server, by how they stand with the site, with their roles top first.
+				Everyone in the server, by how they stand with the site, with their roles top first. Anyone
+				not linked can be linked to their account here, and a link taken off again.
 			</p>
 			{#each groups as group (group.title)}
 				<details class="group">
@@ -977,6 +1080,19 @@
 											<span class="tag extra">{role}</span>
 										{/each}
 									</div>
+									{#if person.username}
+										<ConfirmButton
+											size="small"
+											disabled={fixing !== null}
+											question={`Unlink ${person.discord_name} from ${person.username}? The bot stops treating them as that member.`}
+											confirmLabel="Unlink"
+											onconfirm={() => unlink(person)}
+										>
+											Unlink
+										</ConfirmButton>
+									{:else if !group.bots}
+										{@render linkPicker(person)}
+									{/if}
 								</li>
 							{/each}
 						</ul>

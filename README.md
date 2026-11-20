@@ -163,6 +163,7 @@ bloodlegion-server users demote <username>
 bloodlegion-server users rename <username> <new username>
 bloodlegion-server users rank <username> <rank>  # leader, officer, raider, trial, member, public
 bloodlegion-server users characters <username>   # the Forever characters on each linked Battle.net account
+bloodlegion-server users characters <username> --raw --protected  # Blizzard's JSON, with each character's protected profile
 bloodlegion-server characters seed              # test characters: four per class, linked to no one
 bloodlegion-server characters unseed            # remove them (keeps any that raided or won loot)
 bloodlegion-server users disable <username>     # suspend: sessions stop, login refused

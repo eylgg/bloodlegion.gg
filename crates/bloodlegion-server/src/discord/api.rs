@@ -10,8 +10,10 @@ use super::check::{self, Overview};
 use super::db;
 use super::fix::{self, FixError};
 use super::layout::Access;
+use super::link::{self, LinkError};
 use super::markdown::{self, Mentions};
 use crate::extract::{Admin, SameOrigin};
+use crate::users::UserId;
 use crate::{Error, Problem, Result, State};
 
 /// How many announcements the site shows.
@@ -371,6 +373,38 @@ async fn set_role(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Whose Discord account to link: a Discord user id (a string, as it does not fit a JavaScript
+/// number) and the member's id on the site.
+#[derive(Debug, serde::Deserialize)]
+pub struct LinkInput {
+    discord_id: String,
+    user_id: UserId,
+}
+
+/// `POST /api/admin/discord/links`: superusers only. Links a Discord account to a member who has
+/// not linked it themselves (see `link`).
+async fn link_account(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+    Json(input): Json<LinkInput>,
+) -> Result<StatusCode, LinkError> {
+    link::link(&state, &input.discord_id, input.user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `DELETE /api/admin/discord/links/{discord_id}`: superusers only. Takes a Discord account off
+/// the member it is linked to, leaving it free to link again (see `link`).
+async fn unlink_account(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+    Path(discord_id): Path<String>,
+) -> Result<StatusCode, LinkError> {
+    link::unlink(&state, &discord_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn router() -> Router<State> {
     Router::new().route("/announcements", get(latest))
 }
@@ -393,6 +427,11 @@ pub fn admin_router() -> Router<State> {
         .route("/discord/fix/colors", post(fix_colors))
         .route("/discord/fix/members/give", post(give_member_roles))
         .route("/discord/fix/members/take", post(take_member_roles))
+        .route("/discord/links", post(link_account))
+        .route(
+            "/discord/links/{discord_id}",
+            axum::routing::delete(unlink_account),
+        )
 }
 
 #[cfg(test)]

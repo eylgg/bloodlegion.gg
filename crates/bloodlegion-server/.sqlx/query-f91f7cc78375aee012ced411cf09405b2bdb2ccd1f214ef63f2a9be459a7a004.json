@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT u.username\n        FROM auth_oauth2_provider_credentials c\n        JOIN auth_providers p ON p.id = c.provider_id\n        JOIN users u ON u.id = c.user_id\n        WHERE p.slug = $1 AND c.subject = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f91f7cc78375aee012ced411cf09405b2bdb2ccd1f214ef63f2a9be459a7a004"
+}

@@ -232,6 +232,39 @@ pub async fn users_set_disabled(username: String, disabled: bool) -> Result<()> 
     Ok(())
 }
 
+/// Prints each listed character's protected profile, following the listing's own link for it.
+/// A failing one is reported and skipped.
+async fn print_protected(
+    http: &reqwest::Client,
+    profile: &serde_json::Value,
+    locale: &str,
+    access_token: &str,
+) {
+    let characters = profile["wow_accounts"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .flat_map(|account| account["characters"].as_array().into_iter().flatten());
+    for character in characters {
+        let name = format!(
+            "{} {}",
+            character["name"].as_str().unwrap_or_default(),
+            character["surname"].as_str().unwrap_or_default()
+        );
+        let Some(href) = character["protected_character"]["href"].as_str() else {
+            eprintln!("{name}: no protected character link");
+            continue;
+        };
+        match crate::wow::protected_character(http, href, locale, access_token).await {
+            Ok(body) => {
+                eprintln!("{name}: protected character");
+                println!("{body:#}");
+            }
+            Err(error) => eprintln!("{name}: {error:#}"),
+        }
+    }
+}
+
 /// `users characters`: for each Battle.net account the user linked, the token status, then the
 /// characters on it.
 #[tokio::main(flavor = "current_thread")]
@@ -242,6 +275,7 @@ pub async fn users_characters(
     namespace: Option<String>,
     locale: String,
     raw: bool,
+    protected: bool,
 ) -> Result<()> {
     let namespace = namespace.unwrap_or_else(|| crate::wow::profile_namespace(&region));
     let state = State::new().await?;
@@ -294,6 +328,9 @@ pub async fn users_characters(
                 continue;
             }
         };
+        if protected {
+            print_protected(&state.http_client, &profile, &locale, &tokens.access_token).await;
+        }
         if raw {
             println!("{profile:#}");
             continue;

@@ -17,6 +17,7 @@ mod check;
 mod db;
 mod fix;
 mod layout;
+mod link;
 mod markdown;
 mod sync;
 

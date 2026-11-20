@@ -119,6 +119,40 @@ pub async fn account_profile(
         .context("reading the WoW account profile")
 }
 
+/// A character's protected profile, by the link the account profile summary gives for it
+/// (`/profile/user/wow/protected-character/{realm}-{id}`), read with the member's own token. The
+/// link must be Blizzard's API, as the token goes with it.
+pub async fn protected_character(
+    http: &reqwest::Client,
+    href: &str,
+    locale: &str,
+    access_token: &str,
+) -> anyhow::Result<Value> {
+    let mut url = url::Url::parse(href).context("reading the protected character link")?;
+    let blizzard = url.scheme() == "https"
+        && url
+            .host_str()
+            .is_some_and(|host| host.ends_with(".api.blizzard.com"));
+    if !blizzard {
+        anyhow::bail!("the protected character link is not Blizzard's API: {href}");
+    }
+    url.query_pairs_mut().append_pair("locale", locale);
+    let response = http
+        .get(url)
+        .bearer_auth(access_token)
+        .send()
+        .await
+        .context("calling the protected character API")?;
+    let status = response.status();
+    if !status.is_success() {
+        anyhow::bail!("the protected character API answered {status}");
+    }
+    response
+        .json()
+        .await
+        .context("reading the protected character")
+}
+
 /// The characters in an account profile summary, highest level first, then by name. Lenient:
 /// a field missing from one entry shows as empty rather than failing the whole listing.
 pub fn parse_characters(body: &Value) -> Vec<Character> {

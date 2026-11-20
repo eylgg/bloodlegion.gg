@@ -165,6 +165,11 @@ enum UsersCommand {
         /// out (fields it does not read).
         #[arg(long)]
         raw: bool,
+        /// Also print each character's protected profile
+        /// (`/profile/user/wow/protected-character/{realm}-{id}`, read with the member's own
+        /// token), as the API answered it: the listing's link for each character.
+        #[arg(long)]
+        protected: bool,
     },
 }
 
@@ -398,7 +403,10 @@ fn main() -> Result<()> {
                 namespace,
                 locale,
                 raw,
-            } => cli::users_characters(username, provider, region, namespace, locale, raw),
+                protected,
+            } => cli::users_characters(
+                username, provider, region, namespace, locale, raw, protected,
+            ),
         },
         Some(Command::Characters { command }) => match command {
             CharactersCommand::Seed => cli::characters_seed(),
