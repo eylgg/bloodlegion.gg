@@ -97,19 +97,6 @@ pub struct Armory {
     pub guild: Option<String>,
 }
 
-/// A ruleset by the armory's name or slug for it ("PvP", "RP-PvP", "roleplay-pvp").
-fn ruleset(name: &str) -> Option<Ruleset> {
-    let name = name.trim().to_lowercase().replace([' ', '_'], "-");
-    Some(match name.as_str() {
-        "normal" | "pve" => Ruleset::Normal,
-        "pvp" => Ruleset::Pvp,
-        "roleplay" | "rp" => Ruleset::Roleplay,
-        "roleplay-pvp" | "rp-pvp" | "rppvp" => Ruleset::RoleplayPvp,
-        "hardcore" => Ruleset::Hardcore,
-        _ => return None,
-    })
-}
-
 pub fn parse(profile: &Value) -> Armory {
     let text = |path: &[&str]| -> Option<String> {
         let mut node = profile;
@@ -136,7 +123,7 @@ pub fn parse(profile: &Value) -> Armory {
         },
         ruleset: text(&["ruleset", "slug"])
             .or_else(|| text(&["ruleset", "name"]))
-            .and_then(|name| ruleset(&name)),
+            .and_then(|name| Ruleset::from_name(&name)),
         guild: text(&["guild", "name"]),
     }
 }
@@ -173,9 +160,10 @@ pub struct Difference {
 
 /// Looks up every character on the site in the armory, and compares them.
 /// With `fill`, takes from the armory what the site lacks, has wrong, or has lower: a race not
-/// recorded, the sex (most recorded before sexes were optional are a default, not a choice), and a
-/// level below the armory's (as a roster would raise it). Anything else that differs (a class, a
-/// ruleset, a race already recorded) is only reported, for an officer.
+/// recorded, the sex (most recorded before sexes were optional are a default, not a choice), the
+/// ruleset (one a Battle.net sign-in added took the guild's as a guess, and a character's ruleset
+/// never changes in game), and a level below the armory's (as a roster would raise it). Anything
+/// else that differs (a class, a race already recorded) is only reported, for an officer.
 pub async fn check(state: &State, fill: bool) -> anyhow::Result<Vec<Checked>> {
     let token = app_token(state).await?;
     let characters = crate::characters::list(&state.pool)
@@ -314,6 +302,9 @@ async fn fill_in(
 ) -> sqlx::Result<Vec<&'static str>> {
     let race = armory.race.filter(|_| character.race.is_none());
     let sex = armory.sex.filter(|sex| character.sex != Some(*sex));
+    let ruleset = armory
+        .ruleset
+        .filter(|ruleset| character.ruleset != *ruleset);
     let level = armory
         .level
         .filter(|level| (1..=60).contains(level) && *level > character.level);
@@ -324,6 +315,9 @@ async fn fill_in(
     if sex.is_some() {
         filled.push("sex");
     }
+    if ruleset.is_some() {
+        filled.push("ruleset");
+    }
     if level.is_some() {
         filled.push("level");
     }
@@ -332,7 +326,7 @@ async fn fill_in(
     }
     sqlx::query!(
         r#"UPDATE characters
-           SET race = COALESCE(race, $2), sex = COALESCE($3, sex),
+           SET race = COALESCE(race, $2), sex = COALESCE($3, sex), ruleset = COALESCE($5, ruleset),
                level = GREATEST(level, COALESCE($4, level)),
                reached_60_at = CASE WHEN GREATEST(level, COALESCE($4, level)) = 60
                                     THEN COALESCE(reached_60_at, now()) END
@@ -341,6 +335,7 @@ async fn fill_in(
         race,
         sex as Option<Sex>,
         level,
+        ruleset as Option<Ruleset>,
     )
     .execute(pool)
     .await?;
@@ -373,9 +368,13 @@ mod tests {
                 guild: Some("BL".into()),
             }
         );
-        assert_eq!(ruleset("RP-PvP"), Some(Ruleset::RoleplayPvp));
-        assert_eq!(ruleset("Normal"), Some(Ruleset::Normal));
-        assert_eq!(ruleset("Mars"), None);
+        assert_eq!(Ruleset::from_name("RP-PvP"), Some(Ruleset::RoleplayPvp));
+        assert_eq!(
+            Ruleset::from_name("Roleplay PvP"),
+            Some(Ruleset::RoleplayPvp)
+        );
+        assert_eq!(Ruleset::from_name("Normal"), Some(Ruleset::Normal));
+        assert_eq!(Ruleset::from_name("Mars"), None);
         assert_eq!(parse(&serde_json::json!({})).race, None);
     }
 }

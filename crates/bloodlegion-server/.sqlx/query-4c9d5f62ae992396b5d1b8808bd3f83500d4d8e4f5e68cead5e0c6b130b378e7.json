@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE characters SET ruleset = $2 WHERE name_normalized = lower($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4c9d5f62ae992396b5d1b8808bd3f83500d4d8e4f5e68cead5e0c6b130b378e7"
+}

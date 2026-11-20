@@ -64,6 +64,10 @@ pub struct Synced {
     pub claimed: u64,
     /// Characters removed, no longer listed: never named by a roster upload, with no raid or loot.
     pub removed: u64,
+    /// The added characters' names: Battle.net's listing has no ruleset, so they take the guild's
+    /// until the armory says ([`armory_rulesets`]).
+    #[serde(skip)]
+    pub added_names: Vec<String>,
 }
 
 /// Reads the account's characters from Battle.net, then [`apply`]s them.
@@ -85,9 +89,60 @@ pub async fn sync(
         .as_ref()
         .map(super::parse_characters)
         .unwrap_or_default();
-    apply(&state.pool, provider_id, subject, &characters)
+    let synced = apply(&state.pool, provider_id, subject, &characters)
         .await
-        .context("applying the Battle.net characters")
+        .context("applying the Battle.net characters")?;
+    if !synced.added_names.is_empty() {
+        armory_rulesets(state, &synced.added_names).await;
+    }
+    Ok(synced)
+}
+
+/// Sets each named character's ruleset from the armory, for the characters a sync added:
+/// Battle.net's listing has none (only names, class, race, sex, faction, and level), so the
+/// guild's was only a guess, and a character's ruleset never changes in game. One the armory does
+/// not have (below level 10) keeps the guild's until an armory check fills it; a failure is only
+/// logged, as the characters are already on the site.
+async fn armory_rulesets(state: &State, names: &[String]) {
+    let token = match super::armory::app_token(state).await {
+        Ok(token) => token,
+        Err(error) => {
+            tracing::warn!(
+                error = format!("{error:#}"),
+                "no armory token for the rulesets"
+            );
+            return;
+        }
+    };
+    for name in names {
+        let slug = name.to_lowercase().replace(' ', "-");
+        let ruleset = match super::armory::profile(&state.http_client, &token, &slug).await {
+            Ok(profile) => profile.and_then(|profile| super::armory::parse(&profile).ruleset),
+            Err(error) => {
+                tracing::warn!(
+                    error = format!("{error:#}"),
+                    name,
+                    "reading the armory failed"
+                );
+                continue;
+            }
+        };
+        let Some(ruleset) = ruleset else { continue };
+        if let Err(error) = sqlx::query!(
+            "UPDATE characters SET ruleset = $2 WHERE name_normalized = lower($1)",
+            name,
+            ruleset as Ruleset,
+        )
+        .execute(&state.pool)
+        .await
+        {
+            tracing::warn!(
+                error = format!("{error:#}"),
+                name,
+                "saving the ruleset failed"
+            );
+        }
+    }
 }
 
 /// A listed character as the site keeps it.
@@ -204,6 +259,7 @@ pub async fn apply(
                 )
                 .execute(&mut *tx)
                 .await?;
+                synced.added_names.push(full_name);
             }
         }
     }
@@ -632,7 +688,9 @@ mod tests {
                 added: 1,
                 // Gg; Shm is added already theirs.
                 claimed: 1,
-                removed: 0
+                removed: 0,
+                // Shm, whose ruleset the armory is asked for.
+                added_names: vec!["Eyl Shm".into()],
             }
         );
 

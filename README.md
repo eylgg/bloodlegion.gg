@@ -252,13 +252,17 @@ the changes.
   `bloodlegion-server characters armory-check [--fill]`; `characters armory <eyl-gg> [--raw]` shows
   one): it lists where the site and the armory differ and the characters the armory does not have,
   and filling in takes a race nobody recorded, the armory's sex (most recorded before sexes were
-  optional were the old default, female), and a level the site has lower. A level the site has
+  optional were the old default, female), the armory's ruleset (a character's never changes in
+  game, and the site's may be a guess), and a level the site has lower. A level the site has
   higher is left alone and not listed (the armory lags a roster upload); anything else that
   differs is only listed, for an officer to fix.
 - **Rulesets**: Forever has rulesets instead of realms (Normal, PvP, Roleplay, RP-PvP, Hardcore).
   The guild's faction and ruleset are settings on the Administration page, Horde and PvP to start.
   A character records its ruleset, the guild's unless an officer picks another (its faction is its
-  race's); the guild's faction's races come first when picking one.
+  race's); the guild's faction's races come first when picking one. Battle.net's listing of an
+  account's characters has no ruleset (nor a realm), so a character a sign-in adds takes the
+  guild's, and is looked up in the armory right after for its own (`battlenet::armory_rulesets`);
+  one the armory does not have yet (below level 10) keeps the guild's until an armory fill.
 - **Raids** are one night in a zone, with the characters who came and the loot they won. The zones,
   their sizes, and their bosses are a file in the repository
   (`crates/bloodlegion-server/data/raids.json`): Barrow Deeps (10), Hyjal Summit (20), and Onyxia's

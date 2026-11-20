@@ -60,9 +60,10 @@
 <p class="muted intro">
 	Looks every character on the roster up in Blizzard's armory by its name. Checking only lists where
 	the site and the armory disagree; filling in also takes from the armory a race nobody recorded,
-	the sex (most recorded so far are the old default, female), and a level the site has lower. A
-	level the site has higher is left alone: the armory catches up later. Anything else that differs
-	(a class, a ruleset, a race already recorded) is for you to fix on the character's page.
+	the sex (most recorded so far are the old default, female), the ruleset (a Battle.net sign-in can
+	only guess the guild's for a character the armory did not have yet), and a level the site has
+	lower. A level the site has higher is left alone: the armory catches up later. Anything else that
+	differs (a class, a race already recorded) is for you to fix on the character's page.
 </p>
 
 <div class="actions">

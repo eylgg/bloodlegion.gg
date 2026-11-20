@@ -47,6 +47,22 @@ pub enum Ruleset {
     Hardcore,
 }
 
+impl Ruleset {
+    /// A ruleset by Blizzard's name or slug for it ("PvP", "Roleplay PvP", "RP-PvP",
+    /// "roleplay-pvp").
+    pub fn from_name(name: &str) -> Option<Self> {
+        let name = name.trim().to_lowercase().replace([' ', '_'], "-");
+        Some(match name.as_str() {
+            "normal" | "pve" => Self::Normal,
+            "pvp" => Self::Pvp,
+            "roleplay" | "rp" => Self::Roleplay,
+            "roleplay-pvp" | "rp-pvp" | "rppvp" => Self::RoleplayPvp,
+            "hardcore" => Self::Hardcore,
+            _ => return None,
+        })
+    }
+}
+
 /// The profile API namespace for WoW: Forever in `region`.
 pub fn profile_namespace(region: &str) -> String {
     format!("profile-forever-{region}")
