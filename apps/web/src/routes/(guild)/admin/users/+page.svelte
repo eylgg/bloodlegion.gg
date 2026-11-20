@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { api, errorMessage } from '$lib/api';
-	import { RANK_LABEL, formatDate, playerPath } from '$lib/guild';
+	import { RANKS, RANK_LABEL, formatDate, playerPath } from '$lib/guild';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
-	import type { AdminAccount, BattlenetRead, Connection } from '$lib/types';
+	import type { AdminAccount, BattlenetRead, Connection, Rank } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -75,6 +75,25 @@
 		}
 	}
 
+	let ranking = $state<number | null>(null);
+
+	/** Sets the account's rank at once; the list is read again either way, so the picker shows it. */
+	async function setRank(account: AdminAccount, rank: Rank) {
+		if (rank === account.guild_rank) return;
+		ranking = account.id;
+		error = '';
+		done = '';
+		try {
+			await api.put(`/api/guild/members/${account.id}/rank`, { rank });
+			done = `${account.username} is now ${RANK_LABEL[rank]} (was ${RANK_LABEL[account.guild_rank]}).`;
+		} catch (err) {
+			error = errorMessage(err, 'Changing the rank failed. Please try again.');
+		} finally {
+			await invalidateAll();
+			ranking = null;
+		}
+	}
+
 	let reading = $state<number | null>(null);
 
 	/** Reads the member's characters from Battle.net now, with their last sign-in's token. */
@@ -130,7 +149,9 @@
 	an admin, or by a password sign-in, has none until its member connects one from their profile.
 	Read characters reads a member's Battle.net characters now, as a sign-in does, with the token from
 	their last sign-in; it lasts about a day, after which they need to sign in again. A rename follows
-	the same rules as signing up.
+	the same rules as signing up. Picking a rank sets it at once, any rank for anyone, your own
+	included; it changes what they see on the site, and nothing in Discord until the roles are fixed
+	on the Discord page.
 </p>
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
@@ -224,7 +245,18 @@
 								{/if}
 							{/if}
 						</td>
-						<td>{RANK_LABEL[account.guild_rank]}</td>
+						<td>
+							<select
+								aria-label={`${account.username}'s rank`}
+								value={account.guild_rank}
+								disabled={ranking !== null}
+								onchange={(event) => setRank(account, event.currentTarget.value as Rank)}
+							>
+								{#each RANKS as rank (rank)}
+									<option value={rank}>{RANK_LABEL[rank]}</option>
+								{/each}
+							</select>
+						</td>
 						<td>
 							{@render sign_in(connected(account, 'battlenet'))}
 							{#if connected(account, 'battlenet')}
