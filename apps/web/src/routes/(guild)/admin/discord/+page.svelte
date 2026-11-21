@@ -1122,7 +1122,12 @@
 				lists below, or by Discord user id for someone not in the server. Leaders and officers need
 				an account.
 			</p>
+			<p class="muted">
+				Change a placeholder's rank with its picker. To move one to a site account, pick the account
+				and link it: the account takes the rank and the placeholder goes.
+			</p>
 			{@render placeholderOutcome()}
+			{@render linkOutcome()}
 			{#if report.placeholders.length > 0}
 				<ul class="list">
 					{#each report.placeholders as person (person.discord_id)}
@@ -1135,6 +1140,7 @@
 								{#if !person.in_server}<span class="tag">Not in the server</span>{/if}
 							</div>
 							{@render placeholderPicker(person, person.rank)}
+							{@render linkPicker(person)}
 						</li>
 					{/each}
 				</ul>
