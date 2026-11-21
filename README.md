@@ -440,6 +440,17 @@ have two buttons: **Give missing roles** gives each the role their rank calls fo
 other roles**, the only button that takes a role from anyone, takes the bot's other roles from them
 (a demoted officer's Officer). Both touch only linked members and only the bot's own roles.
 
+Someone in the server who has not linked Discord on the site (or has no site account yet) can be
+given a **placeholder rank** on the Discord page: raider, trial, member, or friend, kept by their
+Discord user id (leaders and officers need an account). The bot takes it for their rank, so the two
+buttons above treat them as they do linked members. When the Discord account is linked to a site
+account, by its member or by a superuser, the account takes the placeholder's rank if it is higher
+than its own (a new account is public, so it is; linking never lowers a rank) and the placeholder
+goes. People holding one of the bot's roles with neither a linked account nor a placeholder are
+listed as unaccounted for, and the **Purge** button takes the bot's roles from all of them at once,
+all but Leader and Officer, which run the server and are taken by hand. It removes nobody from the
+server and touches none of the server's other roles.
+
 The **Discord page** (`/admin/discord`, superusers) reads the server and shows how it stands, a
 heading per check: the bot's state (running, since when, last seen, its last check and error); the
 server's people and bots, how many members linked Discord and are in it, and the posts kept from

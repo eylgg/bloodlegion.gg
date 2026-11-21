@@ -12,7 +12,9 @@ use super::fix::{self, FixError};
 use super::layout::Access;
 use super::link::{self, LinkError};
 use super::markdown::{self, Mentions};
+use super::placeholder;
 use crate::extract::{Admin, SameOrigin};
+use crate::guild::Rank;
 use crate::users::UserId;
 use crate::{Error, Problem, Result, State};
 
@@ -405,6 +407,44 @@ async fn unlink_account(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// `POST /api/admin/discord/fix/purge`: superusers only. Takes the bot's roles (but the leader's
+/// and officers') from everyone in the server with neither a linked account nor a placeholder rank
+/// (see `fix`).
+async fn purge(state: State, _: SameOrigin, _admin: Admin) -> Result<Json<Changed>, FixError> {
+    let changed = fix::purge(&state).await?;
+    Ok(Json(Changed { changed }))
+}
+
+/// The rank to hold for a Discord account until it is linked.
+#[derive(Debug, serde::Deserialize)]
+pub struct PlaceholderInput {
+    rank: Rank,
+}
+
+/// `PUT /api/admin/discord/placeholders/{discord_id}`: superusers only. Sets the placeholder rank
+/// of a Discord account linked to no one (see `placeholder`).
+async fn set_placeholder(
+    state: State,
+    _: SameOrigin,
+    admin: Admin,
+    Path(discord_id): Path<String>,
+    Json(input): Json<PlaceholderInput>,
+) -> Result<StatusCode, LinkError> {
+    placeholder::set(&state, &discord_id, input.rank, admin.id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `DELETE /api/admin/discord/placeholders/{discord_id}`: superusers only. Removes it.
+async fn remove_placeholder(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+    Path(discord_id): Path<String>,
+) -> Result<StatusCode, LinkError> {
+    placeholder::remove(&state, &discord_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn router() -> Router<State> {
     Router::new().route("/announcements", get(latest))
 }
@@ -427,6 +467,11 @@ pub fn admin_router() -> Router<State> {
         .route("/discord/fix/colors", post(fix_colors))
         .route("/discord/fix/members/give", post(give_member_roles))
         .route("/discord/fix/members/take", post(take_member_roles))
+        .route("/discord/fix/purge", post(purge))
+        .route(
+            "/discord/placeholders/{discord_id}",
+            axum::routing::put(set_placeholder).delete(remove_placeholder),
+        )
         .route("/discord/links", post(link_account))
         .route(
             "/discord/links/{discord_id}",

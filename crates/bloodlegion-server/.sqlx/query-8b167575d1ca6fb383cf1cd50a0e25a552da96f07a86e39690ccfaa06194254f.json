@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM discord_placeholders WHERE discord_user_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8b167575d1ca6fb383cf1cd50a0e25a552da96f07a86e39690ccfaa06194254f"
+}

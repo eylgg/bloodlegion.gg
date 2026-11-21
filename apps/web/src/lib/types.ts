@@ -354,9 +354,16 @@ export type DiscordReport = {
 		role: string | null;
 		has_role: boolean;
 		other_roles: string[];
+		/** A placeholder's rank, not a linked member's; `username` is then their Discord name. */
+		placeholder: boolean;
 	}[];
 	/** People in the server holding one of the bot's roles with no linked account. */
+	/** Every placeholder rank: one held for a Discord account until it is linked to a site account. */
+	placeholders: { discord_id: string; discord_name: string; rank: Rank; in_server: boolean }[];
+	/** In the server with one of the bot's roles and neither a linked account nor a placeholder. */
 	unlinked: { discord_id: string; discord_name: string; roles: string[] }[];
+	/** How many roles a purge would take from them (Leader and Officer are left). */
+	purge: number;
 	/** Everyone in the server, grouped by how they stand with the site, each group by name. */
 	everyone: {
 		linked: DiscordPerson[];
@@ -373,6 +380,8 @@ export type DiscordReport = {
 export type DiscordPerson = {
 	discord_id: string;
 	discord_name: string;
+	/** Their placeholder rank, when they are linked to no one and have one. */
+	placeholder: Rank | null;
 	username: string | null;
 	roles: string[];
 };

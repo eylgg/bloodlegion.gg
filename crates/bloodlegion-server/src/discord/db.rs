@@ -171,6 +171,72 @@ pub async fn linked_accounts(pool: &PgPool) -> sqlx::Result<Vec<LinkedAccount>> 
     .await
 }
 
+/// A rank a superuser set for a Discord account not linked to anyone yet (`discord_placeholders`):
+/// what the role checks and fixes take its rank to be until it is linked, when the account it is
+/// linked to takes the rank (if higher than its own) and the placeholder goes. Never public, the
+/// leader, or an officer.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Placeholder {
+    /// The Discord user's id, as a linked account's subject has it.
+    pub subject: String,
+    /// How Discord named them when it was set.
+    pub discord_name: String,
+    pub rank: Rank,
+}
+
+/// Every placeholder, by name.
+pub async fn placeholders(pool: &PgPool) -> sqlx::Result<Vec<Placeholder>> {
+    sqlx::query_as!(
+        Placeholder,
+        r#"
+        SELECT discord_user_id AS subject, discord_name, rank AS "rank: Rank"
+        FROM discord_placeholders
+        ORDER BY lower(discord_name), discord_user_id
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+}
+
+/// Sets the placeholder rank of the Discord account `discord_user`, in place of any it had.
+pub async fn set_placeholder(
+    pool: &PgPool,
+    discord_user: u64,
+    discord_name: &str,
+    rank: Rank,
+    by: UserId,
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        r#"
+        INSERT INTO discord_placeholders (discord_user_id, rank, discord_name, created_by)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (discord_user_id) DO UPDATE
+        SET rank = EXCLUDED.rank,
+            discord_name = EXCLUDED.discord_name,
+            created_by = EXCLUDED.created_by,
+            created_at = now()
+        "#,
+        discord_user.to_string(),
+        rank.slug(),
+        discord_name,
+        by.0,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Removes the Discord account's placeholder, returning whether it had one.
+pub async fn delete_placeholder(pool: &PgPool, discord_user: u64) -> sqlx::Result<bool> {
+    let deleted = sqlx::query!(
+        "DELETE FROM discord_placeholders WHERE discord_user_id = $1",
+        discord_user.to_string(),
+    )
+    .execute(pool)
+    .await?;
+    Ok(deleted.rows_affected() > 0)
+}
+
 /// The member whose linked Discord account `discord_user` is, if their account is not disabled.
 pub async fn linked_member(pool: &PgPool, discord_user: u64) -> sqlx::Result<Option<UserId>> {
     sqlx::query_scalar!(
@@ -490,6 +556,87 @@ mod tests {
                 account("222", "Raid", Rank::Raider)
             ]
         );
+    }
+
+    #[sqlx::test]
+    async fn a_linked_account_takes_its_placeholders_rank_unless_lower(pool: PgPool) {
+        let link = crate::auth::oauth2::providers::link_for_test;
+        let rank = |user: UserId| {
+            let pool = pool.clone();
+            async move {
+                sqlx::query_scalar!(
+                    r#"SELECT guild_rank AS "rank: Rank" FROM users WHERE id = $1"#,
+                    user.0
+                )
+                .fetch_one(&pool)
+                .await
+                .unwrap()
+            }
+        };
+        let admin = member(&pool, "Admin", "leader").await;
+        let new = member(&pool, "New", "public").await;
+        let raider = member(&pool, "Raid", "raider").await;
+        let other = member(&pool, "Other", "public").await;
+        set_placeholder(&pool, 111, "newbie", Rank::Friend, admin)
+            .await
+            .unwrap();
+        // Set again: the one row is replaced.
+        set_placeholder(&pool, 111, "Newbie", Rank::Member, admin)
+            .await
+            .unwrap();
+        set_placeholder(&pool, 222, "Raid", Rank::Member, admin)
+            .await
+            .unwrap();
+        set_placeholder(&pool, 333, "Waiting", Rank::Trial, admin)
+            .await
+            .unwrap();
+        assert_eq!(
+            placeholders(&pool).await.unwrap(),
+            vec![
+                Placeholder {
+                    subject: "111".into(),
+                    discord_name: "Newbie".into(),
+                    rank: Rank::Member
+                },
+                Placeholder {
+                    subject: "222".into(),
+                    discord_name: "Raid".into(),
+                    rank: Rank::Member
+                },
+                Placeholder {
+                    subject: "333".into(),
+                    discord_name: "Waiting".into(),
+                    rank: Rank::Trial
+                },
+            ]
+        );
+
+        // A new account takes the rank; a raider is not lowered to it. Either way it goes.
+        link(&pool, DISCORD_PROVIDER_SLUG, "111", new).await;
+        link(&pool, DISCORD_PROVIDER_SLUG, "222", raider).await;
+        // Another provider's account with the same id is not the Discord one.
+        link(&pool, "battlenet", "333", other).await;
+        assert_eq!(rank(new).await, Rank::Member);
+        assert_eq!(rank(raider).await, Rank::Raider);
+        assert_eq!(rank(other).await, Rank::Public);
+        let left: Vec<String> = placeholders(&pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|p| p.subject)
+            .collect();
+        assert_eq!(left, ["333"]);
+
+        assert!(delete_placeholder(&pool, 333).await.unwrap());
+        assert!(!delete_placeholder(&pool, 333).await.unwrap());
+        // No placeholder is the public's, the leader's, or an officer's.
+        for rank in [Rank::Public, Rank::Leader, Rank::Officer] {
+            assert!(
+                set_placeholder(&pool, 444, "No", rank, admin)
+                    .await
+                    .is_err()
+            );
+        }
     }
 
     #[sqlx::test]

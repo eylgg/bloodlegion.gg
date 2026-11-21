@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO discord_placeholders (discord_user_id, rank, discord_name, created_by)\n        VALUES ($1, $2, $3, $4)\n        ON CONFLICT (discord_user_id) DO UPDATE\n        SET rank = EXCLUDED.rank,\n            discord_name = EXCLUDED.discord_name,\n            created_by = EXCLUDED.created_by,\n            created_at = now()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b5cdf986210e57b9a149d5f772c3476356df5d85c9b67c8683a691f96431fa99"
+}

@@ -18,7 +18,10 @@
 //! - Renaming one of the bot's roles chosen by hand to the bot's own name for it.
 //! - Giving the bot's roles their levels' colors.
 //! - Giving linked members their rank's role, and, separately, taking the bot's other roles from
-//!   them: only linked members, and only the bot's own roles.
+//!   them: only linked members and people with a placeholder rank, and only the bot's own roles.
+//! - The purge: taking the bot's roles from everyone in the server who is unaccounted for, with
+//!   neither a linked account nor a placeholder rank. It leaves the leader's and officers' roles,
+//!   which run the server, for someone to take by hand.
 //! - Syncing a channel in one of the bot's categories with it again: its permissions become the
 //!   category's.
 //! - Giving one of the bot's roles to everyone holding another of the server's roles (moving the
@@ -485,6 +488,113 @@ pub fn member_role_changes(
     (give, take)
 }
 
+/// Which of the bot's roles to take in a purge: from everyone in the server (bots aside) who is
+/// unaccounted for, with neither a linked account (`linked`) nor a placeholder rank
+/// (`placeholders`), every one of the bot's roles they hold but the leader's and officers'. Those
+/// run the server, so taking them by the dozen could lock its keepers out: they stay, listed with
+/// the rest, for someone to take by hand.
+pub fn purge_changes(
+    linked: &[db::LinkedAccount],
+    placeholders: &[db::LinkedAccount],
+    members: &[ServerMember],
+    roles: &HashMap<Access, RoleId>,
+) -> Vec<RoleChange> {
+    let accounted: std::collections::HashSet<&str> = linked
+        .iter()
+        .chain(placeholders)
+        .map(|account| account.subject.as_str())
+        .collect();
+    let mut take: Vec<RoleChange> = members
+        .iter()
+        .filter(|member| !member.bot && !accounted.contains(member.id.to_string().as_str()))
+        .flat_map(|member| {
+            roles
+                .iter()
+                .filter(|(access, role)| !access.is_administrator() && member.roles.contains(role))
+                .map(|(_, role)| (member.id, *role))
+        })
+        .collect();
+    take.sort();
+    take
+}
+
+/// The placeholder ranks as accounts of their own, for the changes linked members get; one whose
+/// Discord account is linked to someone is left out, as the member's rank is what counts.
+async fn placeheld(
+    pool: &sqlx::PgPool,
+    linked: &[db::LinkedAccount],
+) -> Result<Vec<db::LinkedAccount>, FixError> {
+    Ok(db::placeholders(pool)
+        .await
+        .context("listing the placeholder ranks")?
+        .into_iter()
+        .filter(|p| !linked.iter().any(|account| account.subject == p.subject))
+        .map(|p| db::LinkedAccount {
+            subject: p.subject,
+            username: p.discord_name,
+            rank: p.rank,
+        })
+        .collect())
+}
+
+/// The bot's roles the server has, by level.
+async fn our_roles(
+    pool: &sqlx::PgPool,
+    existing: &HashMap<RoleId, serenity::all::Role>,
+) -> Result<HashMap<Access, RoleId>, FixError> {
+    let mut roles = HashMap::new();
+    for access in Access::ALL {
+        if let Some(id) = db::object_id(pool, access.key())
+            .await?
+            .map(RoleId::new)
+            .filter(|id| existing.contains_key(id))
+        {
+            roles.insert(access, id);
+        }
+    }
+    Ok(roles)
+}
+
+/// The purge (see [`purge_changes`]), returning how many roles it took. Refused, changing nothing,
+/// when a role it would take is not below the bot's own.
+pub async fn purge(state: &State) -> Result<usize, FixError> {
+    let (token, guild) = connection(state).await?;
+    let http = Http::new(&token);
+    let existing = guild.roles(&http).await.map_err(discord)?;
+    let roles = our_roles(&state.pool, &existing).await?;
+    let linked = db::linked_accounts(&state.pool).await?;
+    let placeholders = placeheld(&state.pool, &linked).await?;
+    let members = server_members(&http, guild).await.map_err(discord)?;
+    let take = purge_changes(&linked, &placeholders, &members, &roles);
+    if take.is_empty() {
+        return Ok(0);
+    }
+    let top = bot_top(&http, guild, &existing).await?;
+    let mut out_of_reach: Vec<&str> = take
+        .iter()
+        .filter_map(|(_, role)| existing.get(role))
+        .filter(|role| role.position >= top)
+        .map(|role| role.name.as_str())
+        .collect();
+    out_of_reach.sort_unstable();
+    out_of_reach.dedup();
+    if !out_of_reach.is_empty() {
+        return Err(Error::External(FixError::OutOfReach(
+            out_of_reach.join(", "),
+        )));
+    }
+    for (user, role) in &take {
+        http.remove_member_role(guild, UserId::new(*user), *role, Some(REASON))
+            .await
+            .map_err(discord)?;
+    }
+    tracing::info!(
+        taken = take.len(),
+        "discord: purged the roles of the unaccounted"
+    );
+    Ok(take.len())
+}
+
 /// Which of linked members' roles to change: `give` their rank's missing role, or else `take` the
 /// bot's other roles they hold.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -500,17 +610,11 @@ pub async fn fix_member_roles(state: &State, which: MemberFix) -> Result<usize, 
     let (token, guild) = connection(state).await?;
     let http = Http::new(&token);
     let existing = guild.roles(&http).await.map_err(discord)?;
-    let mut roles = HashMap::new();
-    for access in Access::ALL {
-        if let Some(id) = db::object_id(&state.pool, access.key())
-            .await?
-            .map(RoleId::new)
-            .filter(|id| existing.contains_key(id))
-        {
-            roles.insert(access, id);
-        }
-    }
-    let linked = db::linked_accounts(&state.pool).await?;
+    let roles = our_roles(&state.pool, &existing).await?;
+    // People with a placeholder rank get what linked members do.
+    let mut linked = db::linked_accounts(&state.pool).await?;
+    let placeholders = placeheld(&state.pool, &linked).await?;
+    linked.extend(placeholders);
     let members = server_members(&http, guild).await.map_err(discord)?;
     let (give, take) = member_role_changes(&linked, &members, &roles);
     let changes = match which {
@@ -1120,6 +1224,45 @@ mod tests {
         let (give, take) = member_role_changes(&linked, &members, &roles);
         assert_eq!(give, vec![(10, RoleId::new(3))]);
         assert_eq!(take, vec![(20, RoleId::new(2)), (60, RoleId::new(3))]);
+    }
+
+    #[test]
+    fn a_purge_takes_the_roles_of_the_unaccounted_only() {
+        use crate::guild::Rank;
+        let account = |subject: &str, rank| db::LinkedAccount {
+            subject: subject.into(),
+            username: subject.into(),
+            rank,
+        };
+        let member = |id, bot, roles: &[u64]| ServerMember {
+            id,
+            name: id.to_string(),
+            bot,
+            roles: roles.iter().copied().map(RoleId::new).collect(),
+        };
+        let roles = HashMap::from([
+            (Access::Officer, RoleId::new(2)),
+            (Access::Raider, RoleId::new(3)),
+            (Access::Member, RoleId::new(5)),
+        ]);
+        let linked = [account("10", Rank::Public)];
+        let placeholders = [account("20", Rank::Member)];
+        let members = [
+            member(10, false, &[5]), // Linked: the member fixes see to them, whatever they hold.
+            member(20, false, &[5]), // A placeholder: kept.
+            member(30, false, &[3, 5, 77]), // Unaccounted: both go; the server's own role (77) stays.
+            member(40, false, &[2, 5]),     // An unlinked officer: Officer stays, Member goes.
+            member(50, true, &[5]),         // A bot.
+            member(60, false, &[77]),       // Holds none of the bot's.
+        ];
+        assert_eq!(
+            purge_changes(&linked, &placeholders, &members, &roles),
+            vec![
+                (30, RoleId::new(3)),
+                (30, RoleId::new(5)),
+                (40, RoleId::new(5))
+            ]
+        );
     }
 
     #[test]

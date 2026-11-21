@@ -15,7 +15,7 @@ use serenity::all::{
 };
 use time::OffsetDateTime;
 
-use super::db::{self, LinkedAccount, Status};
+use super::db::{self, LinkedAccount, Placeholder, Status};
 use super::fix::{self, List, Slot};
 use super::layout::{
     ANNOUNCEMENTS, Access, CATEGORIES, Roles, WOWHEAD_NEWS, announcements_overwrites,
@@ -89,9 +89,13 @@ pub struct MemberStatus {
     pub has_role: bool,
     /// The bot's other roles they hold, which their rank does not call for.
     pub other_roles: Vec<String>,
+    /// Whether the rank is a placeholder's, set for a Discord account linked to no one yet (then
+    /// `username` is how Discord named them), rather than a linked member's.
+    pub placeholder: bool,
 }
 
-/// Someone in the server holding one of the bot's roles without a linked account.
+/// Someone in the server holding one of the bot's roles with neither a linked account nor a
+/// placeholder rank: whom a purge takes the roles from (see `fix::purge_changes`).
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
 pub struct Unlinked {
     pub discord_id: String,
@@ -196,6 +200,8 @@ pub struct Person {
     pub username: Option<String>,
     /// Their roles, top first, as the server names them.
     pub roles: Vec<String>,
+    /// Their placeholder rank, when they are linked to no one and have one.
+    pub placeholder: Option<Rank>,
 }
 
 /// Everyone in the server, by how they stand with the site.
@@ -261,9 +267,26 @@ pub struct Report {
     /// has), categories first, then #wowhead-news's; `None` until the server has all the bot's
     /// roles, which they name.
     pub permissions: Option<Vec<PermissionsStatus>>,
+    /// Linked members, and people with a placeholder rank, whose roles are off.
     pub members: Vec<MemberStatus>,
+    /// Every placeholder rank, by name, in the server or not.
+    pub placeholders: Vec<PlaceholderStatus>,
     pub unlinked: Vec<Unlinked>,
+    /// How many roles a purge would take from them: all they hold of the bot's but the leader's
+    /// and officers'.
+    pub purge: usize,
     pub everyone: Everyone,
+}
+
+/// A placeholder rank, and whether its Discord account is in the server.
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct PlaceholderStatus {
+    pub discord_id: String,
+    /// How the server shows them, or, when they are not in it, how Discord named them when the
+    /// placeholder was set.
+    pub discord_name: String,
+    pub rank: Rank,
+    pub in_server: bool,
 }
 
 /// A color as `#rrggbb`.
@@ -271,8 +294,22 @@ fn hex(color: u32) -> String {
     format!("#{color:06x}")
 }
 
-/// The check itself, given what the site and the server hold.
-pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
+/// The check itself, given what the site and the server hold. A placeholder of an account linked
+/// to someone is not counted (linking removes it): the member's rank is.
+pub fn check(linked: &[LinkedAccount], placeholders: &[Placeholder], server: &Snapshot) -> Report {
+    let placeholders: Vec<&Placeholder> = placeholders
+        .iter()
+        .filter(|p| !linked.iter().any(|account| account.subject == p.subject))
+        .collect();
+    // Each as an account of its own, named as Discord names them, for the checks members get.
+    let placeheld: Vec<LinkedAccount> = placeholders
+        .iter()
+        .map(|p| LinkedAccount {
+            subject: p.subject.clone(),
+            username: p.discord_name.clone(),
+            rank: p.rank,
+        })
+        .collect();
     // The bot's roles that the server still has.
     let roles: HashMap<Access, RoleId> = Access::ALL
         .into_iter()
@@ -309,7 +346,11 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
     };
 
     let mut statuses = Vec::new();
-    for account in linked {
+    let ranked = linked
+        .iter()
+        .map(|account| (account, false))
+        .chain(placeheld.iter().map(|account| (account, true)));
+    for (account, placeholder) in ranked {
         let wanted = Access::of(account.rank);
         let member = linked_member(account);
         let holds = member.map(held).unwrap_or_default();
@@ -332,11 +373,16 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
                 role: wanted.map(name),
                 has_role,
                 other_roles,
+                placeholder,
             });
         }
     }
 
-    let linked_ids: Vec<&str> = linked.iter().map(|a| a.subject.as_str()).collect();
+    let linked_ids: Vec<&str> = linked
+        .iter()
+        .chain(&placeheld)
+        .map(|a| a.subject.as_str())
+        .collect();
     let mut unlinked: Vec<Unlinked> = people
         .iter()
         .filter(|member| !linked_ids.contains(&member.id.to_string().as_str()))
@@ -371,6 +417,7 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
             holders: people.iter().filter(|m| held(m).contains(&access)).count(),
             linked: linked
                 .iter()
+                .chain(&placeheld)
                 .filter(|a| Access::of(a.rank) == Some(access) && linked_member(a).is_some())
                 .count(),
         })
@@ -557,8 +604,25 @@ pub fn check(linked: &[LinkedAccount], server: &Snapshot) -> Report {
         unsynced,
         permissions,
         members: statuses,
+        placeholders: placeholders
+            .iter()
+            .map(|p| {
+                let member = p
+                    .subject
+                    .parse()
+                    .ok()
+                    .and_then(|id: u64| in_server.get(&id));
+                PlaceholderStatus {
+                    discord_id: p.subject.clone(),
+                    discord_name: member.map_or_else(|| p.discord_name.clone(), |m| m.name.clone()),
+                    rank: p.rank,
+                    in_server: member.is_some(),
+                }
+            })
+            .collect(),
         unlinked,
-        everyone: everyone(linked, server, &roles),
+        purge: fix::purge_changes(linked, &placeheld, &server.members, &roles).len(),
+        everyone: everyone(linked, &placeholders, server, &roles),
     }
 }
 
@@ -638,6 +702,7 @@ pub(super) fn top_level_text(channels: &[Channel]) -> Vec<Slot> {
 /// Everyone in the server, grouped, each group by name.
 fn everyone(
     linked: &[LinkedAccount],
+    placeholders: &[&Placeholder],
     server: &Snapshot,
     ours: &HashMap<Access, RoleId>,
 ) -> Everyone {
@@ -662,6 +727,10 @@ fn everyone(
                 .iter()
                 .filter_map(|(_, id)| server.role_names.get(id).cloned())
                 .collect(),
+            placeholder: placeholders
+                .iter()
+                .find(|p| p.subject == discord_id)
+                .map(|p| p.rank),
             discord_id,
         };
         let group = if member.bot {
@@ -843,7 +912,10 @@ pub async fn overview(state: &State) -> Result<Overview> {
             let linked = db::linked_accounts(&state.pool)
                 .await
                 .context("listing the linked Discord accounts")?;
-            overview.report = Some(check(&linked, &server));
+            let placeholders = db::placeholders(&state.pool)
+                .await
+                .context("listing the placeholder ranks")?;
+            overview.report = Some(check(&linked, &placeholders, &server));
         }
         Err(error) => overview.failure = Some(format!("{error:#}")),
     }
@@ -1139,7 +1211,7 @@ mod tests {
             bot: true,
             ..member(70, "bot", &[OFFICER])
         });
-        let report = check(&linked, &server(members));
+        let report = check(&linked, &[], &server(members));
         let status = |username: &str| {
             report
                 .members
@@ -1208,7 +1280,7 @@ mod tests {
             member(20, "b", &[]),
             member(50, "c", &[OFFICER]),
         ];
-        let report = check(&linked, &server(members));
+        let report = check(&linked, &[], &server(members));
         let officer = report.roles.iter().find(|r| r.name == "Officer").unwrap();
         // Held by a and c; a and b should hold it (Away is not in the server).
         assert_eq!(
@@ -1220,7 +1292,7 @@ mod tests {
     #[test]
     fn says_which_roles_should_be_administrators() {
         // The bot and Leader have Administrator; Officer lacks it.
-        let report = check(&[], &server(vec![]));
+        let report = check(&[], &[], &server(vec![]));
         let role = |name: &str| {
             report
                 .roles
@@ -1244,7 +1316,7 @@ mod tests {
 
     #[test]
     fn says_how_the_categories_and_announcements_stand() {
-        let report = check(&[], &server(vec![]));
+        let report = check(&[], &[], &server(vec![]));
         let channels: Vec<_> = report
             .categories
             .iter()
@@ -1300,12 +1372,12 @@ mod tests {
         // Public dragged above Members.
         let mut moved = server(vec![]);
         moved.channels[3].position = 1;
-        assert!(!check(&[], &moved).categories_in_order);
+        assert!(!check(&[], &[], &moved).categories_in_order);
     }
 
     #[test]
     fn says_whether_the_roles_stand_in_order_and_within_reach() {
-        let report = check(&[], &server(vec![]));
+        let report = check(&[], &[], &server(vec![]));
         assert!(report.roles_in_order);
         assert!(report.roles_out_of_reach.is_empty());
         assert_eq!(
@@ -1323,7 +1395,7 @@ mod tests {
         let mut moved = server(vec![]);
         moved.role_positions.insert(RoleId::new(5), 8);
         moved.role_positions.insert(RoleId::new(1), 11);
-        let report = check(&[], &moved);
+        let report = check(&[], &[], &moved);
         assert!(!report.roles_in_order);
         assert_eq!(report.roles_out_of_reach, vec!["Leader".to_string()]);
         assert_eq!(report.bot_role.unwrap().above, vec!["Leader".to_string()]);
@@ -1331,11 +1403,11 @@ mod tests {
         // Shown in the member list with everyone else.
         let mut mixed = server(vec![]);
         mixed.hoisted.clear();
-        assert!(!check(&[], &mixed).bot_role.unwrap().shown_separately);
+        assert!(!check(&[], &[], &mixed).bot_role.unwrap().shown_separately);
 
         // Anyone may mention it.
         mixed.mentionable.insert(RoleId::new(99));
-        assert!(check(&[], &mixed).bot_role.unwrap().mentionable);
+        assert!(check(&[], &[], &mixed).bot_role.unwrap().mentionable);
     }
 
     #[test]
@@ -1343,7 +1415,7 @@ mod tests {
         let mut lacking = server(vec![member(10, "pal", &[])]);
         lacking.role_names.remove(&RoleId::new(5));
         lacking.channels.retain(|channel| channel.id != 101);
-        let report = check(&[account("10", "Pal", Rank::Member)], &lacking);
+        let report = check(&[account("10", "Pal", Rank::Member)], &[], &lacking);
         let member = report.roles.iter().find(|r| r.name == "Member").unwrap();
         assert_eq!(member.id, None);
         assert!(report.members.is_empty());
@@ -1363,7 +1435,7 @@ mod tests {
             member(20, "old pal", &[6, MEMBER]),
             member(30, "booster", &[7]),
         ];
-        let report = check(&[], &server(members));
+        let report = check(&[], &[], &server(members));
         // Not the bot's roles, its own, or the booster role an integration keeps.
         assert_eq!(
             report.other_roles,
@@ -1398,7 +1470,7 @@ mod tests {
             top(302, "member-announcements", 2),
             top(301, "raider-announcements", 3),
         ]);
-        assert!(!check(&[], &snapshot).announcements_in_order);
+        assert!(!check(&[], &[], &snapshot).announcements_in_order);
         for channel in &mut snapshot.channels {
             match channel.id {
                 301 => channel.position = 0,
@@ -1406,7 +1478,7 @@ mod tests {
                 _ => {}
             }
         }
-        assert!(check(&[], &snapshot).announcements_in_order);
+        assert!(check(&[], &[], &snapshot).announcements_in_order);
     }
 
     #[test]
@@ -1426,7 +1498,7 @@ mod tests {
         snapshot
             .channels
             .retain(|c| [101, 104, 201].contains(&c.id));
-        let report = check(&[], &snapshot);
+        let report = check(&[], &[], &snapshot);
         let differing: Vec<(&str, Vec<String>)> = report
             .permissions
             .as_ref()
@@ -1452,7 +1524,7 @@ mod tests {
 
         // Without all the bot's roles, nothing to check them against.
         snapshot.role_names.remove(&RoleId::new(4));
-        assert_eq!(check(&[], &snapshot).permissions, None);
+        assert_eq!(check(&[], &[], &snapshot).permissions, None);
     }
 
     #[test]
@@ -1463,7 +1535,7 @@ mod tests {
             member(30, "pal", &[6]),
             member(40, "quiet", &[]),
         ];
-        let report = check(&[account("10", "Ey", Rank::Member)], &server(members));
+        let report = check(&[account("10", "Ey", Rank::Member)], &[], &server(members));
         let names = |group: &[Person]| -> Vec<String> {
             group.iter().map(|p| p.discord_name.clone()).collect()
         };
@@ -1476,12 +1548,100 @@ mod tests {
                 username: Some("Ey".into()),
                 // Top first: Veteran (at 8) stands above Member (at 2).
                 roles: vec!["Veteran".into(), "Member".into()],
+                placeholder: None,
             }]
         );
         assert_eq!(names(&everyone.unlinked_ours), ["holder"]);
         assert_eq!(names(&everyone.unlinked_others), ["pal"]);
         assert_eq!(names(&everyone.no_roles), ["quiet"]);
         assert_eq!(names(&everyone.bots), ["Blood Legion bot"]);
+    }
+
+    #[test]
+    fn a_placeholder_rank_counts_as_a_members() {
+        let placeholder = |subject: &str, name: &str, rank| Placeholder {
+            subject: subject.into(),
+            discord_name: name.into(),
+            rank,
+        };
+        let linked = [account("10", "Ey", Rank::Member)];
+        let placeholders = [
+            placeholder("20", "Kept", Rank::Member),
+            placeholder("30", "Lacking", Rank::Raider),
+            placeholder("40", "Gone", Rank::Friend),
+            // Linked since (the link removes it): the member's rank counts.
+            placeholder("10", "Ey", Rank::Raider),
+        ];
+        let members = vec![
+            member(10, "ey", &[MEMBER]),
+            member(20, "kept", &[MEMBER]),
+            member(30, "lacking", &[MEMBER]),
+            member(50, "stray", &[MEMBER, RAIDER]),
+            member(60, "keeper", &[OFFICER, MEMBER]),
+        ];
+        let report = check(&linked, &placeholders, &server(members));
+        // Lacking holds Member for Raider; Gone is not in the server. Kept is right.
+        let off: Vec<_> = report
+            .members
+            .iter()
+            .map(|m| {
+                (
+                    m.username.as_str(),
+                    m.placeholder,
+                    m.has_role,
+                    m.discord_name.as_deref(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            off,
+            [
+                ("Lacking", true, false, Some("lacking")),
+                ("Gone", true, false, None)
+            ]
+        );
+        assert_eq!(report.members[0].other_roles, ["Member"]);
+        // Only the unaccounted are listed for the purge, which leaves the Officer role.
+        let unlinked: Vec<_> = report
+            .unlinked
+            .iter()
+            .map(|u| u.discord_name.as_str())
+            .collect();
+        assert_eq!(unlinked, ["keeper", "stray"]);
+        assert_eq!(report.purge, 3);
+        let listed: Vec<_> = report
+            .placeholders
+            .iter()
+            .map(|p| (p.discord_name.as_str(), p.rank, p.in_server))
+            .collect();
+        assert_eq!(
+            listed,
+            [
+                ("kept", Rank::Member, true),
+                ("lacking", Rank::Raider, true),
+                ("Gone", Rank::Friend, false)
+            ]
+        );
+        let held = |name: &str| {
+            let groups = &report.everyone;
+            groups
+                .unlinked_ours
+                .iter()
+                .find(|p| p.discord_name == name)
+                .map(|p| p.placeholder)
+        };
+        assert_eq!(held("kept"), Some(Some(Rank::Member)));
+        assert_eq!(held("stray"), Some(None));
+        // Member should be held by Ey and Kept; Raider by Lacking.
+        let wanted = |name: &str| {
+            report
+                .roles
+                .iter()
+                .find(|r| r.expected_name == name)
+                .unwrap()
+                .linked
+        };
+        assert_eq!((wanted("Member"), wanted("Raider")), (2, 1));
     }
 
     #[test]
@@ -1494,7 +1654,7 @@ mod tests {
         let mut news = text(205, WOWHEAD_NEWS, 104);
         news.overwrites = snapshot.channels[3].overwrites.clone();
         snapshot.channels.push(news);
-        let report = check(&[], &snapshot);
+        let report = check(&[], &[], &snapshot);
         assert!(report.unsynced.iter().all(|c| c.name != WOWHEAD_NEWS));
         let status = |report: &Report| {
             report
@@ -1508,11 +1668,11 @@ mod tests {
         assert_eq!(status(&report), Some(vec!["@everyone".to_string()]));
 
         snapshot.channels.last_mut().unwrap().overwrites = news_overwrites(RoleId::new(100));
-        assert_eq!(status(&check(&[], &snapshot)), Some(vec![]));
+        assert_eq!(status(&check(&[], &[], &snapshot)), Some(vec![]));
 
         // A server without it has nothing to check.
         snapshot.channels.pop();
-        assert_eq!(status(&check(&[], &snapshot)), None);
+        assert_eq!(status(&check(&[], &[], &snapshot)), None);
     }
 
     #[test]
@@ -1528,7 +1688,7 @@ mod tests {
         snapshot.channels[2].overwrites = vec![entry(1, 1024), entry(5, 1024)];
         snapshot.channels[5].overwrites = vec![entry(5, 1024), entry(1, 1024)];
         snapshot.channels[6].overwrites = vec![entry(1, 1024), entry(5, 1024), entry(9, 2048)];
-        let report = check(&[], &snapshot);
+        let report = check(&[], &[], &snapshot);
         assert_eq!(
             report.unsynced,
             vec![Unsynced {

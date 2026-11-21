@@ -83,6 +83,29 @@ pub enum LinkError {
         detail = "That Discord account is not linked to anyone."
     )]
     NotLinked,
+    #[error("linked to {0}")]
+    #[problem(
+        status = CONFLICT,
+        title = "Has an Account",
+        detail = format!("That Discord account is {_0}'s on the site, linked now or unlinked by \
+                          them, so it needs no placeholder: set their rank on the users page.")
+    )]
+    HasAccount(String),
+    #[error("not a placeholder rank")]
+    #[problem(
+        status = UNPROCESSABLE_ENTITY,
+        title = "Not a Placeholder Rank",
+        detail = "A placeholder is a raider, trial, member, or friend. The leader and officers \
+                  need an account, and the public need no placeholder."
+    )]
+    NotAPlaceholderRank,
+    #[error("no placeholder")]
+    #[problem(
+        status = NOT_FOUND,
+        title = "No Placeholder",
+        detail = "That Discord account has no placeholder rank."
+    )]
+    NoPlaceholder,
     #[error("discord: {0}")]
     #[problem(
         status = BAD_GATEWAY,
@@ -93,7 +116,7 @@ pub enum LinkError {
 }
 
 /// A Discord user id as typed or sent: digits, not zero.
-fn parse_id(input: &str) -> Option<u64> {
+pub(super) fn parse_id(input: &str) -> Option<u64> {
     input.trim().parse().ok().filter(|&id| id != 0)
 }
 
@@ -102,7 +125,7 @@ fn slug() -> Slug {
 }
 
 /// What Discord says of the user `id`, untouched: what a sign-in's userinfo holds, less the email.
-async fn discord_user(state: &State, id: u64) -> Result<serde_json::Value, LinkError> {
+pub(super) async fn discord_user(state: &State, id: u64) -> Result<serde_json::Value, LinkError> {
     let settings = db::settings(&state.pool)
         .await
         .context("reading the bot's settings")?;

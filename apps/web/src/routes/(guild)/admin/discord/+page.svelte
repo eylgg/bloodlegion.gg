@@ -2,6 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { RANK_LABEL } from '$lib/guild';
+	import type { Rank } from '$lib/types';
 	import { api, errorMessage } from '$lib/api';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
@@ -171,6 +172,70 @@
 		}
 	}
 
+	/** The ranks a placeholder can be: not the public, nor the leader or an officer. */
+	const PLACEHOLDER_RANKS: Rank[] = ['raider', 'trial', 'member', 'friend'];
+	let placeholderDone = $state('');
+	let placeholderError = $state('');
+	/** A Discord user id typed to give a placeholder to someone not listed (not in the server). */
+	let placeholderId = $state('');
+	let placeholderRank = $state<Rank>('member');
+
+	/**
+	 * Sets the Discord account's placeholder rank, or removes it (`''`): the rank the bot takes them
+	 * to have until their Discord account is linked to a site account, which then takes it.
+	 */
+	async function setPlaceholder(
+		person: { discord_id: string; discord_name: string },
+		rank: string
+	) {
+		fixing = `placeholder/${person.discord_id}`;
+		placeholderError = '';
+		placeholderDone = '';
+		const path = `/api/admin/discord/placeholders/${encodeURIComponent(person.discord_id)}`;
+		try {
+			if (rank) await api.put(path, { rank });
+			else await api.del(path);
+			placeholderDone = rank
+				? `${person.discord_name} has a placeholder rank: ${RANK_LABEL[rank as Rank]}.`
+				: `${person.discord_name} has no placeholder rank now.`;
+			return true;
+		} catch (err) {
+			placeholderError = errorMessage(err, 'That did not work. Please try again.');
+			return false;
+		} finally {
+			// Read again either way, so a picker that failed shows what is stored.
+			await invalidateAll();
+			fixing = null;
+		}
+	}
+
+	async function addPlaceholder(event: SubmitEvent) {
+		event.preventDefault();
+		const id = placeholderId.trim();
+		if (
+			await setPlaceholder({ discord_id: id, discord_name: `Discord user ${id}` }, placeholderRank)
+		)
+			placeholderId = '';
+	}
+
+	let purged = $state<number | null>(null);
+
+	/** Takes the bot's roles from everyone with neither a linked account nor a placeholder. */
+	async function purge() {
+		fixing = 'purge';
+		fixError = '';
+		fixed = null;
+		purged = null;
+		try {
+			purged = (await api.post<{ changed: number }>('/api/admin/discord/fix/purge')).changed;
+			await invalidateAll();
+		} catch (err) {
+			fixError = errorMessage(err, 'That did not work. Please try again.');
+		} finally {
+			fixing = null;
+		}
+	}
+
 	/** The bot's roles that are in the server, which can be given. */
 	const givable = $derived(report?.roles.filter((r) => r.id) ?? []);
 
@@ -258,6 +323,29 @@
 			{fixing === `link/${person.discord_id}` ? 'Linking...' : 'Link'}
 		</Button>
 	</div>
+{/snippet}
+
+{#snippet placeholderPicker(
+	person: { discord_id: string; discord_name: string },
+	current: Rank | null
+)}
+	<select
+		class="placeholder"
+		aria-label={`Placeholder rank for ${person.discord_name}`}
+		value={current ?? ''}
+		disabled={fixing !== null}
+		onchange={(event) => setPlaceholder(person, event.currentTarget.value)}
+	>
+		<option value="">No placeholder</option>
+		{#each PLACEHOLDER_RANKS as rank (rank)}
+			<option value={rank}>{RANK_LABEL[rank]}</option>
+		{/each}
+	</select>
+{/snippet}
+
+{#snippet placeholderOutcome()}
+	{#if placeholderError}<Alert variant="error">{placeholderError}</Alert>{/if}
+	{#if placeholderDone}<Alert variant="success">{placeholderDone}</Alert>{/if}
 {/snippet}
 
 {#snippet linkOutcome()}
@@ -948,7 +1036,7 @@
 
 		<section>
 			<div class="head">
-				<h2>Linked members</h2>
+				<h2>Members and placeholders</h2>
 				{#if report.members.length === 0}
 					<span class="tag ok">All have their role</span>
 				{:else}
@@ -956,17 +1044,17 @@
 				{/if}
 			</div>
 			<p class="muted">
-				Members who linked Discord on the site and are not in the server, lack their rank's role, or
-				hold another of the bot's roles besides. Give missing roles gives each their rank's role;
-				Remove other roles takes the bot's other roles from them (a demoted officer's Officer, say).
-				Only linked members, and only the bot's roles: nobody else's roles change. Someone not in
-				the server has to join it first.
+				Members who linked Discord on the site, and people with a placeholder rank, who are not in
+				the server, lack their rank's role, or hold another of the bot's roles besides. Give missing
+				roles gives each their rank's role; Remove other roles takes the bot's other roles from them
+				(a demoted officer's Officer, say). Only they, and only the bot's roles: nobody else's roles
+				change. Someone not in the server has to join it first.
 			</p>
 			{#if fixed === 'members/give'}
-				<Alert variant="success">Linked members have their ranks' roles.</Alert>
+				<Alert variant="success">Members and placeholders have their ranks' roles.</Alert>
 			{/if}
 			{#if fixed === 'members/take'}
-				<Alert variant="success">Linked members hold only their ranks' roles.</Alert>
+				<Alert variant="success">Members and placeholders hold only their ranks' roles.</Alert>
 			{/if}
 			{#if report.members.length > 0}
 				<ul class="list">
@@ -974,6 +1062,7 @@
 						<li>
 							<div class="who">
 								<span class="name">{member.username}</span>
+								{#if member.placeholder}<span class="tag">Placeholder</span>{/if}
 								<span class="muted small">
 									{RANK_LABEL[member.rank]} · {member.discord_name ?? 'not in the server'}
 								</span>
@@ -996,7 +1085,7 @@
 						{#if membersToGive.length > 0}
 							<ConfirmButton
 								disabled={fixing !== null}
-								question={`Give ${membersToGive.length === 1 ? membersToGive[0].username : `${membersToGive.length} members`} their rank's role?`}
+								question={`Give ${membersToGive.length === 1 ? membersToGive[0].username : `${membersToGive.length} people`} their rank's role?`}
 								confirmLabel="Give"
 								confirmVariant="primary"
 								onconfirm={() => fix('members/give')}
@@ -1022,7 +1111,56 @@
 
 		<section>
 			<div class="head">
-				<h2>Roles without a linked account</h2>
+				<h2>Placeholder ranks</h2>
+				<span class="tag">{report.placeholders.length}</span>
+			</div>
+			<p class="muted">
+				A rank held for a Discord account until it is linked to a site account: the bot takes it for
+				their rank, so they are given its role and keep it through a purge. When the account is
+				linked, by its member or here, the site account takes the rank if it is higher than its own
+				(a new account's is not) and the placeholder goes. Set one for anyone not linked in the
+				lists below, or by Discord user id for someone not in the server. Leaders and officers need
+				an account.
+			</p>
+			{@render placeholderOutcome()}
+			{#if report.placeholders.length > 0}
+				<ul class="list">
+					{#each report.placeholders as person (person.discord_id)}
+						<li>
+							<div class="who">
+								<span class="name">{person.discord_name}</span>
+								<span class="muted small"><code class="id">{person.discord_id}</code></span>
+							</div>
+							<div class="needs">
+								{#if !person.in_server}<span class="tag">Not in the server</span>{/if}
+							</div>
+							{@render placeholderPicker(person, person.rank)}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			<form class="give add" onsubmit={addPlaceholder}>
+				<input
+					aria-label="Discord user id"
+					placeholder="Discord user id"
+					inputmode="numeric"
+					autocomplete="off"
+					bind:value={placeholderId}
+				/>
+				<select aria-label="Placeholder rank" bind:value={placeholderRank}>
+					{#each PLACEHOLDER_RANKS as rank (rank)}
+						<option value={rank}>{RANK_LABEL[rank]}</option>
+					{/each}
+				</select>
+				<Button size="small" type="submit" disabled={fixing !== null || !placeholderId.trim()}>
+					Add
+				</Button>
+			</form>
+		</section>
+
+		<section>
+			<div class="head">
+				<h2>Roles without an account or placeholder</h2>
 				{#if report.unlinked.length === 0}
 					<span class="tag ok">None</span>
 				{:else}
@@ -1030,10 +1168,32 @@
 				{/if}
 			</div>
 			<p class="muted">
-				People in the server holding one of the bot's roles who have not linked Discord on the site.
-				Link one to their account here, as if they had linked it themselves.
+				People in the server holding one of the bot's roles who have neither linked Discord on the
+				site nor a placeholder rank: the unaccounted. Link one to their account here, as if they had
+				linked it themselves, or give them a placeholder rank. The purge takes the bot's roles from
+				everyone still listed, all but Leader and Officer, which run the server and are taken by
+				hand; their other roles stay, and nobody is removed from the server.
 			</p>
 			{@render linkOutcome()}
+			{#if purged !== null}
+				<Alert variant="success">
+					The purge took {purged}
+					{purged === 1 ? 'role' : 'roles'}.
+				</Alert>
+			{/if}
+			{#if report.purge > 0}
+				<div class="actions">
+					<ConfirmButton
+						disabled={fixing !== null}
+						question={`Take ${report.purge} ${report.purge === 1 ? 'role' : 'roles'} from the ${report.unlinked.length} people listed here? Everyone with no linked account and no placeholder loses the bot's roles (Leader and Officer aside). Giving them back is by hand.`}
+						confirmLabel="Purge"
+						confirmVariant="danger"
+						onconfirm={purge}
+					>
+						{fixing === 'purge' ? 'Purging...' : `Purge ${report.purge} roles`}
+					</ConfirmButton>
+				</div>
+			{/if}
 			{#if report.unlinked.length > 0}
 				<ul class="list">
 					{#each report.unlinked as person (person.discord_id)}
@@ -1044,6 +1204,7 @@
 									<span class="tag extra">{role}</span>
 								{/each}
 							</div>
+							{@render placeholderPicker(person, null)}
 							{@render linkPicker(person)}
 						</li>
 					{/each}
@@ -1091,6 +1252,7 @@
 											Unlink
 										</ConfirmButton>
 									{:else if !group.bots}
+										{@render placeholderPicker(person, person.placeholder)}
 										{@render linkPicker(person)}
 									{/if}
 								</li>
@@ -1262,6 +1424,23 @@
 	.group summary {
 		cursor: pointer;
 		font-weight: 600;
+	}
+
+	/* Sized to its options: the site's selects fill their container otherwise. */
+	.placeholder {
+		width: auto;
+	}
+
+	.add {
+		margin-top: var(--space-3);
+	}
+
+	.add input {
+		width: 14rem;
+	}
+
+	.add select {
+		width: auto;
 	}
 
 	.give {

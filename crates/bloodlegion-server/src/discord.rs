@@ -19,6 +19,7 @@ mod fix;
 mod layout;
 mod link;
 mod markdown;
+mod placeholder;
 mod sync;
 
 use std::sync::{Arc, RwLock};

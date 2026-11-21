@@ -260,14 +260,16 @@
 						<td>
 							{@render sign_in(connected(account, 'battlenet'))}
 							{#if connected(account, 'battlenet')}
-								<button
-									type="button"
-									class="link"
-									disabled={reading !== null}
-									onclick={() => readCharacters(account)}
-								>
-									{reading === account.id ? 'Reading...' : 'Read characters'}
-								</button>
+								<div>
+									<button
+										type="button"
+										class="link"
+										disabled={reading !== null}
+										onclick={() => readCharacters(account)}
+									>
+										{reading === account.id ? 'Reading...' : 'Read characters'}
+									</button>
+								</div>
 							{/if}
 						</td>
 						<td>{@render sign_in(connected(account, 'discord'))}</td>
