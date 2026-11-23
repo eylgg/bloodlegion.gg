@@ -43,7 +43,8 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<AdminCharacter>> {
         r#"
         SELECT c.id, c.first_name, c.last_name, c.class, c.race, c.level,
                c.user_id AS "user_id: UserId", u.username AS "username?",
-               c.is_main, in_guild(c.guild) AS "in_guild!", c.guild_rank,
+               COALESCE(u.main_character_id = c.id, false) AS "is_main!",
+               in_guild(c.guild) AS "in_guild!", c.guild_rank,
                (SELECT r.name FROM guild_ranks r WHERE r.guild = c.guild AND r.rank = c.guild_rank)
                    AS guild_rank_name, c.battlenet_seen_at,
                c.created_at

@@ -17,7 +17,7 @@
 	// svelte-ignore state_referenced_locally
 	let accounts = $state<LinkedAccount[]>(data.accounts);
 	// svelte-ignore state_referenced_locally
-	let characters = $state<GuildCharacter[]>(data.characters);
+	let characters = $state<GuildCharacter[]>(sortCharacters(data.characters));
 	let error = $state('');
 
 	// A link comes back as `/profile?linked=new|existing` or `/profile?error=<code>`, with
@@ -83,7 +83,7 @@
 	}
 
 	function saved(character: GuildCharacter) {
-		// Saving a main demotes the others on the server; mirror that here.
+		// Saving a main makes it the account's only one; mirror that here.
 		const others = characters
 			.filter((c) => c.id !== character.id)
 			.map((c) => (character.is_main ? { ...c, is_main: false } : c));
@@ -233,8 +233,8 @@
 						lastName={character.last_name}
 						cls={character.class}
 					/>
+					{#if character.is_main}<span class="tag">Main</span>{/if}
 					<CharacterSpecs cls={character.class} specs={character.specs} />
-					{#if character.is_main}<span class="main-badge">Main</span>{/if}
 					<div class="actions">
 						{#if data.officer}
 							{#if !character.is_main}
@@ -346,16 +346,13 @@
 		gap: var(--space-2);
 	}
 
-	.main-badge {
-		padding: 0 var(--space-2);
-		color: var(--red-text);
+	/* Beside a main's name, as on the roster. */
+	.tag {
+		padding: 0 6px;
+		color: var(--grey-text);
 		font-size: var(--text-xs);
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		background-color: var(--red-bg);
-		border: 1px solid var(--red-soft);
-		border-radius: var(--radius-md);
+		border: 1px solid var(--grey-surface);
+		border-radius: var(--radius-sm);
 	}
 
 	.actions {

@@ -105,9 +105,9 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Account>> {
                          'last_name', ch.last_name,
                          'class', ch.class,
                          'level', ch.level,
-                         'is_main', ch.is_main,
+                         'is_main', ch.id = u.main_character_id IS TRUE,
                          'in_guild', in_guild(ch.guild)
-                     ) ORDER BY ch.is_main DESC, in_guild(ch.guild) DESC, ch.level DESC, ch.name_normalized
+                     ) ORDER BY ch.id = u.main_character_id IS TRUE DESC, in_guild(ch.guild) DESC, ch.level DESC, ch.name_normalized
                  )
                  FROM characters ch
                  WHERE ch.user_id = u.id),

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id AS \"character_id!\", c.user_id AS \"user_id: UserId\",\n               u.username AS \"username?\", c.first_name AS \"first_name!\",\n               c.last_name AS \"last_name!\", c.class AS \"class!\", c.is_main AS \"is_main!\",\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               a.group_number, a.slot, a.spec\n        FROM raid_attendees a\n        JOIN characters c ON c.id = a.character_id\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE a.raid_id = $1\n        ORDER BY c.class, c.name_normalized\n        ",
+  "query": "\n        SELECT c.id AS \"character_id!\", c.user_id AS \"user_id: UserId\",\n               u.username AS \"username?\", c.first_name AS \"first_name!\",\n               c.last_name AS \"last_name!\", c.class AS \"class!\",\n               COALESCE(u.main_character_id = c.id, false) AS \"is_main!\",\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               a.group_number, a.slot, a.spec\n        FROM raid_attendees a\n        JOIN characters c ON c.id = a.character_id\n        LEFT JOIN users u ON u.id = c.user_id\n        WHERE a.raid_id = $1\n        ORDER BY c.class, c.name_normalized\n        ",
   "describe": {
     "columns": [
       {
@@ -73,12 +73,7 @@
         "ordinal": 6,
         "name": "is_main!",
         "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "is_main"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 7,
@@ -132,12 +127,12 @@
       false,
       false,
       false,
-      false,
+      null,
       null,
       false,
       false,
       true
     ]
   },
-  "hash": "40cda937e5eaf45e62daf2cc549dd66cbf6bc0be7c9da2c325abe6b77c2d46d6"
+  "hash": "f14f69131646133d837b8f8c13fdbf5ec8ecf75efc0c9a2a684c2f77529ffd20"
 }

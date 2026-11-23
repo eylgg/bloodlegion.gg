@@ -85,7 +85,6 @@
 						<th>Race</th>
 						<th>Class</th>
 						<th>Specs</th>
-						<th>Main</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -100,6 +99,7 @@
 									cls={character.class}
 									icon={false}
 								/>
+								{#if character.is_main}<span class="tag">Main</span>{/if}
 							</td>
 							<td class="number">{character.level}</td>
 							<td>
@@ -123,7 +123,6 @@
 							<td>
 								<CharacterSpecs cls={character.class} specs={character.specs} size={20} />
 							</td>
-							<td>{character.is_main ? 'Main' : 'Alt'}</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -133,6 +132,16 @@
 </section>
 
 <style>
+	/* Beside a main's name, as on the roster. */
+	.tag {
+		margin-left: var(--space-1);
+		padding: 0 6px;
+		color: var(--grey-text);
+		font-size: var(--text-xs);
+		border: 1px solid var(--grey-surface);
+		border-radius: var(--radius-sm);
+	}
+
 	.rank {
 		max-width: 16rem;
 	}

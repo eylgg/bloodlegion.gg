@@ -314,7 +314,8 @@ pub async fn attendees(pool: &PgPool, raid_id: i64) -> sqlx::Result<Vec<Attendee
         r#"
         SELECT c.id AS "character_id!", c.user_id AS "user_id: UserId",
                u.username AS "username?", c.first_name AS "first_name!",
-               c.last_name AS "last_name!", c.class AS "class!", c.is_main AS "is_main!",
+               c.last_name AS "last_name!", c.class AS "class!",
+               COALESCE(u.main_character_id = c.id, false) AS "is_main!",
                (SELECT COALESCE(
                     jsonb_agg(jsonb_build_object(
                         'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main

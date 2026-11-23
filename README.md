@@ -211,7 +211,12 @@ the changes.
   level (1 to 60, and when it reached 60). Only officers add, edit, and remove them, for a member or for no account (a pug who won loot,
   which only the administrator is sent, and officers where they record raids and loot:
   `GET /api/characters?unclaimed=true`). A character's notes are written by its player and read by
-  officers (the planner's Notes tab, `/planner/notes`).
+  officers (the planner's Notes tab, `/planner/notes`). **A main is the account's**
+  (`users.main_character_id`), not a flag on a character: one of the member's own characters, or
+  none. A member's first character becomes it; a character handed to another player, or deleted,
+  stops being its old player's main (the database clears it: a foreign key on the pair and
+  `tf_characters_owner_changed`). The API still says of each character whether it is its player's
+  main (`is_main`), and setting it on a character makes it the main.
 - **Battle.net characters**: every Battle.net sign-in (or link) reads the account's Forever
   characters from the profile API (`profile-forever-us`), in the background so a sign-in never
   waits on it, into the same characters. One with a site character's Battle.net id or name is
@@ -242,7 +247,10 @@ the changes.
   played or not, with its player, its rank in game, when a Battle.net sign-in last listed it, and
   Main and Guilded badges, filtered to those guilded, not guilded, or nobody's. The roster page
   lists every character in the guild, mains and alts, with its player and its rank in game (not
-  the player's site rank), and the race to 60 races only the guild's characters.
+  the player's site rank), filtered by Mains only (off by default: each player's main, so not a
+  character nobody plays) and by its player's rank (a character nobody plays counts as a
+  member's; the public start hidden and only officers see that filter); the race to 60 races
+  only the guild's characters.
 - **The armory**: each character's page links to its page in Blizzard's armory
   (`worldofwarcraft.blizzard.com/en-us/forever/us/armory/character/eyl-gg`, its name lowercase),
   from level 10: the armory has no character below it (the API answers "not found"), so the page
@@ -385,8 +393,8 @@ the client keep them current:
    guild roster has, by number, so only uploads set them). The site turns down a roster without every member's rank (Roster Without
    Ranks: the addon from 0.5.0 and its client send them), and only uploads that sent ranks
    (`roster_uploads.records_ranks`) say who is in the guild. **The roster is the guild's
-   characters**: one in the guild shows there for everyone, as a member's main, and races to 60 as
-   a member's, even while nobody plays it on the site. Any other (a member's alt out of the guild,
+   characters**: one in the guild shows there for everyone, and races to 60 as a member's, even
+   while nobody plays it on the site. Any other (a member's alt out of the guild,
    a pug an officer recorded) is on its player's page, and superusers find them all under
    Administration → Characters. Neither an officer
    adding a character nor a Battle.net sign-in changes it. **Ranks in game are matched to the

@@ -376,16 +376,14 @@ pub async fn create(
     }
     let mut tx = pool.begin().await?;
     let valid = validate(actor, input, None)?;
-    let mut is_main = valid.is_main;
-    if let Some(owner) = valid.user_id {
-        is_main |= db::count_owned(&mut tx, owner).await? == 0;
-        if is_main {
-            db::clear_main(&mut tx, owner, None).await?;
-        }
+    let first = match valid.user_id {
+        Some(owner) => db::count_owned(&mut tx, owner).await? == 0,
+        None => false,
+    };
+    let id = db::insert(&mut tx, &valid).await.map_err(classify)?;
+    if let (true, Some(owner)) = (valid.is_main || first, valid.user_id) {
+        db::set_main(&mut tx, owner, id).await?;
     }
-    let id = db::insert(&mut tx, &valid, is_main)
-        .await
-        .map_err(classify)?;
     tx.commit().await?;
     Ok(db::find(pool, id)
         .await?
@@ -407,12 +405,17 @@ pub async fn update(
         return external(CharacterError::NotFound);
     };
     let valid = validate(actor, input, Some(current_owner))?;
-    if let (true, Some(owner)) = (valid.is_main, valid.user_id) {
-        db::clear_main(&mut tx, owner, Some(id)).await?;
-    }
     // A new class has other specs and talents.
     db::clear_specs_unless_class(&mut tx, id, valid.class).await?;
+    // Handed to another player, it stops being its old player's main (in the database).
     db::update(&mut tx, id, &valid).await.map_err(classify)?;
+    if let Some(owner) = valid.user_id {
+        if valid.is_main {
+            db::set_main(&mut tx, owner, id).await?;
+        } else {
+            db::unset_main(&mut tx, owner, id).await?;
+        }
+    }
     tx.commit().await?;
     Ok(db::find(pool, id)
         .await?
@@ -781,6 +784,67 @@ pub(crate) mod tests {
         for bad in ["T", "Two Words", "R2d2", "", "Abcdefghijklmnopqrstuvwxy"] {
             assert!(name(bad).is_err(), "{bad:?}");
         }
+    }
+
+    #[sqlx::test]
+    async fn a_main_is_its_players_only(pool: PgPool) {
+        let ey = member(&pool, "Ey", Rank::Raider).await;
+        let other = member(&pool, "Other", Rank::Raider).await;
+        let officer = admin(&pool, "Boss").await;
+        let main = add(&pool, &ey, input("Arthas", "Menethil", "paladin", true))
+            .await
+            .unwrap();
+        let alt = add(&pool, &ey, input("Jaina", "Proudmoore", "mage", false))
+            .await
+            .unwrap();
+        let main_of = |user: UserId| {
+            let pool = pool.clone();
+            async move {
+                sqlx::query_scalar!("SELECT main_character_id FROM users WHERE id = $1", user.0)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap()
+            }
+        };
+        assert_eq!(main_of(ey.id).await, Some(main.id));
+
+        // Handed to another player, it is no longer Ey's main, nor theirs until they say.
+        let mut handed = input("Arthas", "Menethil", "paladin", false);
+        handed.user_id = Some(Some(other.id));
+        let handed = update(&pool, &officer, main.id, &handed).await.unwrap();
+        assert!(!handed.is_main);
+        assert_eq!(main_of(ey.id).await, None);
+        assert_eq!(main_of(other.id).await, None);
+
+        // Unmarked, the main is nobody's; a deleted main leaves its player without one.
+        update(
+            &pool,
+            &officer,
+            alt.id,
+            &input("Jaina", "Proudmoore", "mage", true),
+        )
+        .await
+        .unwrap();
+        assert_eq!(main_of(ey.id).await, Some(alt.id));
+        update(
+            &pool,
+            &officer,
+            alt.id,
+            &input("Jaina", "Proudmoore", "mage", false),
+        )
+        .await
+        .unwrap();
+        assert_eq!(main_of(ey.id).await, None);
+        update(
+            &pool,
+            &officer,
+            alt.id,
+            &input("Jaina", "Proudmoore", "mage", true),
+        )
+        .await
+        .unwrap();
+        delete(&pool, &officer, alt.id).await.unwrap();
+        assert_eq!(main_of(ey.id).await, None);
     }
 
     #[sqlx::test]

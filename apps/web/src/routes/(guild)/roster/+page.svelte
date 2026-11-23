@@ -5,8 +5,16 @@
 	import CharacterForm from '$lib/components/guild/CharacterForm.svelte';
 	import CharacterLink from '$lib/components/guild/CharacterLink.svelte';
 	import CharacterSpecs from '$lib/components/guild/CharacterSpecs.svelte';
-	import { RANK_LABEL, formatDateTime, gameRankLabel, playerPath, rulesetLabel } from '$lib/guild';
-	import type { GuildCharacter, NotAddedMember } from '$lib/types';
+	import {
+		RANKS,
+		RANK_GROUP,
+		RANK_LABEL,
+		formatDateTime,
+		gameRankLabel,
+		playerPath,
+		rulesetLabel
+	} from '$lib/guild';
+	import type { GuildCharacter, NotAddedMember, Rank } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -30,18 +38,41 @@
 	// Administration.
 	const guilded = $derived(characters.filter((c) => c.in_guild));
 
+	// Everyone by default; Mains only narrows it to each player's main (a character nobody plays
+	// is nobody's main). The ranks are the players', a character nobody plays counting as a
+	// member's; the public are the sign-ups waiting for a rank, so they start hidden.
+	let mainsOnly = $state(false);
+	let ranks = $state<Record<Rank, boolean>>({
+		leader: true,
+		officer: true,
+		raider: true,
+		trial: true,
+		member: true,
+		friend: true,
+		public: false
+	});
+
+	// A rank is the player's (the account's), changed on their page.
+	const ranksById = $derived(new Map(data.members.map((m) => [m.id, m.guild_rank])));
+	const rankOf = (c: GuildCharacter): Rank =>
+		c.user_id === null ? 'member' : (ranksById.get(c.user_id) ?? 'public');
+
+	// Only officers filter by the public.
+	const rankFilters = $derived(RANKS.filter((rank) => rank !== 'public' || data.officer));
+
+	const filtered = $derived(guilded.filter((c) => (!mainsOnly || c.is_main) && ranks[rankOf(c)]));
+
 	// How many of each class, in the catalog's order; a bar picks its class for the table.
 	const spread = $derived(
 		data.classes.map((wowClass) => ({
 			wowClass,
-			count: guilded.filter((c) => c.class === wowClass.slug).length
+			count: filtered.filter((c) => c.class === wowClass.slug).length
 		}))
 	);
 	const most = $derived(Math.max(1, ...spread.map((s) => s.count)));
 
 	// Like the guild list in game: a column to sort by, clicked again to turn it around.
-	type Column =
-		'name' | 'level' | 'race' | 'class' | 'ruleset' | 'spec' | 'player' | 'game' | 'main';
+	type Column = 'name' | 'level' | 'race' | 'class' | 'ruleset' | 'spec' | 'player' | 'game';
 	const COLUMNS: { key: Column; label: string }[] = [
 		{ key: 'name', label: 'Name' },
 		{ key: 'level', label: 'Level' },
@@ -50,8 +81,7 @@
 		{ key: 'ruleset', label: 'Ruleset' },
 		{ key: 'spec', label: 'Specs' },
 		{ key: 'player', label: 'Player' },
-		{ key: 'game', label: 'Rank' },
-		{ key: 'main', label: 'Main' }
+		{ key: 'game', label: 'Rank' }
 	];
 	let sort = $state<{ column: Column; descending: boolean }>({ column: 'name', descending: false });
 
@@ -81,9 +111,7 @@
 		spec: mainSpec,
 		player: (c) => c.username ?? undefined,
 		// The guild master first, as the game numbers its ranks.
-		game: (c) => (c.guild_rank === null ? undefined : String(c.guild_rank).padStart(2, '0')),
-		// Mains first.
-		main: (c) => (c.is_main ? '0' : '1')
+		game: (c) => (c.guild_rank === null ? undefined : String(c.guild_rank).padStart(2, '0'))
 	};
 
 	// The search and the class (picked here or by a bar) narrow both tables.
@@ -106,7 +134,7 @@
 		});
 	}
 
-	const shown = $derived(sorted(guilded.filter(matches)));
+	const shown = $derived(sorted(filtered.filter(matches)));
 
 	// Accounts with no characters yet (mostly new sign-ups), for the administrator to rank.
 	const withoutCharacters = $derived(
@@ -184,6 +212,7 @@
 								cls={character.class}
 								icon={false}
 							/>
+							{#if character.is_main}<span class="tag">Main</span>{/if}
 						</td>
 						<td class="level">{character.level}</td>
 						<td>
@@ -222,7 +251,6 @@
 								<span class="muted">—</span>
 							{/if}
 						</td>
-						<td>{character.is_main ? 'Main' : 'Alt'}</td>
 					</tr>
 				{:else}
 					<tr><td colspan={COLUMNS.length} class="muted">No characters match.</td></tr>
@@ -260,6 +288,29 @@
 {/if}
 
 <section class="panel" aria-label="Characters by class">
+	<div class="toggles">
+		<div class="filter" role="group" aria-labelledby="filter-characters">
+			<span class="label" id="filter-characters">Characters</span>
+			<div class="group">
+				<button type="button" aria-pressed={mainsOnly} onclick={() => (mainsOnly = !mainsOnly)}
+					>Mains only</button
+				>
+			</div>
+		</div>
+		<div class="filter" role="group" aria-labelledby="filter-ranks">
+			<span class="label" id="filter-ranks">Player's rank</span>
+			<div class="group">
+				{#each rankFilters as rank (rank)}
+					<button
+						type="button"
+						aria-pressed={ranks[rank]}
+						onclick={() => (ranks[rank] = !ranks[rank])}>{RANK_GROUP[rank]}</button
+					>
+				{/each}
+			</div>
+		</div>
+	</div>
+
 	<ul class="bars">
 		{#each spread as { wowClass, count } (wowClass.slug)}
 			<li style:--class-color={wowClass.color}>
@@ -367,6 +418,74 @@
 {/if}
 
 <style>
+	/* Two filters, each under its own name, with a rule between them: beside each other on a
+	   wide screen, one above the other on a phone. */
+	.toggles {
+		display: flex;
+		gap: var(--space-6);
+	}
+
+	.filter {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.filter + .filter {
+		padding-left: var(--space-6);
+		border-left: 1px solid var(--grey-surface);
+	}
+
+	@media (max-width: 40rem) {
+		.toggles {
+			flex-direction: column;
+			gap: var(--space-4);
+		}
+
+		.filter + .filter {
+			padding-top: var(--space-4);
+			padding-left: 0;
+			border-top: 1px solid var(--grey-surface);
+			border-left: 0;
+		}
+	}
+
+	.label {
+		color: var(--grey-text);
+		font-size: var(--text-xs);
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	.group {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1);
+	}
+
+	.group button {
+		padding: var(--space-1) var(--space-3);
+		color: var(--grey-text);
+		font: inherit;
+		font-size: var(--text-sm);
+		font-weight: 500;
+		background: none;
+		border: 1px solid var(--grey-soft);
+		border-radius: 999px;
+		cursor: pointer;
+	}
+
+	.group button:hover {
+		color: var(--foreground);
+	}
+
+	.group button[aria-pressed='true'] {
+		color: var(--foreground);
+		background-color: var(--red-bg);
+		border-color: var(--red-solid);
+	}
+
 	/* A column a class: its bar up from a shared baseline, its icon under it, and its count under that. */
 	.bars {
 		display: grid;
@@ -499,6 +618,16 @@
 	.count {
 		color: var(--grey-text);
 		font-weight: 400;
+	}
+
+	/* Beside a main's name, as on the Users page. */
+	.tag {
+		margin-left: var(--space-1);
+		padding: 0 6px;
+		color: var(--grey-text);
+		font-size: var(--text-xs);
+		border: 1px solid var(--grey-surface);
+		border-radius: var(--radius-sm);
 	}
 
 	.with-icon {

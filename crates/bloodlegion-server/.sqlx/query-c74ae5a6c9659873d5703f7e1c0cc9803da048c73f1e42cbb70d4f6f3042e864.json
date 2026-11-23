@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.race, c.sex AS \"sex: Sex\", c.ruleset AS \"ruleset: Ruleset\", c.level AS \"level!\", c.reached_60_at,\n               c.is_main AS \"is_main!\", in_guild(c.guild) AS \"in_guild!\",\n               c.guild, c.guild_rank,\n               (SELECT r.name FROM guild_ranks r WHERE r.guild = c.guild AND r.rank = c.guild_rank)\n                   AS guild_rank_name,\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        ORDER BY c.name_normalized\n        ",
+  "query": "\n        SELECT c.id AS \"id!\", c.user_id AS \"user_id: UserId\", u.username AS \"username?\",\n               c.first_name AS \"first_name!\", c.last_name AS \"last_name!\", c.class AS \"class!\",\n               c.race, c.sex AS \"sex: Sex\", c.ruleset AS \"ruleset: Ruleset\", c.level AS \"level!\", c.reached_60_at,\n               COALESCE(u.main_character_id = c.id, false) AS \"is_main!\", in_guild(c.guild) AS \"in_guild!\",\n               c.guild, c.guild_rank,\n               (SELECT r.name FROM guild_ranks r WHERE r.guild = c.guild AND r.rank = c.guild_rank)\n                   AS guild_rank_name,\n               (SELECT COALESCE(\n                    jsonb_agg(jsonb_build_object(\n                        'spec', s.spec, 'talents', s.talents, 'is_main', s.is_main\n                    )),\n                    '[]'::jsonb\n                ) FROM character_specs s WHERE s.character_id = c.id)\n                   AS \"specs!: Json<Vec<CharacterSpec>>\",\n               c.created_at AS \"created_at!\",\n               c.updated_at AS \"updated_at!\"\n        FROM characters c\n        LEFT JOIN users u ON u.id = c.user_id\n        ORDER BY c.name_normalized\n        ",
   "describe": {
     "columns": [
       {
@@ -128,12 +128,7 @@
         "ordinal": 11,
         "name": "is_main!",
         "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "characters",
-            "name": "is_main"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 12,
@@ -213,7 +208,7 @@
       true,
       false,
       true,
-      false,
+      null,
       null,
       true,
       true,
@@ -223,5 +218,5 @@
       false
     ]
   },
-  "hash": "570973b97eb8a73d3c37de36842befafb8906025aed48aa2fe34e324bf718b92"
+  "hash": "c74ae5a6c9659873d5703f7e1c0cc9803da048c73f1e42cbb70d4f6f3042e864"
 }

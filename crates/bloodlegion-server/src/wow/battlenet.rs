@@ -352,12 +352,11 @@ async fn claim_in(
     .rows_affected();
     if claimed > 0 {
         sqlx::query!(
-            "UPDATE characters SET is_main = true
-             WHERE id = (
+            "UPDATE users SET main_character_id = (
                  SELECT id FROM characters WHERE user_id = $1
                  ORDER BY in_guild(guild) DESC, level DESC, id LIMIT 1
              )
-             AND NOT EXISTS (SELECT 1 FROM characters WHERE user_id = $1 AND is_main)",
+             WHERE id = $1 AND main_character_id IS NULL",
             owner.0,
         )
         .execute(&mut *conn)
@@ -660,7 +659,8 @@ mod tests {
     async fn row(pool: &PgPool, id: i64) -> Row {
         sqlx::query_as!(
             Row,
-            "SELECT user_id, is_main, level FROM characters WHERE id = $1",
+            r#"SELECT c.user_id, COALESCE(u.main_character_id = c.id, false) AS "is_main!", c.level AS "level!"
+               FROM characters c LEFT JOIN users u ON u.id = c.user_id WHERE c.id = $1"#,
             id
         )
         .fetch_one(pool)

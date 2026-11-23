@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users SET main_character_id = NULL WHERE id = $1 AND main_character_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "13550e26568e3d31c07f5acd7c2934882f11520376ddac4162990cf62caa831d"
+}

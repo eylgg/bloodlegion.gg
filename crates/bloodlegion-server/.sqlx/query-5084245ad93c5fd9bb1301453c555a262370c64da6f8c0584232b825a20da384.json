@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users SET main_character_id = (\n                 SELECT id FROM characters WHERE user_id = $1\n                 ORDER BY in_guild(guild) DESC, level DESC, id LIMIT 1\n             )\n             WHERE id = $1 AND main_character_id IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5084245ad93c5fd9bb1301453c555a262370c64da6f8c0584232b825a20da384"
+}

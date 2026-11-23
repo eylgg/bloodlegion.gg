@@ -14,7 +14,7 @@ pub async fn list(pool: &PgPool) -> sqlx::Result<Vec<Character>> {
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
                c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset: Ruleset", c.level AS "level!", c.reached_60_at,
-               c.is_main AS "is_main!", in_guild(c.guild) AS "in_guild!",
+               COALESCE(u.main_character_id = c.id, false) AS "is_main!", in_guild(c.guild) AS "in_guild!",
                c.guild, c.guild_rank,
                (SELECT r.name FROM guild_ranks r WHERE r.guild = c.guild AND r.rank = c.guild_rank)
                    AS guild_rank_name,
@@ -60,7 +60,7 @@ pub async fn find(pool: &PgPool, id: i64) -> sqlx::Result<Option<Character>> {
         SELECT c.id AS "id!", c.user_id AS "user_id: UserId", u.username AS "username?",
                c.first_name AS "first_name!", c.last_name AS "last_name!", c.class AS "class!",
                c.race, c.sex AS "sex: Sex", c.ruleset AS "ruleset: Ruleset", c.level AS "level!", c.reached_60_at,
-               c.is_main AS "is_main!", in_guild(c.guild) AS "in_guild!",
+               COALESCE(u.main_character_id = c.id, false) AS "is_main!", in_guild(c.guild) AS "in_guild!",
                c.guild, c.guild_rank,
                (SELECT r.name FROM guild_ranks r WHERE r.guild = c.guild AND r.rank = c.guild_rank)
                    AS guild_rank_name,
@@ -93,41 +93,49 @@ pub async fn count_owned(conn: &mut PgConnection, user_id: UserId) -> sqlx::Resu
     .await
 }
 
-/// Demotes the member's main, other than `keep`.
-pub async fn clear_main(
+/// Makes `character_id`, one of the member's own, their main.
+pub async fn set_main(
     conn: &mut PgConnection,
     user_id: UserId,
-    keep: Option<i64>,
+    character_id: i64,
 ) -> sqlx::Result<()> {
     sqlx::query!(
-        r#"
-        UPDATE characters SET is_main = false
-        WHERE user_id = $1 AND is_main AND id IS DISTINCT FROM $2
-        "#,
+        "UPDATE users SET main_character_id = $2 WHERE id = $1",
         user_id.0,
-        keep,
+        character_id,
     )
     .execute(&mut *conn)
     .await?;
     Ok(())
 }
 
-/// Inserts `character`, the main when `is_main` (the caller decides: a member's first is).
-pub(super) async fn insert(
+/// Leaves the member without a main, when it is `character_id`.
+pub async fn unset_main(
     conn: &mut PgConnection,
-    character: &Valid,
-    is_main: bool,
-) -> sqlx::Result<i64> {
+    user_id: UserId,
+    character_id: i64,
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        "UPDATE users SET main_character_id = NULL WHERE id = $1 AND main_character_id = $2",
+        user_id.0,
+        character_id,
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+/// Inserts `character`; whether it is its member's main is theirs ([`set_main`]).
+pub(super) async fn insert(conn: &mut PgConnection, character: &Valid) -> sqlx::Result<i64> {
     sqlx::query_scalar!(
         r#"
         INSERT INTO characters (
-            user_id, first_name, last_name, class, race, sex, is_main, level, reached_60_at,
-            ruleset
+            user_id, first_name, last_name, class, race, sex, level, reached_60_at, ruleset
         )
         VALUES (
-            $1, $2, $3, $4, $5, $6, $7, COALESCE($8::smallint, 1),
-            CASE WHEN $8::smallint = 60 THEN COALESCE($9, now()) END,
-            $10::text
+            $1, $2, $3, $4, $5, $6, COALESCE($7::smallint, 1),
+            CASE WHEN $7::smallint = 60 THEN COALESCE($8, now()) END,
+            $9::text
         )
         RETURNING id
         "#,
@@ -137,7 +145,6 @@ pub(super) async fn insert(
         character.class,
         character.race,
         character.sex as Option<Sex>,
-        is_main,
         character.level,
         character.reached_60_at,
         character.ruleset as Option<Ruleset>,
@@ -167,10 +174,10 @@ pub(super) async fn update(
         r#"
         UPDATE characters
         SET user_id = $2, first_name = $3, last_name = $4, class = $5, race = $6, sex = $7,
-            is_main = $8, level = COALESCE($9::smallint, level),
-            ruleset = COALESCE($11::text, ruleset),
-            reached_60_at = CASE WHEN COALESCE($9::smallint, level) = 60
-                                 THEN COALESCE($10, reached_60_at, now()) END
+            level = COALESCE($8::smallint, level),
+            ruleset = COALESCE($10::text, ruleset),
+            reached_60_at = CASE WHEN COALESCE($8::smallint, level) = 60
+                                 THEN COALESCE($9, reached_60_at, now()) END
         WHERE id = $1
         "#,
         id,
@@ -180,7 +187,6 @@ pub(super) async fn update(
         character.class,
         character.race,
         character.sex as Option<Sex>,
-        character.is_main,
         character.level,
         character.reached_60_at,
         character.ruleset as Option<Ruleset>,
