@@ -10,7 +10,8 @@
 	import type { GuildCharacter, WowClass } from '$lib/types';
 
 	/**
-	 * The characters to fill raids from: each member's, by username, then those no member plays.
+	 * The characters to fill raids from: the guild's, at 60 unless asked for the rest, one line
+	 * each with its player beside it, by player (their main first), then those nobody plays.
 	 * Officers drag a character onto a raid, or click one (`selected`) then a free slot. Dropping
 	 * someone from a raid back here takes them off it (`onreturn`).
 	 */
@@ -38,10 +39,13 @@
 
 	let query = $state('');
 	let unplacedOnly = $state(false);
+	let below60 = $state(false);
 
 	const matches = (c: GuildCharacter) => {
 		const text = query.trim().toLowerCase();
 		return (
+			c.in_guild &&
+			(below60 || c.level === 60) &&
 			(!text ||
 				fullName(c).toLowerCase().includes(text) ||
 				(c.username ?? '').toLowerCase().includes(text)) &&
@@ -49,24 +53,17 @@
 		);
 	};
 
-	const shown = $derived(characters.filter(matches));
-
-	// Members first, by username, each with their characters (main first); then the characters no
-	// member plays, by name.
-	const players = $derived.by(() => {
-		const byUser: Record<string, GuildCharacter[]> = {};
-		for (const c of shown) if (c.username !== null) (byUser[c.username] ??= []).push(c);
-		return Object.entries(byUser)
-			.sort(([a], [b]) => byName(a, b))
-			.map(([username, list]) => ({
-				username,
-				characters: list.sort(
-					(a, b) => Number(b.is_main) - Number(a.is_main) || byName(fullName(a), fullName(b))
-				)
-			}));
-	});
-	const others = $derived(
-		shown.filter((c) => c.username === null).sort((a, b) => byName(fullName(a), fullName(b)))
+	// By player, each one's main first; then the characters nobody plays, by name.
+	const shown = $derived(
+		characters
+			.filter(matches)
+			.sort(
+				(a, b) =>
+					Number(a.username === null) - Number(b.username === null) ||
+					byName(a.username ?? '', b.username ?? '') ||
+					Number(b.is_main) - Number(a.is_main) ||
+					byName(fullName(a), fullName(b))
+			)
 	);
 
 	function pick(character: GuildCharacter) {
@@ -103,6 +100,8 @@
 			onclick={() => pick(character)}
 		>
 			<span class="name">{fullName(character)}</span>
+			{#if below60 && character.level < 60}<span class="level">{character.level}</span>{/if}
+			<span class="player">{character.username ?? '—'}</span>
 			<CharacterSpecs cls={character.class} specs={character.specs} size={16} />
 		</button>
 		{#each here as place (place.raidId)}
@@ -130,6 +129,10 @@
 		<input type="checkbox" bind:checked={unplacedOnly} />
 		Only characters not in a raid here
 	</label>
+	<label class="toggle">
+		<input type="checkbox" bind:checked={below60} />
+		Below level 60 too
+	</label>
 	{#if returning && drag.current}
 		<p class="small drop-hint">
 			Drop to take {drag.current.first_name}
@@ -138,29 +141,12 @@
 	{:else if editable}
 		<p class="muted small">{hint}</p>
 	{/if}
-	<ul class="players">
-		{#each players as player (player.username)}
-			<li>
-				<span class="username">{player.username}</span>
-				<ul class="chars">
-					{#each player.characters as character (character.id)}
-						{@render chip(character)}
-					{/each}
-				</ul>
-			</li>
-		{/each}
-		{#if others.length > 0}
-			<li class="others">
-				<ul class="chars">
-					{#each others as character (character.id)}
-						{@render chip(character)}
-					{/each}
-				</ul>
-			</li>
-		{/if}
-		{#if players.length === 0 && others.length === 0}
+	<ul class="chars">
+		{#each shown as character (character.id)}
+			{@render chip(character)}
+		{:else}
 			<li class="muted small">Nobody matches.</li>
-		{/if}
+		{/each}
 	</ul>
 </aside>
 
@@ -213,12 +199,6 @@
 	}
 
 	/* Names are picked up whole, never text-selected (a selection would be dragged along). */
-	.players {
-		user-select: none;
-		-webkit-user-select: none;
-	}
-
-	.players,
 	.chars {
 		display: flex;
 		flex-direction: column;
@@ -226,22 +206,26 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
+		user-select: none;
+		-webkit-user-select: none;
 	}
 
-	.players > li {
-		padding: var(--space-1) 0;
-		border-top: 1px solid var(--grey-surface);
-	}
-
-	.players > li.others {
-		margin-top: var(--space-2);
-		border-top-width: 2px;
-	}
-
-	.username {
+	/* The player, beside the name: taking the room between it and the specs. */
+	.player {
+		flex: 1;
+		overflow: hidden;
 		color: var(--grey-text);
 		font-family: var(--font-mono);
 		font-size: var(--text-xs);
+		text-align: right;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.level {
+		color: var(--grey-text);
+		font-size: var(--text-xs);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.chars li {
@@ -288,6 +272,8 @@
 	}
 
 	.name {
+		flex-shrink: 0;
+		max-width: 60%;
 		overflow: hidden;
 		color: var(--class-color);
 		font-size: var(--text-sm);
