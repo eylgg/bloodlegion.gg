@@ -289,13 +289,18 @@ the changes.
   that night, and drag them back to the roster (or ×) to take them off; everyone sees the layout.
   Each group lists the group-only buffs it has; alongside, what the raid brings: buffs, debuffs,
   utility (combat resses, dispels, interrupts), and the roles.
-- **The raid planner** (`/raids/plan`): a raid week's raids side by side, the roster beside them,
-  sorted by player (username) and then the characters no member plays. Raids have no names: a
+- **The raid planner** (`/planner`): one raid week (a lockout) at a time, each raid with its own
+  **bench** to its left: the guild's characters that could still go in it, at 60 unless "Below
+  level 60 too" is ticked, one line each with its player, sorted by player (main first) and then
+  the characters nobody plays. Each character is on a raid's bench or in the raid: moving them in
+  takes them off it, and off the bench of every raid they are now kept from (another of the zone
+  that week, or one at the same time); a badge says which other raids that week they are in. A
+  raid's own page has the same bench, of everyone not in it. Raids have no names: a
   zone's raids in a week are numbered ("Onyxia's Lair 2"), and "Add a group" adds another of the
   same zone at the same time. A player (an account, whichever of their characters) is in one raid
   at a time: raids starting within three hours of each other overlap (`raids::RAID_LENGTH`). A
-  character is saved to a zone for the raid week. The server refuses either; the planner offers to
-  move the player out of the other raid instead.
+  character is saved to a zone for the raid week. The server refuses either; dropped on a raid
+  from the other raid, the planner offers to move the player instead.
 - **Specs and talents**: a character plays any of its class's specs, each with the notable talents
   it takes there, the ones that change what a character brings (`wow::catalog`); at most one is
   its main (or none). In a raid each plays one of them: the one picked that night, else the main,

@@ -47,12 +47,10 @@
 	// Whether to move someone out of a raid they clash with.
 	const moving = new Ask();
 	const detail = $derived<RaidDetail>({ raid, attendees, loot });
-	const places = (characterId: number) => {
-		const a = attendees.find((a) => a.character_id === characterId);
-		return a
-			? [{ raidId: raid.id, name: zoneName(data.zones, raid.zone), group: a.group_number }]
-			: [];
-	};
+	// The bench: everyone not in the raid, so each character is on it or in it.
+	const bench = $derived(
+		data.characters.filter((c) => !attendees.some((a) => a.character_id === c.id))
+	);
 
 	async function add(characterId: number, target: Target) {
 		const character = data.characters.find((c) => c.id === characterId);
@@ -206,8 +204,7 @@
 	<div class="groups-layout" class:with-roster={data.officer}>
 		{#if data.officer}
 			<Roster
-				characters={data.characters}
-				{places}
+				characters={bench}
 				editable
 				bind:selected
 				onreturn={(_, characterId) => remove(characterId)}

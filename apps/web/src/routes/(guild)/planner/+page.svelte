@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { api, errorMessage } from '$lib/api';
 	import { formatInZone, formatWeekSpan, raidNames } from '$lib/guild';
-	import { putOn, takeOff, type Target } from '$lib/wow/planning';
+	import { clashes, putOn, takeOff, type Target } from '$lib/wow/planning';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import AskBar from '$lib/components/AskBar.svelte';
@@ -36,12 +36,23 @@
 	);
 	const nameOf = (raidId: number) => names.get(raidId) ?? '';
 
-	/** Where each character is placed this week, for the roster's badges. */
+	/** Where each character is placed this week, for the benches' badges. */
 	const places = (characterId: number) =>
 		raids.flatMap((r) => {
 			const a = r.attendees.find((a) => a.character_id === characterId);
 			return a ? [{ raidId: r.raid.id, name: nameOf(r.raid.id), group: a.group_number }] : [];
 		});
+
+	/**
+	 * A raid's bench: everyone who could still go in it, so each character is on it or in it. Not
+	 * the ones in it, nor those kept from it: saved to its zone this week (in another raid of it),
+	 * or whose player is in another raid at the same time.
+	 */
+	const benchFor = (raid: RaidDetail) =>
+		data.characters.filter(
+			(c) =>
+				!raid.attendees.some((a) => a.character_id === c.id) && clashes(raids, raid, c).length === 0
+		);
 
 	async function add(raid: RaidDetail, characterId: number, target: Target) {
 		const character = data.characters.find((c) => c.id === characterId);
@@ -185,11 +196,16 @@
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
 
-<div class="planner">
-	<Roster characters={data.characters} {places} editable bind:selected onreturn={remove} />
-
-	<div class="raids">
-		{#each raids as raid (raid.raid.id)}
+<div class="raids">
+	{#each raids as raid (raid.raid.id)}
+		<div class="planner">
+			<Roster
+				characters={benchFor(raid)}
+				places={(id) => places(id).filter((p) => p.raidId !== raid.raid.id)}
+				editable
+				bind:selected
+				onreturn={remove}
+			/>
 			<section class="raid">
 				<header>
 					<a href={resolve('/(guild)/raids/[id]', { id: String(raid.raid.id) })}>
@@ -227,12 +243,12 @@
 					onincoming={(characterId, target) => add(raid, characterId, target)}
 				/>
 			</section>
-		{:else}
-			<p class="muted">
-				No raids {data.week === null ? 'before the release' : 'this week'} yet. Add one above.
-			</p>
-		{/each}
-	</div>
+		</div>
+	{:else}
+		<p class="muted">
+			No raids {data.week === null ? 'before the release' : 'this week'} yet. Add one above.
+		</p>
+	{/each}
 </div>
 
 <style>
@@ -271,10 +287,11 @@
 		}
 	}
 
+	/* A raid a row, its bench to its left. */
 	.raids {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-6);
+		gap: var(--space-8);
 	}
 
 	.raid {

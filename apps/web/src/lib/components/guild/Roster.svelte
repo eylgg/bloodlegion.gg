@@ -10,21 +10,23 @@
 	import type { GuildCharacter, WowClass } from '$lib/types';
 
 	/**
-	 * The characters to fill raids from: the guild's, at 60 unless asked for the rest, one line
-	 * each with its player beside it, by player (their main first), then those nobody plays.
-	 * Officers drag a character onto a raid, or click one (`selected`) then a free slot. Dropping
-	 * someone from a raid back here takes them off it (`onreturn`).
+	 * A raid's bench: the characters that could still go in it (the caller leaves out those in it,
+	 * or kept from it), of those the guild's, at 60 unless asked for the rest, one line each with
+	 * its player beside it, by player (their main first), then those nobody plays. Officers drag a
+	 * character onto the raid, or click one (`selected`) then a free slot. Dropping someone from
+	 * the raid back here takes them off it (`onreturn`).
 	 */
 	let {
 		characters,
-		places,
+		places = () => [],
 		editable,
 		selected = $bindable(null),
 		onreturn,
 		hint = 'Drag characters onto a group, or click one then a free slot. Drag someone back here to take them off the raid.'
 	}: {
 		characters: GuildCharacter[];
-		places: (characterId: number) => Place[];
+		/** The week's other raids a character is in, for its badges. */
+		places?: (characterId: number) => Place[];
 		editable: boolean;
 		selected?: number | null;
 		onreturn?: (raidId: number, characterId: number) => void;
@@ -38,7 +40,6 @@
 	const byName = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' });
 
 	let query = $state('');
-	let unplacedOnly = $state(false);
 	let below60 = $state(false);
 
 	const matches = (c: GuildCharacter) => {
@@ -48,8 +49,7 @@
 			(below60 || c.level === 60) &&
 			(!text ||
 				fullName(c).toLowerCase().includes(text) ||
-				(c.username ?? '').toLowerCase().includes(text)) &&
-			(!unplacedOnly || places(c.id).length === 0)
+				(c.username ?? '').toLowerCase().includes(text))
 		);
 	};
 
@@ -91,7 +91,6 @@
 			type="button"
 			class="char"
 			class:selected={selected === character.id}
-			class:placed={here.length > 0}
 			class:origin={drag.current?.characterId === character.id && drag.current.raidId === null}
 			style:--class-color={color(character.class) ?? 'var(--foreground)'}
 			draggable={editable}
@@ -114,7 +113,7 @@
 
 <aside
 	class="roster"
-	aria-label="Roster"
+	aria-label="Bench"
 	class:returning
 	ondragover={(e) => {
 		if (!editable) return;
@@ -123,12 +122,8 @@
 	}}
 	{ondrop}
 >
-	<h2>Roster</h2>
+	<h2>Bench</h2>
 	<input type="search" bind:value={query} placeholder="Player or character" aria-label="Find" />
-	<label class="toggle">
-		<input type="checkbox" bind:checked={unplacedOnly} />
-		Only characters not in a raid here
-	</label>
 	<label class="toggle">
 		<input type="checkbox" bind:checked={below60} />
 		Below level 60 too
@@ -253,10 +248,6 @@
 
 	.char:not(:disabled) {
 		cursor: grab;
-	}
-
-	.char.placed {
-		opacity: 0.55;
 	}
 
 	/* Picked up and on the move. */
