@@ -289,12 +289,13 @@ the changes.
   that night, and drag them back to the roster (or ×) to take them off; everyone sees the layout.
   Each group lists the group-only buffs it has; alongside, what the raid brings: buffs, debuffs,
   utility (combat resses, dispels, interrupts), and the roles.
-- **The raid planner** (`/planner`): one raid week (a lockout) at a time, each raid with its own
-  **bench** to its left: the guild's characters that could still go in it, at 60 unless "Below
-  level 60 too" is ticked, one line each with its player, sorted by player (main first) and then
-  the characters nobody plays. Each character is on a raid's bench or in the raid: moving them in
-  takes them off it, and off the bench of every raid they are now kept from (another of the zone
-  that week, or one at the same time); a badge says which other raids that week they are in. A
+- **The raid planner** (`/planner`): one raid week at a time, its raids grouped by zone (a
+  lockout: every zone resets on the same day), each zone with one **bench** to the left of its
+  raids: the guild's characters not in any of them, at 60 unless "Below level 60 too" is ticked,
+  one line each with its player, sorted by player (main first) and then the characters nobody
+  plays. Each character is on a zone's bench or in one of its raids: moving them in takes them
+  off it, and taking them out puts them back. Someone in another zone's raid stays on the bench
+  with a badge naming it; putting them in a raid at the same time asks to move them. A
   raid's own page has the same bench, of everyone not in it. Raids have no names: a
   zone's raids in a week are numbered ("Onyxia's Lair 2"), and "Add a group" adds another of the
   same zone at the same time. A player (an account, whichever of their characters) is in one raid
@@ -436,7 +437,10 @@ besides, at the top of the channel list in no category, where only the leader an
 top to bottom: #raider-announcements, for the leader, officers, raiders, and trials;
 #member-announcements, for every role but Friend; and #public-announcements, which everyone reads and whose
 posts show on the front page under the poster's site account (kept in step as they are edited or
-deleted; a post by someone whose Discord account is not linked to the site is not shown). It also
+deleted; a post by someone whose Discord account is not linked to the site is not shown). A
+superuser can **Hide** a post from the site (Discord keeps it, and edits or the bot reading the
+channel again leave it hidden); they still see it, marked "Hidden from the site", with a **Show**
+button to put it back. It also
 checks #wowhead-news, made by hand and found by its name, wherever it is: everyone reads it and
 nobody posts in it. Wowhead's news still arrives, because following their channel posts through a
 webhook, which no permission entry stops. The leader and officers can still post anywhere, as

@@ -395,6 +395,8 @@ export type Announcement = {
 	html: string;
 	posted_at: string;
 	edited_at: string | null;
+	/** Hidden from the site by a superuser; only superusers are sent these. */
+	hidden: boolean;
 };
 
 export type LoginOptions = {

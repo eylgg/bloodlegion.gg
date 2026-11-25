@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE discord_announcements\n        SET hidden_at = CASE WHEN $2 THEN COALESCE(hidden_at, now()) END\n        WHERE message_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4b2af32fd4bfb84863282ea7f3246fa158fc96fdd8f43d1e33487d8f313dad90"
+}

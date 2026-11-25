@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT a.message_id, u.username, a.content, a.mentions, a.posted_at, a.edited_at\n        FROM discord_announcements a\n        JOIN users u ON u.id = a.user_id\n        ORDER BY a.posted_at DESC, a.message_id DESC\n        LIMIT $1\n        ",
+  "query": "\n        SELECT a.message_id, u.username, a.content, a.mentions, a.posted_at, a.edited_at,\n               a.hidden_at IS NOT NULL AS \"hidden!\"\n        FROM discord_announcements a\n        JOIN users u ON u.id = a.user_id\n        WHERE $2 OR a.hidden_at IS NULL\n        ORDER BY a.posted_at DESC, a.message_id DESC\n        LIMIT $1\n        ",
   "describe": {
     "columns": [
       {
@@ -68,11 +68,18 @@
             "name": "edited_at"
           }
         }
+      },
+      {
+        "ordinal": 6,
+        "name": "hidden!",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
-        "Int8"
+        "Int8",
+        "Bool"
       ]
     },
     "nullable": [
@@ -81,8 +88,9 @@
       false,
       false,
       false,
-      true
+      true,
+      null
     ]
   },
-  "hash": "5856b994d8112caad17af9582f64cab86737e9a7a196992bf57537f50b82743b"
+  "hash": "3e345240110ab8efa5a456a53cc7854884f6c376135e9bf0634c0005dc8c3a9d"
 }

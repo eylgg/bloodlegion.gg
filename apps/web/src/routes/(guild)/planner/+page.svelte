@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { api, errorMessage } from '$lib/api';
 	import { formatInZone, formatWeekSpan, raidNames } from '$lib/guild';
-	import { clashes, putOn, takeOff, type Target } from '$lib/wow/planning';
+	import { putOn, takeOff, type Target } from '$lib/wow/planning';
 	import Button from '$lib/components/Button.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import AskBar from '$lib/components/AskBar.svelte';
@@ -44,14 +44,25 @@
 		});
 
 	/**
-	 * A raid's bench: everyone who could still go in it, so each character is on it or in it. Not
-	 * the ones in it, nor those kept from it: saved to its zone this week (in another raid of it),
-	 * or whose player is in another raid at the same time.
+	 * The week's raids by zone, in the order the zones first raid: a zone's raids share a lockout,
+	 * so they share a bench.
 	 */
-	const benchFor = (raid: RaidDetail) =>
+	const lockouts = $derived(
+		[...new Set(raids.map((r) => r.raid.zone))].map((zone) => ({
+			zone,
+			name: data.zones.find((z) => z.slug === zone)?.name ?? zone,
+			raids: raids.filter((r) => r.raid.zone === zone)
+		}))
+	);
+
+	/**
+	 * A lockout's bench: everyone not saved to it this week, so each character is on it or in one
+	 * of its raids. Someone in another zone's raid at the same time stays, with its badge; putting
+	 * them in asks to move them.
+	 */
+	const benchFor = (zoneRaids: RaidDetail[]) =>
 		data.characters.filter(
-			(c) =>
-				!raid.attendees.some((a) => a.character_id === c.id) && clashes(raids, raid, c).length === 0
+			(c) => !zoneRaids.some((r) => r.attendees.some((a) => a.character_id === c.id))
 		);
 
 	async function add(raid: RaidDetail, characterId: number, target: Target) {
@@ -196,54 +207,62 @@
 
 {#if error}<Alert variant="error">{error}</Alert>{/if}
 
-<div class="raids">
-	{#each raids as raid (raid.raid.id)}
-		<div class="planner">
-			<Roster
-				characters={benchFor(raid)}
-				places={(id) => places(id).filter((p) => p.raidId !== raid.raid.id)}
-				editable
-				bind:selected
-				onreturn={remove}
-			/>
-			<section class="raid">
-				<header>
-					<a href={resolve('/(guild)/raids/[id]', { id: String(raid.raid.id) })}>
-						<h2>{nameOf(raid.raid.id)}</h2>
-					</a>
-					<span class="muted">
-						{formatInZone(raid.raid.starts_at, raid.raid.time_zone)} · {raid.attendees
-							.length}/{size(raid.raid.zone)}
-					</span>
-					{#if raid.attendees.length === 0 && raid.raid.loot_count === 0}
-						<span class="actions">
-							<Button
-								size="small"
-								variant="danger"
-								title="Delete this empty raid"
-								onclick={() => deleteRaid(raid.raid.id)}>Delete</Button
-							>
-						</span>
-					{/if}
-				</header>
-				{#if movingTo === raid.raid.id}<AskBar ask={moving} confirmLabel="Move" />{/if}
-				<RaidBuilder
-					raidId={raid.raid.id}
-					size={size(raid.raid.zone)}
-					attendees={raid.attendees}
-					onchange={(next) =>
-						(raids = raids.map((r) =>
-							r.raid.id === raid.raid.id ? { ...r, attendees: next } : r
-						))}
-					effects={data.effects}
+<div class="lockouts">
+	{#each lockouts as lockout (lockout.zone)}
+		<section class="lockout" aria-label={lockout.name}>
+			<h2>{lockout.name}</h2>
+			<div class="planner">
+				<Roster
+					characters={benchFor(lockout.raids)}
+					places={(id) =>
+						places(id).filter((p) => !lockout.raids.some((r) => r.raid.id === p.raidId))}
 					editable
-					onremove={(attendee) => remove(raid.raid.id, attendee.character_id)}
-					compact
-					incoming={selected}
-					onincoming={(characterId, target) => add(raid, characterId, target)}
+					bind:selected
+					onreturn={remove}
 				/>
-			</section>
-		</div>
+				<div class="raids">
+					{#each lockout.raids as raid (raid.raid.id)}
+						<section class="raid">
+							<header>
+								<a href={resolve('/(guild)/raids/[id]', { id: String(raid.raid.id) })}>
+									<h3>{nameOf(raid.raid.id)}</h3>
+								</a>
+								<span class="muted">
+									{formatInZone(raid.raid.starts_at, raid.raid.time_zone)} · {raid.attendees
+										.length}/{size(raid.raid.zone)}
+								</span>
+								{#if raid.attendees.length === 0 && raid.raid.loot_count === 0}
+									<span class="actions">
+										<Button
+											size="small"
+											variant="danger"
+											title="Delete this empty raid"
+											onclick={() => deleteRaid(raid.raid.id)}>Delete</Button
+										>
+									</span>
+								{/if}
+							</header>
+							{#if movingTo === raid.raid.id}<AskBar ask={moving} confirmLabel="Move" />{/if}
+							<RaidBuilder
+								raidId={raid.raid.id}
+								size={size(raid.raid.zone)}
+								attendees={raid.attendees}
+								onchange={(next) =>
+									(raids = raids.map((r) =>
+										r.raid.id === raid.raid.id ? { ...r, attendees: next } : r
+									))}
+								effects={data.effects}
+								editable
+								onremove={(attendee) => remove(raid.raid.id, attendee.character_id)}
+								compact
+								incoming={selected}
+								onincoming={(characterId, target) => add(raid, characterId, target)}
+							/>
+						</section>
+					{/each}
+				</div>
+			</div>
+		</section>
 	{:else}
 		<p class="muted">
 			No raids {data.week === null ? 'before the release' : 'this week'} yet. Add one above.
@@ -287,11 +306,27 @@
 		}
 	}
 
-	/* A raid a row, its bench to its left. */
-	.raids {
+	/* A zone a row, its bench to the left of its raids. */
+	.lockouts {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-8);
+	}
+
+	.lockout {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+	}
+
+	.lockout > h2 {
+		font-size: var(--text-xl);
+	}
+
+	.raids {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-6);
 	}
 
 	.raid {
@@ -310,12 +345,12 @@
 		text-decoration: none;
 	}
 
-	.raid header a:hover h2 {
+	.raid header a:hover h3 {
 		text-decoration: underline;
 		text-underline-offset: 0.2em;
 	}
 
-	.raid h2 {
+	.raid h3 {
 		font-size: var(--text-lg);
 	}
 

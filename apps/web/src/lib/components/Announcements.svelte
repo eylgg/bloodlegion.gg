@@ -1,9 +1,33 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
+	import { api, errorMessage } from '$lib/api';
+	import Button from './Button.svelte';
+	import Alert from './Alert.svelte';
 	import type { Announcement } from '$lib/types';
 
 	// `fill` takes the width it is given (a column of the home page) rather than the front page's
 	// centred measure.
 	let { announcements, fill = false }: { announcements: Announcement[]; fill?: boolean } = $props();
+
+	// Superusers hide a post from the site (Discord keeps it), and see the hidden ones, marked, to
+	// show them again.
+	const superuser = $derived(page.data.user?.is_superuser === true);
+	let busy = $state<string | null>(null);
+	let error = $state('');
+
+	async function setHidden(post: Announcement, hidden: boolean) {
+		busy = post.id;
+		error = '';
+		try {
+			await api.put(`/api/admin/announcements/${post.id}/hidden`, { hidden });
+			await invalidateAll();
+		} catch (err) {
+			error = errorMessage(err, 'Changing that failed. Please try again.');
+		} finally {
+			busy = null;
+		}
+	}
 
 	const dateFormat = new Intl.DateTimeFormat(undefined, {
 		month: 'short',
@@ -15,12 +39,27 @@
 <!-- The latest posts in the Discord server's #public-announcements, which the bot mirrors here. -->
 <section aria-labelledby="announcements-heading" class:fill>
 	<h2 id="announcements-heading">Announcements</h2>
+	{#if error}<Alert variant="error">{error}</Alert>{/if}
 	{#each announcements as post (post.id)}
-		<article>
+		<article class:hidden={post.hidden}>
 			<header>
 				<span class="author">{post.author}</span>
 				<time datetime={post.posted_at}>{dateFormat.format(new Date(post.posted_at))}</time>
 				{#if post.edited_at}<span class="edited">(edited)</span>{/if}
+				{#if post.hidden}<span class="tag">Hidden from the site</span>{/if}
+				{#if superuser}
+					<span class="actions">
+						<Button
+							size="small"
+							variant="secondary"
+							disabled={busy === post.id}
+							title={post.hidden
+								? 'Show this post on the site again'
+								: 'Hide this post from the site; Discord keeps it'}
+							onclick={() => setHidden(post, !post.hidden)}>{post.hidden ? 'Show' : 'Hide'}</Button
+						>
+					</span>
+				{/if}
 			</header>
 			<!-- The backend renders the post from Discord's Markdown and escapes all of it, so it is
 			     safe to put on the page as HTML. -->
@@ -66,6 +105,30 @@
 		gap: var(--space-2);
 		color: var(--grey-text);
 		font-size: var(--text-sm);
+	}
+
+	/* Only superusers see a hidden post, set back so it reads as not on the site. */
+	article.hidden {
+		border-style: dashed;
+	}
+
+	article.hidden .post {
+		opacity: 0.55;
+	}
+
+	.tag {
+		padding: 0 var(--space-2);
+		color: var(--grey-text);
+		background-color: var(--grey-surface);
+		border-radius: var(--radius-sm);
+	}
+
+	header {
+		align-items: center;
+	}
+
+	.actions {
+		margin-left: auto;
 	}
 
 	.author {

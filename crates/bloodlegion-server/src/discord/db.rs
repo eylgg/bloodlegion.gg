@@ -344,6 +344,28 @@ pub async fn update_announcement(pool: &PgPool, post: &Post) -> sqlx::Result<()>
 pub struct Announcement {
     pub post: Post,
     pub author: String,
+    /// Whether a superuser hid it from the site.
+    pub hidden: bool,
+}
+
+/// Hides a post from the site (`hidden`), or shows it again. False when no such post is stored.
+pub async fn set_announcement_hidden(
+    pool: &PgPool,
+    message_id: u64,
+    hidden: bool,
+) -> sqlx::Result<bool> {
+    let result = sqlx::query!(
+        r#"
+        UPDATE discord_announcements
+        SET hidden_at = CASE WHEN $2 THEN COALESCE(hidden_at, now()) END
+        WHERE message_id = $1
+        "#,
+        message_id as i64,
+        hidden,
+    )
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
 }
 
 pub async fn delete_announcements(pool: &PgPool, message_ids: &[u64]) -> sqlx::Result<()> {
@@ -392,17 +414,25 @@ pub async fn announcement_totals(pool: &PgPool) -> sqlx::Result<(i64, Option<Off
     Ok((row.stored, row.latest))
 }
 
-/// The latest `limit` posts, newest first.
-pub async fn latest_announcements(pool: &PgPool, limit: i64) -> sqlx::Result<Vec<Announcement>> {
+/// The latest `limit` posts, newest first: those shown on the site, or every one, hidden too,
+/// when `with_hidden`.
+pub async fn latest_announcements(
+    pool: &PgPool,
+    limit: i64,
+    with_hidden: bool,
+) -> sqlx::Result<Vec<Announcement>> {
     let rows = sqlx::query!(
         r#"
-        SELECT a.message_id, u.username, a.content, a.mentions, a.posted_at, a.edited_at
+        SELECT a.message_id, u.username, a.content, a.mentions, a.posted_at, a.edited_at,
+               a.hidden_at IS NOT NULL AS "hidden!"
         FROM discord_announcements a
         JOIN users u ON u.id = a.user_id
+        WHERE $2 OR a.hidden_at IS NULL
         ORDER BY a.posted_at DESC, a.message_id DESC
         LIMIT $1
         "#,
         limit,
+        with_hidden,
     )
     .fetch_all(pool)
     .await?;
@@ -417,6 +447,7 @@ pub async fn latest_announcements(pool: &PgPool, limit: i64) -> sqlx::Result<Vec
                 edited_at: row.edited_at,
             },
             author: row.username,
+            hidden: row.hidden,
         })
         .collect())
 }
@@ -448,7 +479,7 @@ mod tests {
                 .unwrap();
         }
         assert_eq!(
-            ids(&latest_announcements(&pool, 2).await.unwrap()),
+            ids(&latest_announcements(&pool, 2, false).await.unwrap()),
             vec![3, 2]
         );
 
@@ -456,18 +487,59 @@ mod tests {
         edited.content = "edited".into();
         edited.edited_at = Some(OffsetDateTime::UNIX_EPOCH + time::Duration::hours(1));
         upsert_announcement(&pool, ey, &edited).await.unwrap();
-        let latest = latest_announcements(&pool, 10).await.unwrap();
+        let latest = latest_announcements(&pool, 10, false).await.unwrap();
         assert_eq!(
             latest[1],
             Announcement {
                 post: edited,
-                author: "Ey".into()
+                author: "Ey".into(),
+                hidden: false,
             }
         );
 
         delete_announcements(&pool, &[3]).await.unwrap();
         assert_eq!(
-            ids(&latest_announcements(&pool, 10).await.unwrap()),
+            ids(&latest_announcements(&pool, 10, false).await.unwrap()),
+            vec![2, 1]
+        );
+    }
+
+    #[sqlx::test]
+    async fn hidden_posts_stay_hidden_through_edits(pool: PgPool) {
+        let ey = member(&pool, "Ey", "officer").await;
+        for (id, minutes) in [(1, 1), (2, 2)] {
+            upsert_announcement(&pool, ey, &post(id, minutes))
+                .await
+                .unwrap();
+        }
+        assert!(set_announcement_hidden(&pool, 2, true).await.unwrap());
+        assert!(!set_announcement_hidden(&pool, 9, true).await.unwrap());
+        assert_eq!(
+            ids(&latest_announcements(&pool, 10, false).await.unwrap()),
+            vec![1]
+        );
+        // The bot reading it again, or an edit, leaves it hidden.
+        let mut edited = post(2, 2);
+        edited.content = "edited".into();
+        upsert_announcement(&pool, ey, &edited).await.unwrap();
+        update_announcement(&pool, &edited).await.unwrap();
+        // Superusers see it, marked.
+        let all = latest_announcements(&pool, 10, true).await.unwrap();
+        assert_eq!(
+            all.iter()
+                .map(|a| (a.post.message_id, a.hidden))
+                .collect::<Vec<_>>(),
+            vec![(2, true), (1, false)]
+        );
+        // The public limit counts only what is shown.
+        assert_eq!(
+            ids(&latest_announcements(&pool, 1, false).await.unwrap()),
+            vec![1]
+        );
+
+        assert!(set_announcement_hidden(&pool, 2, false).await.unwrap());
+        assert_eq!(
+            ids(&latest_announcements(&pool, 10, false).await.unwrap()),
             vec![2, 1]
         );
     }
@@ -486,18 +558,23 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            ids(&latest_announcements(&pool, 10).await.unwrap()),
+            ids(&latest_announcements(&pool, 10, false).await.unwrap()),
             vec![3, 2, 1]
         );
         // A read of the whole channel that saw only 1: the rest went.
         prune_announcements(&pool, &[1], None, true).await.unwrap();
         assert_eq!(
-            ids(&latest_announcements(&pool, 10).await.unwrap()),
+            ids(&latest_announcements(&pool, 10, false).await.unwrap()),
             vec![1]
         );
         // An empty channel, read whole: nothing stays.
         prune_announcements(&pool, &[], None, true).await.unwrap();
-        assert!(latest_announcements(&pool, 10).await.unwrap().is_empty());
+        assert!(
+            latest_announcements(&pool, 10, false)
+                .await
+                .unwrap()
+                .is_empty()
+        );
     }
 
     async fn member(pool: &PgPool, username: &str, rank: &str) -> crate::users::UserId {
@@ -665,12 +742,13 @@ mod tests {
         update_announcement(&pool, &edited).await.unwrap();
         update_announcement(&pool, &post(2, 2)).await.unwrap();
 
-        let latest = latest_announcements(&pool, 10).await.unwrap();
+        let latest = latest_announcements(&pool, 10, false).await.unwrap();
         assert_eq!(
             latest,
             vec![Announcement {
                 post: edited,
-                author: "Ey".into()
+                author: "Ey".into(),
+                hidden: false,
             }]
         );
     }

@@ -15,6 +15,7 @@ use super::markdown::{self, Mentions};
 use super::placeholder;
 use crate::extract::{Admin, SameOrigin};
 use crate::guild::Rank;
+use crate::users::User;
 use crate::users::UserId;
 use crate::{Error, Problem, Result, State};
 
@@ -34,19 +35,26 @@ pub struct Announcement {
     pub posted_at: OffsetDateTime,
     #[serde(with = "iso8601::option")]
     pub edited_at: Option<OffsetDateTime>,
+    /// Hidden from the site by a superuser; only superusers are sent these.
+    pub hidden: bool,
 }
 
 /// `GET /api/announcements`: the latest posts in #public-announcements, newest first. Public, as
-/// the channel is.
-async fn latest(state: State) -> Result<Json<Vec<Announcement>>> {
-    let posts = db::latest_announcements(&state.pool, LATEST)
+/// the channel is, without those a superuser hid; superusers get those too, to show them again.
+async fn latest(state: State, user: Option<User>) -> Result<Json<Vec<Announcement>>> {
+    let with_hidden = user.is_some_and(|u| u.is_superuser);
+    let posts = db::latest_announcements(&state.pool, LATEST, with_hidden)
         .await
         .context("reading the announcements")?;
     Ok(Json(
         posts
             .into_iter()
             .map(|post| {
-                let db::Announcement { post, author } = post;
+                let db::Announcement {
+                    post,
+                    author,
+                    hidden,
+                } = post;
                 let mentions: Mentions = serde_json::from_value(post.mentions).unwrap_or_default();
                 Announcement {
                     id: post.message_id.to_string(),
@@ -54,10 +62,45 @@ async fn latest(state: State) -> Result<Json<Vec<Announcement>>> {
                     html: markdown::render(&post.content, &mentions),
                     posted_at: post.posted_at,
                     edited_at: post.edited_at,
+                    hidden,
                 }
             })
             .collect(),
     ))
+}
+
+#[derive(Debug, thiserror::Error, Problem)]
+pub enum HideError {
+    #[error("no such announcement")]
+    #[problem(status = NOT_FOUND, title = "Not Found", detail = "No such announcement.")]
+    NotFound,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct Hidden {
+    pub hidden: bool,
+}
+
+/// `PUT /api/admin/announcements/{id}/hidden` with `{"hidden": bool}`: superusers only. Hides a
+/// post from the site, or shows it again; Discord keeps it either way.
+async fn set_hidden(
+    state: State,
+    _: SameOrigin,
+    _admin: Admin,
+    Path(id): Path<String>,
+    Json(body): Json<Hidden>,
+) -> Result<StatusCode, HideError> {
+    let id: u64 = id
+        .parse()
+        .map_err(|_| Error::External(HideError::NotFound))?;
+    if db::set_announcement_hidden(&state.pool, id, body.hidden)
+        .await
+        .context("hiding an announcement")?
+    {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(Error::External(HideError::NotFound))
+    }
 }
 
 #[derive(Debug, thiserror::Error, Problem)]
@@ -452,6 +495,7 @@ pub fn router() -> Router<State> {
 /// The superusers' routes, under `/api/admin`.
 pub fn admin_router() -> Router<State> {
     Router::new()
+        .route("/announcements/{id}/hidden", axum::routing::put(set_hidden))
         .route("/discord", get(settings).put(set_settings))
         .route("/discord/check", get(role_check))
         .route("/discord/fix/categories", post(fix_categories))
