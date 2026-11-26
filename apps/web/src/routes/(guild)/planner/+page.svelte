@@ -36,13 +36,6 @@
 	);
 	const nameOf = (raidId: number) => names.get(raidId) ?? '';
 
-	/** Where each character is placed this week, for the benches' badges. */
-	const places = (characterId: number) =>
-		raids.flatMap((r) => {
-			const a = r.attendees.find((a) => a.character_id === characterId);
-			return a ? [{ raidId: r.raid.id, name: nameOf(r.raid.id), group: a.group_number }] : [];
-		});
-
 	/**
 	 * The week's raids by zone, in the order the zones first raid: a zone's raids share a lockout,
 	 * so they share a bench.
@@ -57,8 +50,8 @@
 
 	/**
 	 * A lockout's bench: everyone not saved to it this week, so each character is on it or in one
-	 * of its raids. Someone in another zone's raid at the same time stays, with its badge; putting
-	 * them in asks to move them.
+	 * of its raids. Someone in another zone's raid at the same time stays; putting them in asks to
+	 * move them.
 	 */
 	const benchFor = (zoneRaids: RaidDetail[]) =>
 		data.characters.filter(
@@ -212,14 +205,7 @@
 		<section class="lockout" aria-label={lockout.name}>
 			<h2>{lockout.name}</h2>
 			<div class="planner">
-				<Roster
-					characters={benchFor(lockout.raids)}
-					places={(id) =>
-						places(id).filter((p) => !lockout.raids.some((r) => r.raid.id === p.raidId))}
-					editable
-					bind:selected
-					onreturn={remove}
-				/>
+				<Roster characters={benchFor(lockout.raids)} editable bind:selected onreturn={remove} />
 				<div class="raids">
 					{#each lockout.raids as raid (raid.raid.id)}
 						<section class="raid">

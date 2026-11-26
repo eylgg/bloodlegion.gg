@@ -25,7 +25,7 @@
 		hint = 'Drag characters onto a group, or click one then a free slot. Drag someone back here to take them off the raid.'
 	}: {
 		characters: GuildCharacter[];
-		/** The week's other raids a character is in, for its badges. */
+		/** The raids a character is in, for its badges (none when left out). */
 		places?: (characterId: number) => Place[];
 		editable: boolean;
 		selected?: number | null;

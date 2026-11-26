@@ -294,8 +294,8 @@ the changes.
   raids: the guild's characters not in any of them, at 60 unless "Below level 60 too" is ticked,
   one line each with its player, sorted by player (main first) and then the characters nobody
   plays. Each character is on a zone's bench or in one of its raids: moving them in takes them
-  off it, and taking them out puts them back. Someone in another zone's raid stays on the bench
-  with a badge naming it; putting them in a raid at the same time asks to move them. A
+  off it, and taking them out puts them back. Someone in another zone's raid stays on the bench;
+  putting them in a raid at the same time asks to move them. A
   raid's own page has the same bench, of everyone not in it. Raids have no names: a
   zone's raids in a week are numbered ("Onyxia's Lair 2"), and "Add a group" adds another of the
   same zone at the same time. A player (an account, whichever of their characters) is in one raid
